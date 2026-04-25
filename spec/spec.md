@@ -8,7 +8,6 @@ tags:
   - monorepo
   - pnpm
   - github-auth
-  - oclif
 implementation_language: typescript
 relationships:
   - target: "ix://agent-ix/ix-ui"
