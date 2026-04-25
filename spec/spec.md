@@ -14,7 +14,7 @@ relationships:
     type: "consumes"
     cardinality: "1:1"
   - target: "ix://agent-ix/ix-local-cli"
-    type: "supersedes"
+    type: "implements"
     cardinality: "1:1"
   - target: "ix://agent-ix/auth-service"
     type: "calls"
