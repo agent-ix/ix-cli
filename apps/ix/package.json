@@ -1,7 +1,7 @@
 {
   "name": "@agent-ix/ix",
   "description": "The Agent IX unified CLI binary.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "bin": {
     "ix": "./bin/ix.js"
@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@agent-ix/ix-cli-core": ">=0.1.0",
-    "@agent-ix/ix-cli-local": "workspace:*",
+    "@agent-ix/ix-cli-local": ">=0.1.0",
     "@agent-ix/ix-ui-cli": ">=0.1.2",
     "@oclif/core": ">=4.10.6",
     "picocolors": ">=1.1.1"
