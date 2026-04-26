@@ -8,5 +8,7 @@ on:
 jobs:
   ci:
     uses: agent-ix/nodejs-actions/.github/workflows/build-test-monorepo.yml@main
+    with:
+      npm_registry: http://npm.ix/
     secrets:
       NPM_REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
