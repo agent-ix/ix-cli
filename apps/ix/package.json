@@ -1,0 +1,50 @@
+{
+  "name": "@agent-ix/ix",
+  "description": "The Agent IX unified CLI binary.",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "ix": "./bin/ix.js"
+  },
+  "files": [
+    "bin/",
+    "dist/"
+  ],
+  "oclif": {
+    "bin": "ix",
+    "dirname": "ix",
+    "commands": "./dist/commands",
+    "plugins": [],
+    "hooks": {
+      "init": "./dist/hooks/init"
+    },
+    "topicSeparator": " "
+  },
+  "scripts": {
+    "build": "vite build",
+    "lint": "eslint \"src/**/*.ts\" --no-error-on-unmatched-pattern \"tests/**/*.ts\" && pnpm run format:check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "clean": "rm -rf dist coverage"
+  },
+  "dependencies": {
+    "@agent-ix/ix-cli-core": ">=0.1.0",
+    "@agent-ix/ix-cli-local": "workspace:*",
+    "@agent-ix/ix-ui-cli": ">=0.1.2",
+    "@oclif/core": ">=4.10.6",
+    "picocolors": ">=1.1.1"
+  },
+  "devDependencies": {
+    "vite": ">=6.3.4",
+    "vite-plugin-dts": ">=4.5.3",
+    "vitest": ">=3.1.2"
+  },
+  "publishConfig": {
+    "registry": "http://npm.ix/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agent-ix/ix-cli.git"
+  }
+}
