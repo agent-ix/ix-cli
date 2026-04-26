@@ -120,12 +120,16 @@ describe("NFR-001-AC-3: PhaseTable imported from @agent-ix/ix-ui-cli", () => {
 describe("FR-001-AC-1: core runner functions are exported", () => {
   it("TC-001: index.ts exports runUp", () => {
     const src = readSrc("index.ts");
-    expect(src).toMatch(/export.*runUp|export function runUp|export async function runUp/);
+    expect(src).toMatch(
+      /export.*runUp|export function runUp|export async function runUp/,
+    );
   });
 
   it("TC-002: index.ts exports runDown", () => {
     const src = readSrc("index.ts");
-    expect(src).toMatch(/export.*runDown|export function runDown|export async function runDown/);
+    expect(src).toMatch(
+      /export.*runDown|export function runDown|export async function runDown/,
+    );
   });
 
   it("TC-003: index.ts exports runList", () => {

@@ -5,6 +5,9 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
+        "commands/up": "src/commands/up.ts",
+        "commands/down": "src/commands/down.ts",
+        "commands/list": "src/commands/list.ts",
         "commands/local/up": "src/commands/local/up.ts",
         "commands/local/down": "src/commands/local/down.ts",
         "commands/local/list": "src/commands/local/list.ts",

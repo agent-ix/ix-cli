@@ -1,7 +1,7 @@
 {
   "name": "@agent-ix/ix",
   "description": "The Agent IX unified CLI binary.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "bin": {
     "ix": "./bin/ix.js"
@@ -18,7 +18,15 @@
     "hooks": {
       "init": "./dist/hooks/init"
     },
-    "topicSeparator": " "
+    "topicSeparator": " ",
+    "topics": {
+      "local": {
+        "description": "Manage local Agent IX cluster services (up, down, list, auth, init-cluster)."
+      },
+      "plugin": {
+        "description": "Manage installed ix CLI plugins."
+      }
+    }
   },
   "scripts": {
     "build": "vite build",
