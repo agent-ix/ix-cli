@@ -7,7 +7,7 @@
  * For role=service, install one chart as a Helm release via Listr2.
  * For role=app, expand the chart's `dependencies` and run each child
  * pipeline concurrently behind Pool-gated semaphores, displaying progress
- * in the phase-column table (PhaseTable from @agent-ix/ix-ui-cli).
+ * in the phase-column table (AppDisplay).
  */
 
 import fs from "node:fs";
@@ -17,12 +17,7 @@ import { execa } from "execa";
 import { Listr } from "listr2";
 import type { ListrTaskWrapper } from "listr2";
 import pc from "picocolors";
-import {
-  introCommand,
-  outroSuccess,
-  outroError,
-  outroWarning,
-} from "@agent-ix/ix-ui-cli";
+import * as p from "@clack/prompts";
 import { parse as parseYaml } from "yaml";
 import type { IxConfig } from "../config.js";
 import type { Deployable } from "../discovery.js";
@@ -35,8 +30,7 @@ import {
   applySecretContract,
   type SecretContract,
 } from "../local-secrets.js";
-import { PhaseTable } from "@agent-ix/ix-ui-cli";
-import { PHASES, PHASE_LABELS, type Phase } from "../phases.js";
+import { AppDisplay, type Phase } from "../app-display.js";
 import { loadConcurrencyConfig, createPools } from "../pool.js";
 
 export interface ChildInstall {
@@ -199,7 +193,7 @@ export async function runImageModeUp(
       const err = new Error(
         `App '${deployable.name}' has no chart dependencies to install.`,
       );
-      outroError(err.message);
+      p.outro(pc.red(err.message));
       throw err;
     }
     installs = deps;
@@ -211,10 +205,10 @@ export async function runImageModeUp(
         chartVersion: deployable.version,
       },
     ];
-    introCommand("ix-local up (image mode)");
+    p.intro(pc.bgCyan(pc.black(` ix-local up (image mode) `)));
   }
 
-  // Resolve credentials before entering Listr / PhaseTable — interactive
+  // Resolve credentials before entering Listr / AppDisplay — interactive
   // prompts need direct terminal access.
   const ghcrToken = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
 
@@ -261,11 +255,9 @@ export async function runImageModeUp(
     }
   }
 
-  const display = new PhaseTable<Phase>(
+  const display = new AppDisplay(
     installs.map((i) => i.name),
     {
-      phases: PHASES,
-      phaseLabels: PHASE_LABELS,
       header: `ix-local up · ${deployable.name} · ${config.helmChartRegistry}`,
       initialLineCount:
         appHeaderText && (process.stdout.isTTY ?? false) ? 1 : 0,
@@ -502,16 +494,20 @@ async function runSingleServiceListr(
   try {
     await tasks.run();
     if (failures.length > 0) {
-      outroWarning(
-        `Deployed ${pc.cyan(deployable.name)} with failures: ${failures.join("; ")}`,
+      p.outro(
+        pc.yellow(
+          `Deployed ${pc.cyan(deployable.name)} with failures: ${failures.join("; ")}`,
+        ),
       );
     } else {
       const url = `https://${deployable.name}.${config.internalBaseDomain}`;
-      outroSuccess(`Service available at: ${pc.cyan(pc.underline(url))}`);
+      p.outro(pc.green(`Service available at: ${pc.cyan(pc.underline(url))}`));
     }
   } catch (err) {
-    outroError(
-      `Failed to deploy ${deployable.name}: ${err instanceof Error ? err.message : String(err)}`,
+    p.outro(
+      pc.red(
+        `Failed to deploy ${deployable.name}: ${err instanceof Error ? err.message : String(err)}`,
+      ),
     );
     throw err;
   }
