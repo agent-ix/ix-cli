@@ -3,6 +3,7 @@
  * Bootstrap kind cluster (FR-007) then deploy the effective ix-core app set (FR-009).
  */
 
+import pc from "picocolors";
 import type { IxConfig, ClusterConfig } from "../config.js";
 import type { Deployable } from "../discovery.js";
 import { runInitCluster } from "./init-cluster.js";
@@ -86,6 +87,8 @@ export async function runClusterUp(
   if (deploySet.length === 0) {
     return;
   }
+
+  process.stdout.write(pc.dim("│\n"));
 
   // Each runImageModeUp call frames its own display (PhaseTable or Listr).
   for (const deployable of deploySet) {

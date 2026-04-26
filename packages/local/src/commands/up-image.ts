@@ -39,6 +39,20 @@ import {
 import type { Phase } from "../phases.js";
 import { loadConcurrencyConfig, createPools } from "../pool.js";
 
+const ORBIT_SPINNER = ["∘⦿  ", " ⊚  ", " ⦿ ∘ ", " ⦿ ⋅", " ⦿  ", "⋅⦿  "];
+
+function renderOrbitFrame(frame: string): string {
+  return [...frame]
+    .map((ch) =>
+      ch === "⦿" || ch === "⊚"
+        ? pc.gray(ch)
+        : ch === "∘" || ch === "⋅"
+          ? pc.cyan(ch)
+          : ch,
+    )
+    .join("");
+}
+
 const UP_PHASES = [
   "secrets",
   "pull",
@@ -195,13 +209,24 @@ export async function runImageModeUp(
   opts: UpImageOptions = {},
   devDir: string = "",
 ): Promise<void> {
-  // Write header immediately so there is no blank gap during expandApp + registry login.
+  // Spin the header immediately so there is no blank gap during expandApp + registry login.
   const appHeaderText =
     deployable.role === "app"
       ? `ix local up · ${deployable.name} · ${config.helmChartRegistry}`
       : null;
+  let preflightFrame = 0;
+  let preflightTicker: ReturnType<typeof setInterval> | null = null;
   if (appHeaderText && (process.stdout.isTTY ?? false)) {
-    process.stdout.write(`⊕  ${appHeaderText}\n`);
+    const drawPreflight = () => {
+      const frame =
+        ORBIT_SPINNER[Math.floor(preflightFrame / 4) % ORBIT_SPINNER.length];
+      process.stdout.write(
+        `\r${renderOrbitFrame(frame)} ${appHeaderText}\x1B[K`,
+      );
+      preflightFrame++;
+    };
+    drawPreflight();
+    preflightTicker = setInterval(drawPreflight, 80);
   }
 
   let installs: ChildInstall[];
@@ -299,6 +324,11 @@ export async function runImageModeUp(
     ],
     { input: ghcrToken, all: true },
   );
+  if (preflightTicker !== null) {
+    clearInterval(preflightTicker);
+    preflightTicker = null;
+    process.stdout.write("\n");
+  }
   display.start();
 
   const failures: string[] = [];
