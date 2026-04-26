@@ -5,10 +5,9 @@
  */
 
 import { execa } from "execa";
-import type { ListrTask } from "listr2";
 import type { IxConfig } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
-import { runTaskList } from "@agent-ix/ix-ui-cli";
+import { PhaseTable, log } from "@agent-ix/ix-ui-cli";
 
 /**
  * C2: Build a kubernetes.io/dockerconfigjson Secret manifest containing the
@@ -39,11 +38,9 @@ function buildGhcrSecretManifest(token: string): string {
   ].join("\n");
 }
 
-// Cert-manager manifest URL is constructed from the version in config
 const CERT_MANAGER_URL = (version: string) =>
   `https://github.com/jetstack/cert-manager/releases/download/${version}/cert-manager.yaml`;
 
-// ix-ca-issuer manifest applied inline
 const IX_CA_ISSUER_YAML = `
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -96,272 +93,224 @@ spec:
 `.trim();
 }
 
-async function streamOutput(
-  cmd: string,
-  args: string[],
-  opts: object,
-  task: { output: string },
-): Promise<void> {
-  const subprocess = execa(cmd, args, { ...opts, all: true });
-  subprocess.all?.on("data", (chunk) => {
-    const line = chunk.toString().trim();
-    if (line) task.output = line;
-  });
-  await subprocess;
-}
+const INIT_STEPS = [
+  "kind cluster",
+  "cert-manager",
+  "ca-issuer",
+  "wildcard cert",
+  "wait cert",
+  "ghcr secret",
+  "npm secret",
+  "dns config",
+] as const;
+
+type InitStep = (typeof INIT_STEPS)[number];
 
 export async function runInitCluster(
   config: IxConfig,
   reconfigureCredentials: boolean,
 ): Promise<void> {
-  // Resolve credentials before the task list — clack prompts need direct
-  // terminal access and are swallowed by Listr's renderer.
+  // Resolve credentials before the display starts — clack prompts need direct
+  // terminal access.
   const ghcrToken = await resolveGhcrToken(reconfigureCredentials);
 
-  // M4: captured by the DNS task closure so the success message can include it.
+  const display = new PhaseTable<"run">([...INIT_STEPS], {
+    phases: ["run"] as const,
+    phaseLabels: { run: "running" },
+    header: "ix local init-cluster",
+  });
+  display.start();
+
   let clusterIp = "";
 
-  const tasks: ListrTask[] = [
+  const run = async (step: InitStep, fn: () => Promise<void>) => {
+    display.transition(step, "run", "running");
+    try {
+      await fn();
+      display.transition(step, "run", "done");
+    } catch (err) {
+      display.transition(step, "run", "failed");
+      display.setError(step, err instanceof Error ? err.message : String(err));
+      throw err;
+    }
+  };
+
+  try {
     // Step 1: create kind cluster if absent (FR-007-AC-2)
-    {
-      title: "Create kind cluster",
-      task: async (ctx, task) => {
-        try {
-          const { stdout } = await execa("kind", ["get", "clusters"]);
-          if (
-            stdout
-              .split("\n")
-              .map((s) => s.trim())
-              .includes(config.kindClusterName)
-          ) {
-            task.skip(`Cluster '${config.kindClusterName}' already exists`);
-            return;
-          }
-        } catch (err: unknown) {
-          // FR-007-AC-6: kind not in PATH
-          if (
-            err instanceof Error &&
-            (err.message.includes("ENOENT") ||
-              err.message.includes("not found"))
-          ) {
-            throw new Error(
-              "kind is not installed or not in PATH. Install it from https://kind.sigs.k8s.io/docs/user/quick-start/#installation",
-            );
-          }
-          throw err;
-        }
-
-        try {
-          await streamOutput(
-            "kind",
-            ["create", "cluster", "--name", config.kindClusterName],
-            {},
-            task,
-          );
-        } catch {
-          throw new Error(
-            `Failed to create kind cluster '${config.kindClusterName}'. Check kind logs above.`,
-          );
-        }
-      },
-    },
-
-    // Step 2: install cert-manager
-    {
-      title: `Install cert-manager ${config.certManagerVersion}`,
-      task: async (ctx, task) => {
-        await streamOutput(
-          "kubectl",
-          ["apply", "-f", CERT_MANAGER_URL(config.certManagerVersion)],
-          {},
-          task,
-        );
-
-        const deployments = [
-          "cert-manager",
-          "cert-manager-cainjector",
-          "cert-manager-webhook",
-        ];
-        for (const dep of deployments) {
-          try {
-            await streamOutput(
-              "kubectl",
-              [
-                "rollout",
-                "status",
-                `deployment/${dep}`,
-                "-n",
-                "cert-manager",
-                `--timeout=${config.certManagerTimeoutSeconds}s`,
-              ],
-              {},
-              task,
-            );
-          } catch {
-            throw new Error(
-              `Deployment ${dep} did not become Ready within ${config.certManagerTimeoutSeconds}s. ` +
-                `Run: kubectl describe deployment/${dep} -n cert-manager`,
-            );
-          }
-        }
-      },
-    },
-
-    // Step 3: apply ix-ca-issuer manifests
-    {
-      title: "Apply ix-ca-issuer",
-      task: async (ctx, task) => {
-        const subprocess = execa("kubectl", ["apply", "-f", "-"], {
-          input: IX_CA_ISSUER_YAML,
-          all: true,
-        });
-        subprocess.all?.on("data", (chunk) => {
-          const line = chunk.toString().trim();
-          if (line) task.output = line;
-        });
-        await subprocess;
-      },
-    },
-
-    // Step 4: issue wildcard TLS certificate (FR-007-AC-3)
-    {
-      title: `Issue wildcard cert for *.${config.internalBaseDomain}`,
-      task: async (ctx, task) => {
-        const manifest = wildcardCertYaml(config.internalBaseDomain);
-        const subprocess = execa("kubectl", ["apply", "-f", "-"], {
-          input: manifest,
-          all: true,
-        });
-        subprocess.all?.on("data", (chunk) => {
-          const line = chunk.toString().trim();
-          if (line) task.output = line;
-        });
-        await subprocess;
-      },
-    },
-
-    // Step 5: wait for certificate Ready (FR-007-AC-9)
-    {
-      title: "Wait for wildcard certificate",
-      task: async (ctx, task) => {
-        // H5: monotonic deadline, clamped sleep so loop never overruns timeout.
-        const POLL_INTERVAL_MS = 5000;
-        const timeoutMs = config.certWaitTimeoutSeconds * 1000;
-        const startNs = process.hrtime.bigint();
-        const elapsedMs = () =>
-          Number((process.hrtime.bigint() - startNs) / 1_000_000n);
-
-        while (elapsedMs() < timeoutMs) {
-          try {
-            const { stdout } = await execa("kubectl", [
-              "get",
-              "certificate",
-              "ix-dev-wildcard-cert",
-              "-n",
-              "default",
-              "-o",
-              "jsonpath={.status.conditions[?(@.type=='Ready')].status}",
-            ]);
-            if (stdout.trim() === "True") {
-              task.output = "Certificate is Ready";
-              return;
-            }
-          } catch {
-            // cert not yet created, keep polling
-          }
-          task.output = "Waiting for certificate…";
-          const remaining = timeoutMs - elapsedMs();
-          if (remaining <= 0) break;
-          await new Promise((r) =>
-            setTimeout(r, Math.min(POLL_INTERVAL_MS, remaining)),
-          );
-        }
-        throw new Error(
-          `Wildcard certificate did not become Ready within ${config.certWaitTimeoutSeconds}s. ` +
-            `Run: kubectl describe certificate ix-dev-wildcard-cert -n default`,
-        );
-      },
-    },
-
-    // Step 6: create ghcr-credentials imagePullSecret
-    // C2: token piped via stdin in a Secret manifest, never on argv.
-    {
-      title: "Create GHCR imagePullSecret",
-      task: async (ctx, task) => {
-        const manifest = buildGhcrSecretManifest(ghcrToken);
-        const subprocess = execa("kubectl", ["apply", "-f", "-"], {
-          input: manifest,
-          all: true,
-        });
-        subprocess.all?.on("data", (chunk) => {
-          const line = chunk.toString().trim();
-          if (line) task.output = line;
-        });
-        await subprocess;
-      },
-    },
-
-    // Step 7: create npm-proxy-github Secret for Verdaccio → GitHub Packages
-    {
-      title: "Create npm-proxy-github secret",
-      task: async (ctx, task) => {
-        const encoded = Buffer.from(ghcrToken).toString("base64");
-        const manifest = [
-          "apiVersion: v1",
-          "kind: Secret",
-          "metadata:",
-          "  name: npm-proxy-github",
-          "  namespace: default",
-          "type: Opaque",
-          "data:",
-          `  GH_TOKEN: ${encoded}`,
-          "",
-        ].join("\n");
-        const subprocess = execa("kubectl", ["apply", "-f", "-"], {
-          input: manifest,
-          all: true,
-        });
-        subprocess.all?.on("data", (chunk) => {
-          const line = chunk.toString().trim();
-          if (line) task.output = line;
-        });
-        await subprocess;
-      },
-    },
-
-    // Step 8: print DNS instructions (FR-007-AC-5)
-    {
-      title: "Print DNS configuration",
-      task: async (ctx, task) => {
-        const { stdout } = await execa("kubectl", [
-          "get",
-          "nodes",
-          "-o",
-          "jsonpath={range .items[*]}{range .status.addresses[?(@.type=='InternalIP')]}{.address}{'\\n'}{end}{end}",
-        ]);
-        // M4: jsonpath returns one InternalIP per line; take the first non-empty.
-        clusterIp =
+    await run("kind cluster", async () => {
+      try {
+        const { stdout } = await execa("kind", ["get", "clusters"]);
+        if (
           stdout
             .split("\n")
             .map((s) => s.trim())
-            .find((s) => s.length > 0) ?? "";
-        task.output = [
-          `Cluster IP: ${clusterIp}`,
-          `Add to /etc/dnsmasq.conf:  address=/.${config.internalBaseDomain}/${clusterIp}`,
-        ].join("\n");
-      },
-    },
-  ];
+            .includes(config.kindClusterName)
+        ) {
+          return; // idempotent — already exists
+        }
+      } catch (err: unknown) {
+        // FR-007-AC-6: kind not in PATH
+        if (
+          err instanceof Error &&
+          (err.message.includes("ENOENT") || err.message.includes("not found"))
+        ) {
+          throw new Error(
+            "kind is not installed or not in PATH. Install it from https://kind.sigs.k8s.io/docs/user/quick-start/#installation",
+          );
+        }
+        throw err;
+      }
+      try {
+        await execa(
+          "kind",
+          ["create", "cluster", "--name", config.kindClusterName],
+          { all: true },
+        );
+      } catch {
+        throw new Error(
+          `Failed to create kind cluster '${config.kindClusterName}'.`,
+        );
+      }
+    });
 
-  await runTaskList("ix local init-cluster", tasks, {
-    successMessage: [
-      "Cluster ready.",
-      `  TLS: ix-dev-wildcard-tls (default namespace)  ·  *.${config.internalBaseDomain}`,
-      clusterIp
-        ? `  DNS: address=/.${config.internalBaseDomain}/${clusterIp}  → /etc/dnsmasq.conf`
-        : "",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  });
+    // Step 2: install cert-manager
+    await run("cert-manager", async () => {
+      await execa(
+        "kubectl",
+        ["apply", "-f", CERT_MANAGER_URL(config.certManagerVersion)],
+        { all: true },
+      );
+      for (const dep of [
+        "cert-manager",
+        "cert-manager-cainjector",
+        "cert-manager-webhook",
+      ]) {
+        try {
+          await execa(
+            "kubectl",
+            [
+              "rollout",
+              "status",
+              `deployment/${dep}`,
+              "-n",
+              "cert-manager",
+              `--timeout=${config.certManagerTimeoutSeconds}s`,
+            ],
+            { all: true },
+          );
+        } catch {
+          throw new Error(
+            `Deployment ${dep} did not become Ready within ${config.certManagerTimeoutSeconds}s. ` +
+              `Run: kubectl describe deployment/${dep} -n cert-manager`,
+          );
+        }
+      }
+    });
+
+    // Step 3: apply ix-ca-issuer manifests
+    await run("ca-issuer", async () => {
+      await execa("kubectl", ["apply", "-f", "-"], {
+        input: IX_CA_ISSUER_YAML,
+        all: true,
+      });
+    });
+
+    // Step 4: issue wildcard TLS certificate (FR-007-AC-3)
+    await run("wildcard cert", async () => {
+      await execa("kubectl", ["apply", "-f", "-"], {
+        input: wildcardCertYaml(config.internalBaseDomain),
+        all: true,
+      });
+    });
+
+    // Step 5: wait for certificate Ready (FR-007-AC-9)
+    await run("wait cert", async () => {
+      // H5: monotonic deadline, clamped sleep so loop never overruns timeout.
+      const POLL_MS = 5000;
+      const timeoutMs = config.certWaitTimeoutSeconds * 1000;
+      const startNs = process.hrtime.bigint();
+      const elapsedMs = () =>
+        Number((process.hrtime.bigint() - startNs) / 1_000_000n);
+
+      while (elapsedMs() < timeoutMs) {
+        try {
+          const { stdout } = await execa("kubectl", [
+            "get",
+            "certificate",
+            "ix-dev-wildcard-cert",
+            "-n",
+            "default",
+            "-o",
+            "jsonpath={.status.conditions[?(@.type=='Ready')].status}",
+          ]);
+          if (stdout.trim() === "True") return;
+        } catch {
+          // cert not yet created, keep polling
+        }
+        const remaining = timeoutMs - elapsedMs();
+        if (remaining <= 0) break;
+        await new Promise((r) => setTimeout(r, Math.min(POLL_MS, remaining)));
+      }
+      throw new Error(
+        `Wildcard certificate did not become Ready within ${config.certWaitTimeoutSeconds}s. ` +
+          `Run: kubectl describe certificate ix-dev-wildcard-cert -n default`,
+      );
+    });
+
+    // Step 6: create ghcr-credentials imagePullSecret
+    // C2: token piped via stdin in a Secret manifest, never on argv.
+    await run("ghcr secret", async () => {
+      await execa("kubectl", ["apply", "-f", "-"], {
+        input: buildGhcrSecretManifest(ghcrToken),
+        all: true,
+      });
+    });
+
+    // Step 7: create npm-proxy-github Secret for Verdaccio → GitHub Packages
+    await run("npm secret", async () => {
+      const encoded = Buffer.from(ghcrToken).toString("base64");
+      const manifest = [
+        "apiVersion: v1",
+        "kind: Secret",
+        "metadata:",
+        "  name: npm-proxy-github",
+        "  namespace: default",
+        "type: Opaque",
+        "data:",
+        `  GH_TOKEN: ${encoded}`,
+        "",
+      ].join("\n");
+      await execa("kubectl", ["apply", "-f", "-"], {
+        input: manifest,
+        all: true,
+      });
+    });
+
+    // Step 8: collect DNS info (FR-007-AC-5)
+    await run("dns config", async () => {
+      const { stdout } = await execa("kubectl", [
+        "get",
+        "nodes",
+        "-o",
+        "jsonpath={range .items[*]}{range .status.addresses[?(@.type=='InternalIP')]}{.address}{'\\n'}{end}{end}",
+      ]);
+      // M4: take the first non-empty InternalIP line
+      clusterIp =
+        stdout
+          .split("\n")
+          .map((s) => s.trim())
+          .find((s) => s.length > 0) ?? "";
+    });
+
+    display.finish(null);
+
+    if (clusterIp) {
+      log.info(
+        `DNS: add  address=/.${config.internalBaseDomain}/${clusterIp}  to /etc/dnsmasq.conf`,
+      );
+    }
+  } catch (err) {
+    display.finish(null);
+    throw err;
+  }
 }
