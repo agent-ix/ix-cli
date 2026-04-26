@@ -5,10 +5,9 @@
  */
 
 import { Listr } from "listr2";
-import pc from "picocolors";
-import * as p from "@clack/prompts";
 import type { IxConfig } from "../config.js";
 import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
+import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
 
 type ResolveFn = typeof resolveIdentityUrl;
 type FetchFn = typeof fetchJson;
@@ -51,7 +50,7 @@ export async function runAuthInvite(
   const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
   const _fetch = deps?.fetchJson ?? fetchJson;
 
-  p.intro(pc.bgCyan(pc.black(` ix-local auth invite `)));
+  introCommand("ix-local auth invite");
 
   let identityBaseUrl = "";
   let cleanup: () => void = () => {};
@@ -59,7 +58,7 @@ export async function runAuthInvite(
 
   const ttlHours = opts.ttl ?? 72;
   if (ttlHours < 1 || ttlHours > 168) {
-    p.outro(pc.red("--ttl must be between 1 and 168 hours"));
+    outroError("--ttl must be between 1 and 168 hours");
     throw new Error("--ttl must be between 1 and 168 hours");
   }
 
@@ -171,13 +170,11 @@ export async function runAuthInvite(
       lines.push("Share the URL above with the user; it is single-use.");
     }
 
-    p.outro(pc.green(lines.join("\n")));
+    outroSuccess(lines.join("\n"));
   } catch (err) {
     cleanup();
-    p.outro(
-      pc.red(
-        `auth invite failed: ${err instanceof Error ? err.message : String(err)}`,
-      ),
+    outroError(
+      `auth invite failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
   }

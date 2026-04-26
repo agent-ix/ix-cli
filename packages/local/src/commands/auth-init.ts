@@ -12,11 +12,15 @@
 
 import { execa } from "execa";
 import { Listr } from "listr2";
-import pc from "picocolors";
-import * as p from "@clack/prompts";
 import type { IxConfig } from "../config.js";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
 import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
+import {
+  introCommand,
+  outroSuccess,
+  outroError,
+  outroInfo,
+} from "@agent-ix/ix-ui-cli";
 
 type ResolveFn = typeof resolveIdentityUrl;
 type FetchFn = typeof fetchJson;
@@ -80,7 +84,7 @@ export async function runAuthInit(
   const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
   const _fetch = deps?.fetchJson ?? fetchJson;
 
-  p.intro(pc.bgCyan(pc.black(` ix-local init `)));
+  introCommand("ix-local init");
 
   let identityBaseUrl = "";
   let cleanup: () => void = () => {};
@@ -186,15 +190,13 @@ export async function runAuthInit(
         expiresAt: string;
         loginUrl: string;
       };
-      p.outro(
-        pc.cyan(
-          [
-            "Admin account already bootstrapped.",
-            `  Expires at: ${bootstrapped.expiresAt}`,
-            `  Log in at:  ${bootstrapped.loginUrl}`,
-            `Retrievable via: kubectl -n ix-system get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
-          ].join("\n"),
-        ),
+      outroInfo(
+        [
+          "Admin account already bootstrapped.",
+          `  Expires at: ${bootstrapped.expiresAt}`,
+          `  Log in at:  ${bootstrapped.loginUrl}`,
+          `Retrievable via: kubectl -n ix-system get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
+        ].join("\n"),
       );
       process.exit(0);
       return;
@@ -204,23 +206,19 @@ export async function runAuthInit(
     const resp = seedResp as SeedResponse;
 
     // FR-015-B6: print to stdout once — never to a log (NFR-004-AC-2)
-    p.outro(
-      pc.green(
-        [
-          "Admin account created.",
-          `  Username:      admin`,
-          `  Temp password: ${resp.password}     (expires ${resp.expires_at})`,
-          `  Log in at:     ${resp.login_url}`,
-          `Retrievable via: kubectl -n ix-system get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
-        ].join("\n"),
-      ),
+    outroSuccess(
+      [
+        "Admin account created.",
+        `  Username:      admin`,
+        `  Temp password: ${resp.password}     (expires ${resp.expires_at})`,
+        `  Log in at:     ${resp.login_url}`,
+        `Retrievable via: kubectl -n ix-system get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
+      ].join("\n"),
     );
   } catch (err) {
     cleanup();
-    p.outro(
-      pc.red(
-        `init failed: ${err instanceof Error ? err.message : String(err)}`,
-      ),
+    outroError(
+      `init failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
   }

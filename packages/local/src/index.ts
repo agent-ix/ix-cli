@@ -6,7 +6,6 @@ import pc from "picocolors";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import * as p from "@clack/prompts";
 import { loadConfig, type IxConfig } from "./config.js";
 import { runInitCluster } from "./commands/init-cluster.js";
 import { runImageModeUp } from "./commands/up-image.js";
@@ -18,6 +17,12 @@ import { runAuthInit } from "./commands/auth-init.js";
 import { runAuthResetAdmin } from "./commands/auth-reset-admin.js";
 import { runAuthInvite } from "./commands/auth-invite.js";
 import { runAuthResetUser } from "./commands/auth-reset-user.js";
+import {
+  introCommand,
+  outroSuccess,
+  outroError,
+  log,
+} from "@agent-ix/ix-ui-cli";
 import {
   runAuthConfigEmailEnable,
   runAuthConfigEmailDisable,
@@ -50,7 +55,7 @@ function deployableMatchesTags(
 }
 
 export async function executeLocals(services: string[], action: "up" | "down") {
-  p.intro(pc.bgCyan(pc.black(` ix-local ${action} `)));
+  introCommand("ix-local ${action}");
 
   // M6: If user passes both named services and "all", that's a conflicting
   // intent — error rather than silently dropping named services.
@@ -132,16 +137,12 @@ export async function executeLocals(services: string[], action: "up" | "down") {
 
   try {
     await tasks.run();
-    p.outro(
-      pc.green(
-        `Successfully ${action === "up" ? "started" : "stopped"} everything.`,
-      ),
+    outroSuccess(
+      `Successfully ${action === "up" ? "started" : "stopped"} everything.`,
     );
   } catch (err) {
     // FR-003-AC-3: failure outro
-    p.outro(
-      pc.red(`Failed: ${err instanceof Error ? err.message : String(err)}`),
-    );
+    outroError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
     throw err;
   }
 }
@@ -257,7 +258,7 @@ export async function runDown(
     }
   }
 
-  p.intro(pc.bgCyan(pc.black(` ix-local down (image mode) `)));
+  introCommand("ix-local down (image mode)");
   const tasks = new Listr(
     releases.map((name) => ({
       title: `Uninstall ${pc.cyan(name)}`,
@@ -277,7 +278,7 @@ export async function runDown(
     { concurrent: false, rendererOptions: { collapseSubtasks: false } },
   );
   await tasks.run();
-  p.outro(pc.green(`Uninstalled: ${releases.join(", ")}`));
+  outroSuccess(`Uninstalled: ${releases.join(", ")}`);
 }
 
 export function buildCli() {
@@ -406,7 +407,7 @@ export function buildCli() {
           githubToken: token,
           refresh: true,
         });
-        p.log.info(`Refreshed registry: ${reg.length} deployable(s).`);
+        log.info(`Refreshed registry: ${reg.length} deployable(s).`);
       } catch {
         process.exit(1);
       }

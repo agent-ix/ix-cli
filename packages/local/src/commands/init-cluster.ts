@@ -6,10 +6,9 @@
 
 import { execa } from "execa";
 import { Listr } from "listr2";
-import pc from "picocolors";
-import * as p from "@clack/prompts";
 import type { IxConfig } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
+import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
 
 /**
  * C2: Build a kubernetes.io/dockerconfigjson Secret manifest containing the
@@ -115,7 +114,7 @@ export async function runInitCluster(
   config: IxConfig,
   reconfigureCredentials: boolean,
 ): Promise<void> {
-  p.intro(pc.bgCyan(pc.black(` ix-local init-cluster `)));
+  introCommand("ix-local init-cluster");
 
   // Resolve credentials before entering the Listr task list — clack's
   // interactive prompt needs direct terminal access and is swallowed by
@@ -391,25 +390,21 @@ export async function runInitCluster(
       // best-effort
     }
 
-    p.outro(
-      pc.green(
-        [
-          "Cluster ready.",
-          `  Wildcard TLS secret: ix-dev-wildcard-tls (default namespace)`,
-          `  Domain: *.${config.internalBaseDomain}`,
-          clusterIp
-            ? `  DNS: add  address=/.${config.internalBaseDomain}/${clusterIp}  to /etc/dnsmasq.conf`
-            : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-      ),
+    outroSuccess(
+      [
+        "Cluster ready.",
+        `  Wildcard TLS secret: ix-dev-wildcard-tls (default namespace)`,
+        `  Domain: *.${config.internalBaseDomain}`,
+        clusterIp
+          ? `  DNS: add  address=/.${config.internalBaseDomain}/${clusterIp}  to /etc/dnsmasq.conf`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
     );
   } catch (err) {
-    p.outro(
-      pc.red(
-        `init-cluster failed: ${err instanceof Error ? err.message : String(err)}`,
-      ),
+    outroError(
+      `init-cluster failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
   }

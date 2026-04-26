@@ -17,7 +17,12 @@ import { execa } from "execa";
 import { Listr } from "listr2";
 import type { ListrTaskWrapper } from "listr2";
 import pc from "picocolors";
-import * as p from "@clack/prompts";
+import {
+  introCommand,
+  outroSuccess,
+  outroError,
+  outroWarning,
+} from "@agent-ix/ix-ui-cli";
 import { parse as parseYaml } from "yaml";
 import type { IxConfig } from "../config.js";
 import type { Deployable } from "../discovery.js";
@@ -194,7 +199,7 @@ export async function runImageModeUp(
       const err = new Error(
         `App '${deployable.name}' has no chart dependencies to install.`,
       );
-      p.outro(pc.red(err.message));
+      outroError(err.message);
       throw err;
     }
     installs = deps;
@@ -206,7 +211,7 @@ export async function runImageModeUp(
         chartVersion: deployable.version,
       },
     ];
-    p.intro(pc.bgCyan(pc.black(` ix-local up (image mode) `)));
+    introCommand("ix-local up (image mode)");
   }
 
   // Resolve credentials before entering Listr / AppDisplay — interactive
@@ -497,20 +502,16 @@ async function runSingleServiceListr(
   try {
     await tasks.run();
     if (failures.length > 0) {
-      p.outro(
-        pc.yellow(
-          `Deployed ${pc.cyan(deployable.name)} with failures: ${failures.join("; ")}`,
-        ),
+      outroWarning(
+        `Deployed ${pc.cyan(deployable.name)} with failures: ${failures.join("; ")}`,
       );
     } else {
       const url = `https://${deployable.name}.${config.internalBaseDomain}`;
-      p.outro(pc.green(`Service available at: ${pc.cyan(pc.underline(url))}`));
+      outroSuccess(`Service available at: ${pc.cyan(pc.underline(url))}`);
     }
   } catch (err) {
-    p.outro(
-      pc.red(
-        `Failed to deploy ${deployable.name}: ${err instanceof Error ? err.message : String(err)}`,
-      ),
+    outroError(
+      `Failed to deploy ${deployable.name}: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
   }

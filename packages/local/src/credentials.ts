@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import * as p from "@clack/prompts";
+import { log, password, isCancel } from "@agent-ix/ix-ui-cli";
 
 const CONFIG_DIR = path.join(
   process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), ".config"),
@@ -110,7 +110,7 @@ export async function resolveGhcrToken(forcePrompt = false): Promise<string> {
 
   // FR-011-AC-1 / FR-011-AC-6: interactive prompt, input masked with • by
   // @clack/prompts PasswordPrompt for both typed and pasted characters.
-  p.log.info(
+  log.info(
     [
       "To pull charts and images from GHCR, a GitHub Personal Access Token",
       "with read:packages scope is required.",
@@ -120,7 +120,7 @@ export async function resolveGhcrToken(forcePrompt = false): Promise<string> {
       `The token will be saved to ${CREDENTIALS_FILE}.`,
     ].join("\n"),
   );
-  const token = await p.password({
+  const token = await password({
     message: "Paste your token:",
     validate: (value) => {
       if (!value || value.trim().length === 0) {
@@ -132,7 +132,7 @@ export async function resolveGhcrToken(forcePrompt = false): Promise<string> {
 
   // M2: Throw instead of process.exit(1) so the caller can render its outro
   // and the function is testable in isolation.
-  if (p.isCancel(token)) {
+  if (isCancel(token)) {
     throw new CredentialsError("Credential prompt cancelled");
   }
 

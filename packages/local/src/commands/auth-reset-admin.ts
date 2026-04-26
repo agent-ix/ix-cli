@@ -6,11 +6,10 @@
  */
 
 import { Listr } from "listr2";
-import pc from "picocolors";
-import * as p from "@clack/prompts";
 import type { IxConfig } from "../config.js";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
 import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
+import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
 
 type ResolveFn = typeof resolveIdentityUrl;
 type FetchFn = typeof fetchJson;
@@ -85,7 +84,7 @@ export async function runAuthResetAdmin(
   const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
   const _fetch = deps?.fetchJson ?? fetchJson;
 
-  p.intro(pc.bgCyan(pc.black(` ix-local auth reset-admin `)));
+  introCommand("ix-local auth reset-admin");
 
   let adminEmail = opts.user;
   let resetResp: ResetResponse | null = null;
@@ -195,22 +194,18 @@ export async function runAuthResetAdmin(
       (resetResp as ResetResponse).reset_url;
 
     // FR-016-B5: print to stdout (never to a log)
-    p.outro(
-      pc.green(
-        [
-          "Admin password reset.",
-          `  User:          ${adminEmail}`,
-          `  Temp password: ${password}   (expires ${(resetResp as ResetResponse).expires_at})`,
-          `  Log in at:     ${(resetResp as ResetResponse).reset_url}`,
-        ].join("\n"),
-      ),
+    outroSuccess(
+      [
+        "Admin password reset.",
+        `  User:          ${adminEmail}`,
+        `  Temp password: ${password}   (expires ${(resetResp as ResetResponse).expires_at})`,
+        `  Log in at:     ${(resetResp as ResetResponse).reset_url}`,
+      ].join("\n"),
     );
   } catch (err) {
     cleanup();
-    p.outro(
-      pc.red(
-        `auth reset-admin failed: ${err instanceof Error ? err.message : String(err)}`,
-      ),
+    outroError(
+      `auth reset-admin failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
   }

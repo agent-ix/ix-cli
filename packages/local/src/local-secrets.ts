@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { execa } from "execa";
-import * as p from "@clack/prompts";
+import { password, isCancel } from "@agent-ix/ix-ui-cli";
 import { parse as parseYaml } from "yaml";
 
 export const SECRETS_FILENAME = "ix-local.secrets.yaml";
@@ -116,8 +116,8 @@ async function resolveSecretKey(
     typeof raw.prompt === "string" && raw.prompt.trim() !== ""
       ? raw.prompt
       : `Enter value for ${raw.secretKey}`;
-  const value = await p.password({ message: prompt, mask: "*" });
-  if (p.isCancel(value)) {
+  const value = await password({ message: prompt, mask: "*" });
+  if (isCancel(value)) {
     throw new Error("Secret prompt cancelled");
   }
   const trimmed = String(value).trim();

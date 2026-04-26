@@ -4,13 +4,18 @@ import path from "node:path";
 import { execa } from "execa";
 import { Listr } from "listr2";
 import pc from "picocolors";
-import * as p from "@clack/prompts";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { IxConfig } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
 import { applySecretContract, loadSecretContract } from "../local-secrets.js";
 import { waitForRollout } from "../rollout.js";
+import {
+  introCommand,
+  outroSuccess,
+  outroError,
+  outroWarning,
+} from "@agent-ix/ix-ui-cli";
 
 interface LocalInstall {
   name: string;
@@ -290,7 +295,7 @@ export async function runSourceModeUp(
   devDir: string,
   opts: UpFilterOptions = {},
 ): Promise<void> {
-  p.intro(pc.bgCyan(pc.black(` ix-local up (source mode) `)));
+  introCommand("ix-local up (source mode)");
 
   const imageTag = tagOverride ?? config.imageTag;
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-local-source-"));
@@ -433,23 +438,17 @@ export async function runSourceModeUp(
       (i) => `https://${i.name}.${config.internalBaseDomain}`,
     );
     if (failures.length > 0) {
-      p.outro(
-        pc.yellow(
-          `Deployed from local source with failures: ${failures.join("; ")}`,
-        ),
+      outroWarning(
+        `Deployed from local source with failures: ${failures.join("; ")}`,
       );
     } else {
-      p.outro(
-        pc.green(
-          `Deployed from local source via Helm release(s): ${pc.cyan(installs.map((i) => i.name).join(", "))}\n\n  ${urls.map((u) => pc.cyan(pc.underline(u))).join("\n  ")}`,
-        ),
+      outroSuccess(
+        `Deployed from local source via Helm release(s): ${pc.cyan(installs.map((i) => i.name).join(", "))}\n\n  ${urls.map((u) => pc.cyan(pc.underline(u))).join("\n  ")}`,
       );
     }
   } catch (err) {
-    p.outro(
-      pc.red(
-        `Failed to deploy from local source: ${err instanceof Error ? err.message : String(err)}`,
-      ),
+    outroError(
+      `Failed to deploy from local source: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
   } finally {

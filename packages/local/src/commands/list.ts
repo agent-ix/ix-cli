@@ -4,11 +4,11 @@
 
 import Table from "cli-table3";
 import pc from "picocolors";
-import * as p from "@clack/prompts";
 import type { IxConfig } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { loadRegistry } from "../registry.js";
 import type { Deployable } from "../discovery.js";
+import { introCommand, outroSuccess, outroWarning } from "@agent-ix/ix-ui-cli";
 
 export interface ListOptions {
   refresh?: boolean;
@@ -34,7 +34,7 @@ export async function runList(
   config: IxConfig,
   opts: ListOptions,
 ): Promise<void> {
-  p.intro(pc.bgCyan(pc.black(` ix-local list `)));
+  introCommand("ix-local list");
 
   const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
 
@@ -51,7 +51,7 @@ export async function runList(
   if (opts.tag) filtered = filtered.filter((d) => d.tags.includes(opts.tag!));
 
   if (filtered.length === 0) {
-    p.outro(pc.yellow("No deployables found."));
+    outroWarning("No deployables found.");
     return;
   }
 
@@ -59,7 +59,7 @@ export async function runList(
   const categories = [...grouped.keys()].sort();
 
   for (const cat of categories) {
-    console.log(pc.bold(pc.cyan(`\n${cat}`)));
+    process.stdout.write(pc.bold(pc.cyan(`\n${cat}`)) + "\n");
     const table = new Table({
       head: ["name", "type", "version", "title", "tags"],
       style: { head: ["dim"] },
@@ -67,8 +67,8 @@ export async function runList(
     for (const d of grouped.get(cat)!) {
       table.push([d.name, d.role, d.version, d.title ?? "", d.tags.join(",")]);
     }
-    console.log(table.toString());
+    process.stdout.write(table.toString() + "\n");
   }
 
-  p.outro(pc.green(`${filtered.length} deployable(s)`));
+  outroSuccess(`${filtered.length} deployable(s)`);
 }

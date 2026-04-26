@@ -34,7 +34,7 @@ importers:
     dependencies:
       '@agent-ix/ix-ui-cli':
         specifier: '>=0.1.0'
-        version: 0.1.0
+        version: 0.1.2
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.2.0
@@ -69,8 +69,8 @@ importers:
 
 packages:
 
-  '@agent-ix/ix-ui-cli@0.1.0':
-    resolution: {integrity: sha512-HEABHGWYT1OC6VN8iCnsjihD+jDGea2BnJMTLP9TQKSs0Nc6/yX93tJRAc4ayQQB3l5LT37xKoq/E0898Qi34A==}
+  '@agent-ix/ix-ui-cli@0.1.2':
+    resolution: {integrity: sha512-zWZTyJzPOUgU0hT4eggF8jDgxNf4RkGo8AqSXRYzXkhFGHjy23Oz8WfExYif0wnzbswsT5kjAzfx5WMEHmN0pw==}
 
   '@agent-ix/ix-ui-semantic@0.1.0':
     resolution: {integrity: sha512-McAz0mh+sUhO06l+5QvvcsAzH4PHVSDKA4t3RnJwjAj5dLuRE3qmEAVgcaReAFETTG+No8jckQSsToCPgJvEcw==}
@@ -1452,7 +1452,7 @@ packages:
 
 snapshots:
 
-  '@agent-ix/ix-ui-cli@0.1.0':
+  '@agent-ix/ix-ui-cli@0.1.2':
     dependencies:
       '@agent-ix/ix-ui-semantic': 0.1.0
       '@clack/prompts': 1.2.0
