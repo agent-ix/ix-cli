@@ -33,7 +33,7 @@ export async function runAuthResetUser(
   const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
   const _fetch = deps?.fetchJson ?? fetchJson;
 
-  introCommand("ix-local auth reset-user");
+  introCommand("ix local auth reset-user");
 
   const ttlHours = opts.ttl ?? 1;
   if (ttlHours < 1 || ttlHours > 24) {

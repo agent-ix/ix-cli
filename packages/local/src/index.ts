@@ -12,7 +12,18 @@ import { resolveGhcrToken } from "./credentials.js";
 import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
 
 // Re-export everything needed by apps/ix command files.
-export { loadConfig, type IxConfig } from "./config.js";
+export {
+  loadConfig,
+  loadClusterConfig,
+  type IxConfig,
+  type ClusterConfig,
+} from "./config.js";
+export {
+  runClusterUp,
+  computeEffectiveDeploySet,
+} from "./commands/cluster-up.js";
+export { runClusterDown } from "./commands/cluster-down.js";
+export { runClusterStatus } from "./commands/cluster-status.js";
 export { runInitCluster } from "./commands/init-cluster.js";
 export { runList } from "./commands/list.js";
 export { loadRegistry, findDeployable } from "./registry.js";
@@ -53,7 +64,7 @@ function deployableMatchesTags(
 }
 
 export async function executeLocals(services: string[], action: "up" | "down") {
-  introCommand(`ix-local ${action}`);
+  introCommand(`ix local ${action}`);
 
   // M6: If user passes both named services and "all", that's a conflicting
   // intent — error rather than silently dropping named services.
@@ -146,7 +157,7 @@ export async function executeLocals(services: string[], action: "up" | "down") {
 }
 
 /**
- * FR-008: top-level dispatcher for `ix-local up`. Default = image mode from
+ * FR-008: top-level dispatcher for `ix local up`. Default = image mode from
  * registry; `--from-source` opts into local Helm chart deployment.
  *
  * Exported for unit tests that need to assert the dispatch logic without
@@ -182,7 +193,7 @@ export async function runUp(
   // FR-008-AC-6: "all" without --from-source is rejected.
   if (services.includes("all")) {
     throw new Error(
-      '"all" requires --from-source. For image-mode deploys, list deployables explicitly (see `ix-local list`).',
+      '"all" requires --from-source. For image-mode deploys, list deployables explicitly (see `ix local list`).',
     );
   }
   const config = loadConfig();
@@ -238,7 +249,7 @@ export async function runDown(
 
   if (services.includes("all")) {
     throw new Error(
-      '"all" requires --from-source. For image-mode teardown, list deployables explicitly (see `ix-local list`).',
+      '"all" requires --from-source. For image-mode teardown, list deployables explicitly (see `ix local list`).',
     );
   }
 
@@ -256,7 +267,7 @@ export async function runDown(
     }
   }
 
-  introCommand("ix-local down (image mode)");
+  introCommand("ix local down (image mode)");
   const tasks = new Listr(
     releases.map((name) => ({
       title: `Uninstall ${pc.cyan(name)}`,
@@ -277,6 +288,24 @@ export async function runDown(
   );
   await tasks.run();
   outroSuccess(`Uninstalled: ${releases.join(", ")}`);
+}
+
+export async function runRefresh(
+  config: import("./config.js").IxConfig,
+): Promise<void> {
+  introCommand("ix local refresh");
+  try {
+    const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+    const reg = await loadRegistry({
+      org: config.org,
+      githubToken: token,
+      refresh: true,
+    });
+    outroSuccess(`Refreshed registry: ${reg.length} deployable(s).`);
+  } catch (err) {
+    outroError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+    throw err;
+  }
 }
 
 async function loadRegistryForCommand(config: import("./config.js").IxConfig) {

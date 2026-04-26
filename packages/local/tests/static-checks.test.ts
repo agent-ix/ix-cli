@@ -154,3 +154,34 @@ describe("FR-001-AC-1: core runner functions are exported", () => {
     expect(src).toMatch(/runAuthResetUser/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// FR-004-AC-1: cluster command exports present in index.ts
+// TC-007 through TC-011
+// ---------------------------------------------------------------------------
+describe("FR-004-AC-1: cluster runner functions are exported", () => {
+  it("TC-007: index.ts exports runClusterUp", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/runClusterUp/);
+  });
+
+  it("TC-008: index.ts exports computeEffectiveDeploySet", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/computeEffectiveDeploySet/);
+  });
+
+  it("TC-009: index.ts exports runClusterDown", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/runClusterDown/);
+  });
+
+  it("TC-010: index.ts exports runClusterStatus", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/runClusterStatus/);
+  });
+
+  it("TC-011: index.ts exports loadClusterConfig", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/loadClusterConfig/);
+  });
+});

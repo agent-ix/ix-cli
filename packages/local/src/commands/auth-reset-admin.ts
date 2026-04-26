@@ -84,7 +84,7 @@ export async function runAuthResetAdmin(
   const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
   const _fetch = deps?.fetchJson ?? fetchJson;
 
-  introCommand("ix-local auth reset-admin");
+  introCommand("ix local auth reset-admin");
 
   let adminEmail = opts.user;
   let resetResp: ResetResponse | null = null;
@@ -122,7 +122,7 @@ export async function runAuthResetAdmin(
           }
 
           if (admins.length === 0) {
-            throw new Error("no admin to reset; run `ix-local init`");
+            throw new Error("no admin to reset; run `ix local init`");
           }
 
           if (adminEmail) {

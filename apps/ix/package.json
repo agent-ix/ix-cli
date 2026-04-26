@@ -23,6 +23,9 @@
       "local": {
         "description": "Manage local Agent IX cluster services (up, down, list, auth, init-cluster)."
       },
+      "local cluster": {
+        "description": "Cluster infrastructure lifecycle (up, down, status)."
+      },
       "plugin": {
         "description": "Manage installed ix CLI plugins."
       }

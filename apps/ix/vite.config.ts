@@ -14,6 +14,9 @@ export default defineConfig({
         "commands/local/refresh": "src/commands/local/refresh.ts",
         "commands/local/init-cluster": "src/commands/local/init-cluster.ts",
         "commands/local/init": "src/commands/local/init.ts",
+        "commands/local/cluster/up": "src/commands/local/cluster/up.ts",
+        "commands/local/cluster/down": "src/commands/local/cluster/down.ts",
+        "commands/local/cluster/status": "src/commands/local/cluster/status.ts",
         "commands/local/auth/reset-admin":
           "src/commands/local/auth/reset-admin.ts",
         "commands/local/auth/invite": "src/commands/local/auth/invite.ts",

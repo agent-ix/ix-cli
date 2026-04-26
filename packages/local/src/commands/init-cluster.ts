@@ -114,7 +114,7 @@ export async function runInitCluster(
   config: IxConfig,
   reconfigureCredentials: boolean,
 ): Promise<void> {
-  introCommand("ix-local init-cluster");
+  introCommand("ix local init-cluster");
 
   // Resolve credentials before entering the Listr task list — clack's
   // interactive prompt needs direct terminal access and is swallowed by

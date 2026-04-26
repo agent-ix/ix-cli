@@ -3,6 +3,82 @@
  * Validated configuration model for all commands that render or apply manifests.
  */
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { parse as parseYaml } from "yaml";
+
+const IX_CONFIG_PATH = path.join(os.homedir(), ".ix", "config.yaml");
+
+/** FR-009 — cluster bring-up defaults read from ~/.ix/config.yaml cluster: key */
+export interface ClusterConfig {
+  defaultTags: string[];
+  extraApps: string[];
+  skipApps: string[];
+}
+
+const CLUSTER_DEFAULTS: ClusterConfig = {
+  defaultTags: ["ix-core"],
+  extraApps: [],
+  skipApps: [],
+};
+
+export function loadClusterConfig(): ClusterConfig {
+  if (!fs.existsSync(IX_CONFIG_PATH)) return { ...CLUSTER_DEFAULTS };
+
+  let raw: string;
+  try {
+    raw = fs.readFileSync(IX_CONFIG_PATH, "utf8");
+  } catch (err) {
+    throw new ConfigValidationError(
+      `Failed to read ${IX_CONFIG_PATH}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = parseYaml(raw);
+  } catch (err) {
+    throw new ConfigValidationError(
+      `Failed to parse ${IX_CONFIG_PATH}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  if (parsed === null || typeof parsed !== "object")
+    return { ...CLUSTER_DEFAULTS };
+
+  const cfg = parsed as Record<string, unknown>;
+  const cluster = cfg["cluster"];
+  if (cluster === undefined || cluster === null) return { ...CLUSTER_DEFAULTS };
+  if (typeof cluster !== "object" || Array.isArray(cluster)) {
+    throw new ConfigValidationError(
+      `${IX_CONFIG_PATH}: 'cluster' must be an object`,
+    );
+  }
+
+  const c = cluster as Record<string, unknown>;
+
+  function resolveStringArray(key: string, fallback: string[]): string[] {
+    const val = c[key];
+    if (val === undefined || val === null) return fallback;
+    if (!Array.isArray(val) || !val.every((v) => typeof v === "string")) {
+      throw new ConfigValidationError(
+        `${IX_CONFIG_PATH}: cluster.${key} must be an array of strings`,
+      );
+    }
+    return val as string[];
+  }
+
+  return {
+    defaultTags: resolveStringArray(
+      "defaultTags",
+      CLUSTER_DEFAULTS.defaultTags,
+    ),
+    extraApps: resolveStringArray("extraApps", CLUSTER_DEFAULTS.extraApps),
+    skipApps: resolveStringArray("skipApps", CLUSTER_DEFAULTS.skipApps),
+  };
+}
+
 export interface IxConfig {
   internalBaseDomain: string;
   externalBaseDomain: string | null;

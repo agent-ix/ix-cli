@@ -203,7 +203,7 @@ export async function runAuthConfigEmailEnable(
   },
   smtpPassword: string,
 ): Promise<void> {
-  introCommand("ix-local auth config email enable");
+  introCommand("ix local auth config email enable");
 
   const rolloutTimeoutSeconds = opts.rolloutTimeout ?? 120;
 
@@ -239,7 +239,7 @@ export async function runAuthConfigEmailDisable(
   _config: IxConfig,
   opts: { rolloutTimeout?: number },
 ): Promise<void> {
-  introCommand("ix-local auth config email disable");
+  introCommand("ix local auth config email disable");
 
   const rolloutTimeoutSeconds = opts.rolloutTimeout ?? 120;
 
@@ -264,7 +264,7 @@ export async function runAuthConfigEmailDisable(
 }
 
 export async function runAuthConfigEmailShow(_config: IxConfig): Promise<void> {
-  introCommand("ix-local auth config email show");
+  introCommand("ix local auth config email show");
 
   const cmData = await getConfigMap();
 
@@ -286,7 +286,7 @@ export async function runAuthConfigEmailTest(
   _config: IxConfig,
   to: string,
 ): Promise<void> {
-  introCommand("ix-local auth config email test");
+  introCommand("ix local auth config email test");
 
   const tasks = new Listr(
     [
@@ -343,7 +343,7 @@ export async function runAuthConfigPasswordResetSet(
   mode: string,
   opts: { rolloutTimeout?: number },
 ): Promise<void> {
-  introCommand("ix-local auth config password-reset set");
+  introCommand("ix local auth config password-reset set");
 
   if (!VALID_PR_MODES.includes(mode as PasswordResetMode)) {
     const msg = `Invalid mode '${mode}'. Valid values: ${VALID_PR_MODES.join(", ")}`;
@@ -361,7 +361,7 @@ export async function runAuthConfigPasswordResetSet(
   // FR-020-AC-6: email mode requires email to be enabled first
   if (mode === "email" && cmData["email.enabled"] !== "true") {
     const msg =
-      "password-reset=email requires email to be enabled first. Run: ix-local auth config email enable ...";
+      "password-reset=email requires email to be enabled first. Run: ix local auth config email enable ...";
     outroError(msg);
     throw new Error(msg);
   }
@@ -386,7 +386,7 @@ export async function runAuthConfigPasswordResetSet(
 export async function runAuthConfigPasswordResetShow(
   _config: IxConfig,
 ): Promise<void> {
-  introCommand("ix-local auth config password-reset show");
+  introCommand("ix local auth config password-reset show");
 
   const cmData = await getConfigMap();
 
@@ -419,7 +419,7 @@ export async function runAuthConfigSocialAdd(
   },
   clientSecret: string,
 ): Promise<void> {
-  introCommand("ix-local auth config social add");
+  introCommand("ix local auth config social add");
 
   // FR-020-AC-5: validate type before any write
   if (
@@ -486,7 +486,7 @@ export async function runAuthConfigSocialRemove(
   id: string,
   opts: { rolloutTimeout?: number },
 ): Promise<void> {
-  introCommand("ix-local auth config social remove");
+  introCommand("ix local auth config social remove");
 
   const rolloutTimeoutSeconds = opts.rolloutTimeout ?? 120;
 
@@ -526,7 +526,7 @@ export async function runAuthConfigSocialRemove(
 export async function runAuthConfigSocialList(
   _config: IxConfig,
 ): Promise<void> {
-  introCommand("ix-local auth config social list");
+  introCommand("ix local auth config social list");
 
   const cmData = await getConfigMap();
 
@@ -556,7 +556,7 @@ export async function runAuthConfigSocialShow(
   _config: IxConfig,
   id: string,
 ): Promise<void> {
-  introCommand("ix-local auth config social show");
+  introCommand("ix local auth config social show");
 
   const cmData = await getConfigMap();
 
@@ -597,7 +597,7 @@ export async function runAuthConfigRegistrationSet(
   mode: string,
   opts: { rolloutTimeout?: number },
 ): Promise<void> {
-  introCommand("ix-local auth config registration set");
+  introCommand("ix local auth config registration set");
 
   if (!VALID_REGISTRATION_MODES.includes(mode as RegistrationMode)) {
     const msg = `Invalid mode '${mode}'. Valid values: ${VALID_REGISTRATION_MODES.join(", ")}`;
@@ -630,7 +630,7 @@ export async function runAuthConfigRegistrationSet(
 export async function runAuthConfigRegistrationShow(
   _config: IxConfig,
 ): Promise<void> {
-  introCommand("ix-local auth config registration show");
+  introCommand("ix local auth config registration show");
 
   const cmData = await getConfigMap();
 

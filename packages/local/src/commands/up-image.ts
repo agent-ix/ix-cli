@@ -7,7 +7,7 @@
  * For role=service, install one chart as a Helm release via Listr2.
  * For role=app, expand the chart's `dependencies` and run each child
  * pipeline concurrently behind Pool-gated semaphores, displaying progress
- * in the phase-column table (AppDisplay).
+ * in the phase-column table (PhaseTable from @agent-ix/ix-ui-cli).
  */
 
 import fs from "node:fs";
@@ -30,8 +30,22 @@ import {
   applySecretContract,
   type SecretContract,
 } from "../local-secrets.js";
-import { AppDisplay, type Phase } from "../app-display.js";
+import { PhaseTable } from "@agent-ix/ix-ui-cli";
+import type { Phase } from "../phases.js";
 import { loadConcurrencyConfig, createPools } from "../pool.js";
+
+const UP_PHASES = [
+  "secrets",
+  "pull",
+  "install",
+  "ready",
+] as const satisfies readonly Phase[];
+const UP_PHASE_LABELS: Partial<Record<Phase, string>> = {
+  secrets: "secrets",
+  pull: "pulling",
+  install: "installing",
+  ready: "ready",
+};
 
 export interface ChildInstall {
   /** Helm release name == chart name (FR-013-AC-3) */
@@ -179,7 +193,7 @@ export async function runImageModeUp(
   // Write header immediately so there is no blank gap during expandApp + registry login.
   const appHeaderText =
     deployable.role === "app"
-      ? `ix-local up · ${deployable.name} · ${config.helmChartRegistry}`
+      ? `ix local up · ${deployable.name} · ${config.helmChartRegistry}`
       : null;
   if (appHeaderText && (process.stdout.isTTY ?? false)) {
     process.stdout.write(`⊕  ${appHeaderText}\n`);
@@ -205,10 +219,10 @@ export async function runImageModeUp(
         chartVersion: deployable.version,
       },
     ];
-    p.intro(pc.bgCyan(pc.black(` ix-local up (image mode) `)));
+    p.intro(pc.bgCyan(pc.black(` ix local up (image mode) `)));
   }
 
-  // Resolve credentials before entering Listr / AppDisplay — interactive
+  // Resolve credentials before entering Listr / PhaseTable — interactive
   // prompts need direct terminal access.
   const ghcrToken = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
 
@@ -255,10 +269,12 @@ export async function runImageModeUp(
     }
   }
 
-  const display = new AppDisplay(
+  const display = new PhaseTable<Phase>(
     installs.map((i) => i.name),
     {
-      header: `ix-local up · ${deployable.name} · ${config.helmChartRegistry}`,
+      phases: UP_PHASES,
+      phaseLabels: UP_PHASE_LABELS,
+      header: `ix local up · ${deployable.name} · ${config.helmChartRegistry}`,
       initialLineCount:
         appHeaderText && (process.stdout.isTTY ?? false) ? 1 : 0,
     },

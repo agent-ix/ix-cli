@@ -34,7 +34,7 @@ export async function runList(
   config: IxConfig,
   opts: ListOptions,
 ): Promise<void> {
-  introCommand("ix-local list");
+  introCommand("ix local list");
 
   const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
 

@@ -295,7 +295,7 @@ export async function runSourceModeUp(
   devDir: string,
   opts: UpFilterOptions = {},
 ): Promise<void> {
-  introCommand("ix-local up (source mode)");
+  introCommand("ix local up (source mode)");
 
   const imageTag = tagOverride ?? config.imageTag;
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-local-source-"));

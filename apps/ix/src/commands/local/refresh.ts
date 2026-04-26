@@ -1,10 +1,5 @@
 import { Command } from "@oclif/core";
-import {
-  loadConfig,
-  loadRegistry,
-  resolveGhcrToken,
-} from "@agent-ix/ix-cli-local";
-import { log } from "@agent-ix/ix-ui-cli";
+import { loadConfig, runRefresh } from "@agent-ix/ix-cli-local";
 
 export default class LocalRefresh extends Command {
   static description = "Force-refresh the local deployable registry cache.";
@@ -12,13 +7,7 @@ export default class LocalRefresh extends Command {
   async run(): Promise<void> {
     const config = loadConfig();
     try {
-      const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
-      const reg = await loadRegistry({
-        org: config.org,
-        githubToken: token,
-        refresh: true,
-      });
-      log.info(`Refreshed registry: ${reg.length} deployable(s).`);
+      await runRefresh(config);
     } catch {
       this.exit(1);
     }

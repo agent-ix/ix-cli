@@ -50,7 +50,7 @@ export async function runAuthInvite(
   const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
   const _fetch = deps?.fetchJson ?? fetchJson;
 
-  introCommand("ix-local auth invite");
+  introCommand("ix local auth invite");
 
   let identityBaseUrl = "";
   let cleanup: () => void = () => {};
@@ -92,7 +92,7 @@ export async function runAuthInvite(
           const mode = body.registration?.mode;
           if (mode === "closed") {
             throw new Error(
-              "Registration is closed. Enable invites with: ix-local auth config registration set invite_only",
+              "Registration is closed. Enable invites with: ix local auth config registration set invite_only",
             );
           }
           task.output = `Registration mode: ${mode ?? "unknown"}`;
@@ -133,7 +133,7 @@ export async function runAuthInvite(
           }
           if (status === 403) {
             throw new Error(
-              "Registration is closed. Enable invites with: ix-local auth config registration set invite_only",
+              "Registration is closed. Enable invites with: ix local auth config registration set invite_only",
             );
           }
           if (status === 400 && errBody.code === "invalid_groups") {
