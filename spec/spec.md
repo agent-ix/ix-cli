@@ -96,13 +96,20 @@ Package structure:
 
 ## 4. Requirements Architecture
 
+FRs and NFRs are organized by package within each artifact directory (Option B artifact-first):
+
 ```
 spec/
 ├── spec.md                     # This document
-├── stakeholder/                # StR-XXX
-├── usecase/                    # US-XXX
-├── functional/                 # FR-XXX
-├── non-functional/             # NFR-XXX
+├── stakeholder/                # StR-XXX  (cross-cutting)
+├── usecase/                    # US-XXX   (cross-cutting)
+├── functional/
+│   ├── local/                  # FR-XXX   (@agent-ix/ix-cli-local)
+│   ├── core/                   # FR-XXX   (@agent-ix/ix-cli-core)      [future]
+│   ├── elements/               # FR-XXX   (@agent-ix/ix-cli-elements)  [future]
+│   └── spec/                   # FR-XXX   (@agent-ix/ix-cli-spec)      [future]
+├── non-functional/
+│   └── local/                  # NFR-XXX  (@agent-ix/ix-cli-local)
 ├── tests.md                    # Bidirectional requirements ↔ tests mapping
 └── assets/                     # Diagrams, sequence flows
 ```
