@@ -1,6 +1,6 @@
 ---
 artifact_type: test-matrix
-name: ix-cli / packages/local
+name: ix-cli / packages/local + packages/elements
 ---
 
 # Test Matrix
@@ -135,6 +135,92 @@ Tests fall into four types:
 | TC-041 | runClusterStatus: unhealthy pod → pod table shown | Unit | P1 | FR-007-AC-5 | ✅ Complete |
 | TC-042 | runClusterStatus: kubectl failure throws descriptive error | Unit | P1 | FR-007-AC-6 | ✅ Complete |
 | TC-043 | runClusterStatus: picocolors mock strips ANSI codes | Unit | P2 | FR-007-AC-7 | ✅ Complete |
+
+---
+
+---
+
+## packages/elements (`@agent-ix/ix-cli-elements`)
+
+### Stakeholder Requirement Coverage
+
+| Stakeholder Req | Trace to FR | Test Cases | Coverage Status |
+|-----------------|-------------|------------|-----------------|
+| StR-001 | FR-010, FR-011, FR-012 | TC-044–TC-075 | ✅ Partial (unit + static; integration pending) |
+
+### Functional Requirement Coverage
+
+| Functional Req | Acceptance Criteria | Test Cases | Coverage Status |
+|----------------|---------------------|------------|-----------------|
+| FR-010 | AC-1: groups by tap, root first | TC-071 | ✅ Complete (unit) |
+| FR-010 | AC-2: shows name + description | TC-072 | ✅ Complete (unit) |
+| FR-010 | AC-3: --refresh bypasses cache | TC-076 | ✅ Complete (unit) |
+| FR-010 | AC-4: empty state message | TC-078 | ✅ Complete (unit) |
+| FR-010 | AC-5: no console.log in command handler | TC-048 | ✅ Complete (static) |
+| FR-011 | AC-1: unknown type throws helpful error | TC-075 | ✅ Complete (unit) |
+| FR-011 | AC-2: clone/update to cache dir | — | ❌ Missing (integration) |
+| FR-011 | AC-3: cookiecutter invocation | — | ❌ Missing (integration) |
+| FR-011 | AC-4: git init + initial commit | — | ❌ Missing (integration) |
+| FR-011 | AC-5: gh repo create --private | — | ❌ Missing (integration) |
+| FR-011 | AC-6: --no-git / --no-github flags | — | ❌ Missing (integration) |
+| FR-011 | AC-7: --org override | — | ❌ Missing (integration) |
+| FR-012 | AC-1: tap add appends + invalidates cache | TC-059 | ✅ Complete (unit) |
+| FR-012 | AC-2: duplicate tap is no-op | TC-060 | ✅ Complete (unit) |
+| FR-012 | AC-3: URL format validation | TC-056–TC-058, TC-061 | ✅ Complete (unit) |
+| FR-012 | AC-4: tap remove + invalidates cache | TC-062 | ✅ Complete (unit) |
+| FR-012 | AC-5: remove root tap throws | TC-063 | ✅ Complete (unit) |
+| FR-012 | AC-6: tap list marks root with (root) | TC-077 | ✅ Complete (unit) |
+| FR-012 | AC-7: root tap always present | TC-064 | ✅ Complete (unit) |
+| FR-013 | AC-1–AC-3: new element scaffolding | — | ❌ Missing (stub — pending meta-template) |
+| FR-013 | AC-4: manual steps printed | — | Review |
+
+### Non-Functional Requirement Coverage
+
+| Non-Functional Req | Verification Method | Test Cases | Status |
+|--------------------|---------------------|------------|--------|
+| NFR-001-AC-1 | Static grep: no console.log/error/warn/info | TC-048 | ✅ Complete (static) |
+| NFR-001-AC-1 | Static grep: no process.stderr.write | TC-049 | ✅ Complete (static) |
+| NFR-001-AC-2 | Static grep: introCommand imported from @agent-ix/ix-ui-cli | TC-050 | ✅ Complete (static) |
+
+### Test Case Summary — packages/elements
+
+| Test ID | Title | Type | Priority | Traces To | Status |
+|---------|-------|------|----------|-----------|--------|
+| TC-044 | index.ts exports runElementsList | Static | P1 | FR-010 | ✅ Complete |
+| TC-045 | index.ts exports runInit | Static | P1 | FR-011 | ✅ Complete |
+| TC-046 | index.ts exports runElementsNew | Static | P1 | FR-013 | ✅ Complete |
+| TC-047 | index.ts exports runTapAdd, runTapRemove, runTapList | Static | P1 | FR-012 | ✅ Complete |
+| TC-048 | No console.log in src | Static | P1 | NFR-001-AC-1, FR-010-AC-5 | ✅ Complete |
+| TC-049 | No process.stderr.write in src | Static | P1 | NFR-001-AC-1 | ✅ Complete |
+| TC-050 | introCommand imported from @agent-ix/ix-ui-cli | Static | P1 | NFR-001-AC-2 | ✅ Complete |
+| TC-051 | readCache returns null for cold cache | Unit | P1 | FR-010 | ✅ Complete |
+| TC-052 | writeCache/readCache round-trips elements | Unit | P1 | FR-010 | ✅ Complete |
+| TC-053 | readCache returns null and deletes file after TTL expiry | Unit | P1 | FR-010 | ✅ Complete |
+| TC-054 | readCache returns null after explicit invalidation | Unit | P1 | FR-012-AC-1 | ✅ Complete |
+| TC-055 | invalidateCache() clears all taps | Unit | P1 | FR-012-AC-1 | ✅ Complete |
+| TC-056 | validateTapUrl accepts github.com/<org> | Unit | P1 | FR-012-AC-3 | ✅ Complete |
+| TC-057 | validateTapUrl accepts github.com/<org>/<repo> | Unit | P1 | FR-012-AC-3 | ✅ Complete |
+| TC-058 | validateTapUrl rejects invalid formats (bare domain, traversal, non-github) | Unit | P1 | FR-012-AC-3 | ✅ Complete |
+| TC-059 | addTap returns true for new tap | Unit | P1 | FR-012-AC-1 | ✅ Complete |
+| TC-060 | addTap returns false for duplicate | Unit | P1 | FR-012-AC-2 | ✅ Complete |
+| TC-061 | addTap rejects invalid URL before writing config | Unit | P1 | FR-012-AC-3 | ✅ Complete |
+| TC-062 | removeTap removes tap from config | Unit | P1 | FR-012-AC-4 | ✅ Complete |
+| TC-063 | removeTap throws for root tap | Unit | P1 | FR-012-AC-5 | ✅ Complete |
+| TC-064 | loadTapConfig always includes root tap | Unit | P1 | FR-012-AC-7 | ✅ Complete |
+| TC-065 | parseFrontmatter extracts component_type + template_for | Unit | P1 | FR-010 | ✅ Complete |
+| TC-066 | parseFrontmatter returns null for missing frontmatter | Unit | P1 | FR-010 | ✅ Complete |
+| TC-067 | parseFrontmatter returns null for malformed YAML | Unit | P1 | FR-010 | ✅ Complete |
+| TC-068 | toSlug: lowercases, spaces/underscores → hyphens | Unit | P1 | FR-011 | ✅ Complete |
+| TC-069 | toSlug: strips path traversal (.., /, \) | Unit | P1 | FR-011 (security) | ✅ Complete |
+| TC-070 | toSlug: strips non-alphanumeric chars | Unit | P1 | FR-011 (security) | ✅ Complete |
+| TC-071 | resolveAllElements: cache hit — no GitHub fetch | Unit | P1 | FR-010-AC-3 | ✅ Complete |
+| TC-072 | resolveAllElements: cache miss → index → writes cache | Unit | P1 | FR-010 | ✅ Complete |
+| TC-073 | resolveAllElements: index null → falls back to topic search | Unit | P1 | FR-010 | ✅ Complete |
+| TC-074 | resolveElementByType returns matching element | Unit | P1 | FR-011-AC-1 | ✅ Complete |
+| TC-075 | resolveElementByType throws helpful error for unknown type | Unit | P1 | FR-011-AC-1 | ✅ Complete |
+| TC-076 | resolveAllElements: refresh=true skips cache read | Unit | P1 | FR-010-AC-3 | ✅ Complete |
+| TC-077 | runTapList: root tap entry contains "(root)", others do not | Unit | P1 | FR-012-AC-6 | ✅ Complete |
+| TC-078 | runElementsList: empty result directs user to add a tap | Unit | P1 | FR-010-AC-4 | ✅ Complete |
 
 ---
 

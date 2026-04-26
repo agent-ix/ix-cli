@@ -199,8 +199,12 @@ ix whoami             # show authenticated user
 ix up <app>           # deploy app to local cluster (packages/local)
 ix down <app>         # tear down app from local cluster (packages/local)
 
-ix elements init      # scaffold new element from registry (packages/elements)
-ix elements list      # list available elements (packages/elements)
+ix elements list                     # list available element types (packages/elements)
+ix elements init <type> <name>       # scaffold new project from element (packages/elements)
+ix elements new <name>               # author a new element type (packages/elements)
+ix elements tap add <github-url>     # add an element tap source (packages/elements)
+ix elements tap remove <github-url>  # remove a tap source (packages/elements)
+ix elements tap list                 # list configured taps (packages/elements)
 
 ix spec create        # initialize spec for current repo (packages/spec)
 ix spec run           # run spec workflow (packages/spec)
@@ -265,9 +269,9 @@ Bidirectional traceability SHALL be maintained between:
 
 | # | Question | Status |
 |---|----------|--------|
-| 1 | Adopt oclif as plugin framework or build custom command registration? | Open |
+| 1 | Adopt oclif as plugin framework or build custom command registration? | Resolved — oclif (already in use) |
 | 2 | How does `ix up` determine target cluster (local vs hosted)? Flag or config? | Open |
-| 3 | Element registry location — npm.ix package, hosted API, or git repo? | Open |
+| 3 | Element registry location — npm.ix package, hosted API, or git repo? | Resolved — git tap model: `github.com/<org>` taps discovered via `ix-elements/registry.yaml` index or `topic:ix-element` GitHub search; spec/spec.md frontmatter is the element manifest |
 
 ---
 
