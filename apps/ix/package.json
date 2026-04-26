@@ -26,6 +26,12 @@
       "local cluster": {
         "description": "Cluster infrastructure lifecycle (up, down, status)."
       },
+      "elements": {
+        "description": "Element discovery, scaffolding, and tap management."
+      },
+      "elements tap": {
+        "description": "Manage element tap sources (add, remove, list)."
+      },
       "plugin": {
         "description": "Manage installed ix CLI plugins."
       }
@@ -41,6 +47,7 @@
   },
   "dependencies": {
     "@agent-ix/ix-cli-core": ">=0.1.0",
+    "@agent-ix/ix-cli-elements": "workspace:*",
     "@agent-ix/ix-cli-local": "workspace:*",
     "@agent-ix/ix-ui-cli": ">=0.1.2",
     "@oclif/core": ">=4.10.6",
