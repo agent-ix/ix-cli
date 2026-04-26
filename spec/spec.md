@@ -9,6 +9,7 @@ tags:
   - pnpm
   - github-auth
 implementation_language: typescript
+depends_on: []
 relationships:
   - target: "ix://agent-ix/ix-ui"
     type: "consumes"
