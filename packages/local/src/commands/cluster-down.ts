@@ -4,8 +4,13 @@
  */
 
 import { execa } from "execa";
-import * as p from "@clack/prompts";
-import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
+import {
+  confirm,
+  isCancel,
+  introCommand,
+  outroSuccess,
+  outroError,
+} from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "../config.js";
 
 export async function runClusterDown(
@@ -16,12 +21,12 @@ export async function runClusterDown(
 
   if (!opts.yes) {
     // NFR-002: prompt must name the specific cluster
-    const confirmed = await p.confirm({
+    const confirmed = await confirm({
       message: `Delete kind cluster '${clusterName}'? This will destroy all cluster state and cannot be undone.`,
       initialValue: false,
     });
 
-    if (p.isCancel(confirmed) || !confirmed) {
+    if (isCancel(confirmed) || !confirmed) {
       outroSuccess("Cancelled. Cluster not deleted.");
       return;
     }
