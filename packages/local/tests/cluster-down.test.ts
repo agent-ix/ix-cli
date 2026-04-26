@@ -6,12 +6,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("execa");
-vi.mock("@clack/prompts");
 vi.mock("@agent-ix/ix-ui-cli");
 
 import { execa } from "execa";
-import * as p from "@clack/prompts";
-import { outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
+import {
+  confirm,
+  isCancel,
+  outroSuccess,
+  outroError,
+} from "@agent-ix/ix-ui-cli";
 import { runClusterDown } from "../src/commands/cluster-down.js";
 import type { IxConfig } from "../src/config.js";
 
@@ -32,8 +35,8 @@ const config: IxConfig = {
 };
 
 const mockExeca = vi.mocked(execa);
-const mockConfirm = vi.mocked(p.confirm);
-const mockIsCancel = vi.mocked(p.isCancel);
+const mockConfirm = vi.mocked(confirm);
+const mockIsCancel = vi.mocked(isCancel);
 const mockOutroSuccess = vi.mocked(outroSuccess);
 const mockOutroError = vi.mocked(outroError);
 

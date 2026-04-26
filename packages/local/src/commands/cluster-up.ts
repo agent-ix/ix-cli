@@ -3,7 +3,6 @@
  * Bootstrap kind cluster (FR-007) then deploy the effective ix-core app set (FR-009).
  */
 
-import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
 import type { IxConfig, ClusterConfig } from "../config.js";
 import type { Deployable } from "../discovery.js";
 import { runInitCluster } from "./init-cluster.js";
@@ -57,52 +56,39 @@ export async function runClusterUp(
     excludeTags?: string[];
   } = {},
 ): Promise<void> {
-  try {
-    // Phase 1: cluster bootstrap
-    await runInitCluster(config, opts.reconfigureCredentials ?? false);
+  // Phase 1: cluster bootstrap (framed by runTaskList inside runInitCluster)
+  await runInitCluster(config, opts.reconfigureCredentials ?? false);
 
-    // Phase 2: discover + deploy effective service set
-    introCommand("ix local cluster up — services");
+  // Phase 2: discover + deploy effective service set
+  const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+  const registry = await loadRegistry({
+    org: config.org,
+    githubToken: token,
+  });
 
-    const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
-    const registry = await loadRegistry({
-      org: config.org,
-      githubToken: token,
-    });
+  const overrideTags =
+    opts.includeTags && opts.includeTags.length > 0
+      ? opts.includeTags
+      : undefined;
 
-    const overrideTags =
-      opts.includeTags && opts.includeTags.length > 0
-        ? opts.includeTags
-        : undefined;
+  let deploySet = computeEffectiveDeploySet(
+    registry,
+    clusterConfig,
+    overrideTags,
+  );
 
-    let deploySet = computeEffectiveDeploySet(
-      registry,
-      clusterConfig,
-      overrideTags,
+  if (opts.excludeTags && opts.excludeTags.length > 0) {
+    deploySet = deploySet.filter(
+      (d) => !opts.excludeTags!.some((t) => d.tags.includes(t)),
     );
+  }
 
-    if (opts.excludeTags && opts.excludeTags.length > 0) {
-      deploySet = deploySet.filter(
-        (d) => !opts.excludeTags!.some((t) => d.tags.includes(t)),
-      );
-    }
+  if (deploySet.length === 0) {
+    return;
+  }
 
-    if (deploySet.length === 0) {
-      outroSuccess(
-        "Cluster is up. No apps matched the effective deploy set (check cluster.defaultTags, extraApps, skipApps).",
-      );
-      return;
-    }
-
-    for (const deployable of deploySet) {
-      await runImageModeUp(deployable, config, null, undefined, {}, undefined);
-    }
-
-    outroSuccess(`Cluster ready. ${deploySet.length} app(s) deployed.`);
-  } catch (err) {
-    outroError(
-      `cluster up failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
-    throw err;
+  // Each runImageModeUp call frames its own display (PhaseTable or Listr).
+  for (const deployable of deploySet) {
+    await runImageModeUp(deployable, config, null, undefined, {}, undefined);
   }
 }
