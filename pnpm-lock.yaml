@@ -36,8 +36,8 @@ importers:
         specifier: '>=0.1.0'
         version: 0.1.0
       '@agent-ix/ix-cli-local':
-        specifier: workspace:*
-        version: link:../../packages/local
+        specifier: '>=0.1.0'
+        version: 0.1.0
       '@agent-ix/ix-ui-cli':
         specifier: '>=0.1.2'
         version: 0.1.2
@@ -96,6 +96,9 @@ packages:
 
   '@agent-ix/ix-cli-core@0.1.0':
     resolution: {integrity: sha512-f1A/9cCPu/2mXcpO1sUpM0citppC/V+3/gLGfJ65pl924UcYOdo6o5MGY2AYDVjUUskqdpOR2rAD8npPxWJi5w==}
+
+  '@agent-ix/ix-cli-local@0.1.0':
+    resolution: {integrity: sha512-H0VjdhAPah9j2e1mD6eih5YcYWL5CoheR1h+coG3n/zZ4dh9fS11W5T1DoK69wh6p04suTzVnACPfw4DmT/x+w==}
 
   '@agent-ix/ix-ui-cli@0.1.2':
     resolution: {integrity: sha512-zWZTyJzPOUgU0hT4eggF8jDgxNf4RkGo8AqSXRYzXkhFGHjy23Oz8WfExYif0wnzbswsT5kjAzfx5WMEHmN0pw==}
@@ -1554,6 +1557,16 @@ snapshots:
 
   '@agent-ix/ix-cli-core@0.1.0':
     dependencies:
+      yaml: 2.8.3
+
+  '@agent-ix/ix-cli-local@0.1.0':
+    dependencies:
+      '@agent-ix/ix-ui-cli': 0.1.2
+      '@clack/prompts': 1.2.0
+      cli-table3: 0.6.5
+      execa: 9.6.1
+      listr2: 10.2.1
+      picocolors: 1.1.1
       yaml: 2.8.3
 
   '@agent-ix/ix-ui-cli@0.1.2':
