@@ -1,0 +1,152 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const PKG_SRC = resolve(fileURLToPath(import.meta.url), "../../src");
+
+function readSrc(rel: string): string {
+  return readFileSync(join(PKG_SRC, rel), "utf-8");
+}
+
+function grepSrc(pattern: RegExp, dir = PKG_SRC): string[] {
+  const hits: string[] = [];
+  const walk = (d: string) => {
+    for (const entry of readdirSync(d, { withFileTypes: true })) {
+      const full = join(d, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!entry.name.endsWith(".ts")) continue;
+      const src = readFileSync(full, "utf-8");
+      if (pattern.test(src)) hits.push(full);
+    }
+  };
+  walk(dir);
+  return hits;
+}
+
+// ---------------------------------------------------------------------------
+// FR-002-AC-3: no "AppDisplay" anywhere in src
+// ---------------------------------------------------------------------------
+describe("FR-002-AC-3: no AppDisplay reference", () => {
+  it("src contains no AppDisplay import or usage", () => {
+    const hits = grepSrc(/AppDisplay/);
+    expect(hits).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FR-002-AC-4: Phase type defined in phases.ts and not duplicated elsewhere
+// ---------------------------------------------------------------------------
+describe("FR-002-AC-4: Phase type in phases.ts only", () => {
+  it("phases.ts exports Phase type", () => {
+    const src = readSrc("phases.ts");
+    expect(src).toMatch(/export\s+type\s+Phase\b|export\s+\{[^}]*Phase[^}]*\}/);
+  });
+
+  it("Phase type is not re-declared outside phases.ts", () => {
+    const hits = grepSrc(/type Phase\s*=/);
+    // Allow only phases.ts itself
+    const outside = hits.filter((f) => !f.endsWith("phases.ts"));
+    expect(outside).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NFR-001-AC-1: no console.log/error/warn/info or stderr.write in src
+// ---------------------------------------------------------------------------
+describe("NFR-001-AC-1: no console.* or stderr in src", () => {
+  it("src contains no console.log|error|warn|info calls", () => {
+    const hits = grepSrc(/console\.(log|error|warn|info)\(/);
+    expect(hits).toHaveLength(0);
+  });
+
+  it("src contains no process.stderr.write calls", () => {
+    const hits = grepSrc(/process\.stderr\.write/);
+    expect(hits).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NFR-001-AC-2: introCommand imported from @agent-ix/ix-ui-cli in command files
+// ---------------------------------------------------------------------------
+describe("NFR-001-AC-2: ix-ui-cli used for intro/outro in command files", () => {
+  const cmdDir = join(PKG_SRC, "commands");
+
+  it("every command file that calls introCommand imports it from @agent-ix/ix-ui-cli", () => {
+    const walk = (d: string): void => {
+      for (const entry of readdirSync(d, { withFileTypes: true })) {
+        const full = join(d, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith(".ts")) continue;
+        const src = readFileSync(full, "utf-8");
+        if (/introCommand\(/.test(src)) {
+          expect(
+            src,
+            `${entry.name} should import introCommand from @agent-ix/ix-ui-cli`,
+          ).toContain("@agent-ix/ix-ui-cli");
+        }
+      }
+    };
+    walk(cmdDir);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NFR-001-AC-3: PhaseTable imported from @agent-ix/ix-ui-cli (not a local file)
+// ---------------------------------------------------------------------------
+describe("NFR-001-AC-3: PhaseTable imported from @agent-ix/ix-ui-cli", () => {
+  it("PhaseTable is imported from @agent-ix/ix-ui-cli, not a relative path", () => {
+    const hits = grepSrc(/import.*PhaseTable/);
+    for (const file of hits) {
+      const src = readFileSync(file, "utf-8");
+      expect(
+        src,
+        `${file} should import PhaseTable from @agent-ix/ix-ui-cli`,
+      ).toMatch(/import.*PhaseTable.*from\s+["']@agent-ix\/ix-ui-cli["']/);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FR-001-AC-1: core runner functions are exported from index.ts
+// TC-001 through TC-006
+// ---------------------------------------------------------------------------
+describe("FR-001-AC-1: core runner functions are exported", () => {
+  it("TC-001: index.ts exports runUp", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/export.*runUp|export function runUp|export async function runUp/);
+  });
+
+  it("TC-002: index.ts exports runDown", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/export.*runDown|export function runDown|export async function runDown/);
+  });
+
+  it("TC-003: index.ts exports runList", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/export.*runList/);
+  });
+
+  it("TC-004: index.ts exports runAuthInit", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/export.*runAuthInit/);
+  });
+
+  it("TC-005: index.ts exports runInitCluster", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/export.*runInitCluster/);
+  });
+
+  it("TC-006: index.ts exports runAuthResetAdmin, runAuthInvite, runAuthResetUser", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/runAuthResetAdmin/);
+    expect(src).toMatch(/runAuthInvite/);
+    expect(src).toMatch(/runAuthResetUser/);
+  });
+});

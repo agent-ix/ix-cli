@@ -214,7 +214,7 @@ export async function runImageModeUp(
     introCommand("ix-local up (image mode)");
   }
 
-  // Resolve credentials before entering Listr / AppDisplay — interactive
+  // Resolve credentials before entering Listr / PhaseTable — interactive
   // prompts need direct terminal access.
   const ghcrToken = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
 
