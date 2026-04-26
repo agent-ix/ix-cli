@@ -1,0 +1,44 @@
+{
+  "name": "@agent-ix/ix-cli-local",
+  "description": "Local cluster commands for ix-cli (up, down, init-cluster, auth).",
+  "version": "0.1.0",
+  "type": "module",
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "packageManager": "pnpm@10.10.0",
+  "scripts": {
+    "test": "vitest run",
+    "test:json": "vitest run --reporter=json --outputFile=report.json || true",
+    "lint": "eslint \"src/**/*.ts\" --no-error-on-unmatched-pattern \"tests/**/*.ts\" && pnpm run format:check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build": "vite build",
+    "clean": "rm -rf dist coverage"
+  },
+  "publishConfig": {
+    "registry": "http://npm.ix/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agent-ix/ix-cli.git"
+  },
+  "dependencies": {
+    "@agent-ix/ix-ui-cli": ">=0.1.0",
+    "@clack/prompts": ">=1.1.0",
+    "cli-table3": ">=0.6.5",
+    "commander": ">=14.0.3",
+    "execa": ">=9.6.1",
+    "listr2": ">=10.2.1",
+    "picocolors": ">=1.1.1",
+    "yaml": ">=2.8.3"
+  },
+  "devDependencies": {
+    "vite": ">=6.3.4",
+    "vite-plugin-dts": ">=4.5.3",
+    "vitest": ">=3.1.2"
+  }
+}
