@@ -117,7 +117,7 @@ export async function runInitCluster(
   const display = new PhaseTable<"run">([...INIT_STEPS], {
     phases: ["run"] as const,
     phaseLabels: { run: "running" },
-    header: "ix local init-cluster",
+    header: "ix · local · init-cluster",
   });
   display.start();
 

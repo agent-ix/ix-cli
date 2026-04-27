@@ -43,7 +43,7 @@ importers:
         version: link:../../packages/local
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.2.1
+        version: 0.2.2
       '@oclif/core':
         specifier: '>=4.10.6'
         version: 4.10.6
@@ -68,7 +68,7 @@ importers:
         version: 0.1.0
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.2.1
+        version: 0.2.2
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.2.0
@@ -96,7 +96,7 @@ importers:
     dependencies:
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.2.1
+        version: 0.2.2
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.2.0
@@ -131,8 +131,8 @@ packages:
   '@agent-ix/ix-cli-core@0.1.0':
     resolution: {integrity: sha512-f1A/9cCPu/2mXcpO1sUpM0citppC/V+3/gLGfJ65pl924UcYOdo6o5MGY2AYDVjUUskqdpOR2rAD8npPxWJi5w==}
 
-  '@agent-ix/ix-ui-cli@0.2.1':
-    resolution: {integrity: sha512-XqPiZqeIiX01dqSQvsFCbF6d3QQlflXLDdLARubEL1hByIyfDN3rgRPlFizYSevcN5nZ3GpCXDBfWnaNiZ12wQ==}
+  '@agent-ix/ix-ui-cli@0.2.2':
+    resolution: {integrity: sha512-mxaPJA0eh8R9C+R9lb1nc7EJkuXRKB71midOkuIeubHNpkWQ1iwqrGXud/DWBpnRPCqtAQsn0Xa0f5KTadm3XA==}
 
   '@agent-ix/ix-ui-semantic@0.1.5':
     resolution: {integrity: sha512-WVL2vVJ8O0SOzqu8Q89UWzmTtpl1akBvocWrQHlyY2wkWrsGzhmlyZvHWJeWDqWKjiudOkk9kPTnvtj4w+7HcQ==}
@@ -1590,7 +1590,7 @@ snapshots:
     dependencies:
       yaml: 2.8.3
 
-  '@agent-ix/ix-ui-cli@0.2.1':
+  '@agent-ix/ix-ui-cli@0.2.2':
     dependencies:
       '@agent-ix/ix-ui-semantic': 0.1.5
       '@clack/prompts': 1.2.0
