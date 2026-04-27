@@ -7,7 +7,7 @@
 import { execa } from "execa";
 import type { IxConfig } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
-import { PhaseTable, log } from "@agent-ix/ix-ui-cli";
+import { PhaseTable } from "@agent-ix/ix-ui-cli";
 
 /**
  * C2: Build a kubernetes.io/dockerconfigjson Secret manifest containing the
@@ -302,13 +302,10 @@ export async function runInitCluster(
           .find((s) => s.length > 0) ?? "";
     });
 
-    display.finish(null);
-
-    if (clusterIp) {
-      log.info(
-        `DNS: add  address=/.${config.internalBaseDomain}/${clusterIp}  to /etc/dnsmasq.conf`,
-      );
-    }
+    const dnsTail = clusterIp
+      ? `DNS: add  address=/.${config.internalBaseDomain}/${clusterIp}  to /etc/dnsmasq.conf`
+      : undefined;
+    display.finish(null, undefined, dnsTail);
   } catch (err) {
     display.finish(null);
     throw err;
