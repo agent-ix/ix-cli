@@ -32,6 +32,8 @@ import {
 import {
   PhaseTable,
   ORBIT_SPINNER,
+  colorOrbitFrame,
+  renderHeader,
   introCommand,
   outroSuccess,
   outroWarning,
@@ -39,18 +41,6 @@ import {
 } from "@agent-ix/ix-ui-cli";
 import type { Phase } from "../phases.js";
 import { loadConcurrencyConfig, createPools } from "../pool.js";
-
-function renderOrbitFrame(frame: string): string {
-  return [...frame]
-    .map((ch) =>
-      ch === "⦿" || ch === "⊚"
-        ? pc.gray(ch)
-        : ch === "∘" || ch === "⋅"
-          ? pc.cyan(ch)
-          : ch,
-    )
-    .join("");
-}
 
 const UP_PHASES = [
   "secrets",
@@ -220,7 +210,7 @@ export async function runImageModeUp(
       const frame =
         ORBIT_SPINNER[Math.floor(preflightFrame / 4) % ORBIT_SPINNER.length];
       process.stdout.write(
-        `\r${renderOrbitFrame(frame)} ${appHeaderText}\x1B[K`,
+        `\r${colorOrbitFrame(frame)} ${renderHeader(appHeaderText)}\x1B[K`,
       );
       preflightFrame++;
     };
