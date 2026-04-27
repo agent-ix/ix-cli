@@ -32,6 +32,7 @@ import {
 import {
   PhaseTable,
   ORBIT_SPINNER,
+  HEADER_TICK_DIV,
   colorOrbitFrame,
   renderHeader,
   introCommand,
@@ -208,7 +209,9 @@ export async function runImageModeUp(
   if (appHeaderText && (process.stdout.isTTY ?? false)) {
     const drawPreflight = () => {
       const frame =
-        ORBIT_SPINNER[Math.floor(preflightFrame / 4) % ORBIT_SPINNER.length];
+        ORBIT_SPINNER[
+          Math.floor(preflightFrame / HEADER_TICK_DIV) % ORBIT_SPINNER.length
+        ];
       process.stdout.write(
         `\r${colorOrbitFrame(frame)} ${renderHeader(appHeaderText)}\x1B[K`,
       );
