@@ -8,13 +8,7 @@
 import { execa } from "execa";
 import { Listr } from "listr2";
 import type { IxConfig } from "../config.js";
-import {
-  introCommand,
-  outroSuccess,
-  outroError,
-  outroWarning,
-  outroInfo,
-} from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -203,7 +197,8 @@ export async function runAuthConfigEmailEnable(
   },
   smtpPassword: string,
 ): Promise<void> {
-  introCommand("ix local auth config email enable");
+  const list = startListing("ix local auth config email enable");
+  list.commit();
 
   const rolloutTimeoutSeconds = opts.rolloutTimeout ?? 120;
 
@@ -226,9 +221,9 @@ export async function runAuthConfigEmailEnable(
 
   try {
     await tasks.run();
-    outroSuccess("Email configuration enabled and identity restarted.");
+    list.success("Email configuration enabled and identity restarted.");
   } catch (err) {
-    outroError(
+    list.error(
       `auth config email enable failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
@@ -239,7 +234,8 @@ export async function runAuthConfigEmailDisable(
   _config: IxConfig,
   opts: { rolloutTimeout?: number },
 ): Promise<void> {
-  introCommand("ix local auth config email disable");
+  const list = startListing("ix local auth config email disable");
+  list.commit();
 
   const rolloutTimeoutSeconds = opts.rolloutTimeout ?? 120;
 
@@ -254,9 +250,9 @@ export async function runAuthConfigEmailDisable(
 
   try {
     await tasks.run();
-    outroSuccess("Email configuration disabled and identity restarted.");
+    list.success("Email configuration disabled and identity restarted.");
   } catch (err) {
-    outroError(
+    list.error(
       `auth config email disable failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
@@ -264,7 +260,8 @@ export async function runAuthConfigEmailDisable(
 }
 
 export async function runAuthConfigEmailShow(_config: IxConfig): Promise<void> {
-  introCommand("ix local auth config email show");
+  const list = startListing("ix local auth config email show");
+  list.commit();
 
   const cmData = await getConfigMap();
 
@@ -279,14 +276,16 @@ export async function runAuthConfigEmailShow(_config: IxConfig): Promise<void> {
     `password:  ***`,
   ];
 
-  outroInfo(lines.join("\n"));
+  for (const line of lines) list.note(line);
+  list.success("email configuration");
 }
 
 export async function runAuthConfigEmailTest(
   _config: IxConfig,
   to: string,
 ): Promise<void> {
-  introCommand("ix local auth config email test");
+  const list = startListing("ix local auth config email test");
+  list.commit();
 
   const tasks = new Listr(
     [
@@ -322,9 +321,9 @@ export async function runAuthConfigEmailTest(
 
   try {
     await tasks.run();
-    outroSuccess(`Test email sent to ${to}.`);
+    list.success(`Test email sent to ${to}.`);
   } catch (err) {
-    outroError(
+    list.error(
       `auth config email test failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
@@ -343,11 +342,12 @@ export async function runAuthConfigPasswordResetSet(
   mode: string,
   opts: { rolloutTimeout?: number },
 ): Promise<void> {
-  introCommand("ix local auth config password-reset set");
+  const list = startListing("ix local auth config password-reset set");
+  list.commit();
 
   if (!VALID_PR_MODES.includes(mode as PasswordResetMode)) {
     const msg = `Invalid mode '${mode}'. Valid values: ${VALID_PR_MODES.join(", ")}`;
-    outroError(msg);
+    list.error(msg);
     throw new Error(msg);
   }
 
@@ -362,7 +362,7 @@ export async function runAuthConfigPasswordResetSet(
   if (mode === "email" && cmData["email.enabled"] !== "true") {
     const msg =
       "password-reset=email requires email to be enabled first. Run: ix local auth config email enable ...";
-    outroError(msg);
+    list.error(msg);
     throw new Error(msg);
   }
 
@@ -372,11 +372,11 @@ export async function runAuthConfigPasswordResetSet(
 
   try {
     await tasks.run();
-    outroSuccess(
+    list.success(
       `Password reset mode set to '${mode}' and identity restarted.`,
     );
   } catch (err) {
-    outroError(
+    list.error(
       `auth config password-reset set failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
@@ -386,11 +386,12 @@ export async function runAuthConfigPasswordResetSet(
 export async function runAuthConfigPasswordResetShow(
   _config: IxConfig,
 ): Promise<void> {
-  introCommand("ix local auth config password-reset show");
+  const list = startListing("ix local auth config password-reset show");
+  list.commit();
 
   const cmData = await getConfigMap();
 
-  outroInfo(
+  list.success(
     `password-reset.mode: ${cmData["password_reset.mode"] ?? "(not set)"}`,
   );
 }
@@ -419,7 +420,8 @@ export async function runAuthConfigSocialAdd(
   },
   clientSecret: string,
 ): Promise<void> {
-  introCommand("ix local auth config social add");
+  const list = startListing("ix local auth config social add");
+  list.commit();
 
   // FR-020-AC-5: validate type before any write
   if (
@@ -428,7 +430,7 @@ export async function runAuthConfigSocialAdd(
     )
   ) {
     const msg = `Invalid --type '${opts.type}'. Valid values: ${VALID_SOCIAL_TYPES.join(", ")}`;
-    outroError(msg);
+    list.error(msg);
     throw new Error(msg);
   }
 
@@ -438,7 +440,7 @@ export async function runAuthConfigSocialAdd(
     !VALID_AUTO_LINK.includes(opts.autoLink as (typeof VALID_AUTO_LINK)[number])
   ) {
     const msg = `Invalid --auto-link '${opts.autoLink}'. Valid values: ${VALID_AUTO_LINK.join(", ")}`;
-    outroError(msg);
+    list.error(msg);
     throw new Error(msg);
   }
 
@@ -472,9 +474,9 @@ export async function runAuthConfigSocialAdd(
 
   try {
     await tasks.run();
-    outroSuccess(`Social provider '${id}' added and identity restarted.`);
+    list.success(`Social provider '${id}' added and identity restarted.`);
   } catch (err) {
-    outroError(
+    list.error(
       `auth config social add failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
@@ -486,7 +488,8 @@ export async function runAuthConfigSocialRemove(
   id: string,
   opts: { rolloutTimeout?: number },
 ): Promise<void> {
-  introCommand("ix local auth config social remove");
+  const list = startListing("ix local auth config social remove");
+  list.commit();
 
   const rolloutTimeoutSeconds = opts.rolloutTimeout ?? 120;
 
@@ -514,9 +517,9 @@ export async function runAuthConfigSocialRemove(
 
   try {
     await tasks.run();
-    outroSuccess(`Social provider '${id}' removed and identity restarted.`);
+    list.success(`Social provider '${id}' removed and identity restarted.`);
   } catch (err) {
-    outroError(
+    list.error(
       `auth config social remove failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
@@ -526,7 +529,8 @@ export async function runAuthConfigSocialRemove(
 export async function runAuthConfigSocialList(
   _config: IxConfig,
 ): Promise<void> {
-  introCommand("ix local auth config social list");
+  const list = startListing("ix local auth config social list");
+  list.commit();
 
   const cmData = await getConfigMap();
 
@@ -538,25 +542,25 @@ export async function runAuthConfigSocialList(
   }
 
   if (providerIds.size === 0) {
-    outroInfo("No social providers configured.");
+    list.success("No social providers configured.");
     return;
   }
 
-  const lines = ["Configured social providers:"];
   for (const id of providerIds) {
     const displayName = cmData[`social.${id}.display_name`] ?? id;
     const type = cmData[`social.${id}.type`] ?? "unknown";
-    lines.push(`  • ${id}  (${type})  ${displayName}`);
+    list.item(id, `${type} — ${displayName}`);
   }
 
-  outroInfo(lines.join("\n"));
+  list.success(`${providerIds.size} social provider(s) configured.`);
 }
 
 export async function runAuthConfigSocialShow(
   _config: IxConfig,
   id: string,
 ): Promise<void> {
-  introCommand("ix local auth config social show");
+  const list = startListing("ix local auth config social show");
+  list.commit();
 
   const cmData = await getConfigMap();
 
@@ -573,11 +577,13 @@ export async function runAuthConfigSocialShow(
     });
 
   if (fields.length === 0) {
-    outroWarning(`No social provider with id '${id}' found.`);
+    list.warn(`No social provider with id '${id}' found.`);
     return;
   }
 
-  outroInfo([`Social provider '${id}':`, ...fields].join("\n"));
+  list.note(`Social provider '${id}':`);
+  for (const f of fields) list.note(f);
+  list.success(`Provider ${id}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -597,11 +603,12 @@ export async function runAuthConfigRegistrationSet(
   mode: string,
   opts: { rolloutTimeout?: number },
 ): Promise<void> {
-  introCommand("ix local auth config registration set");
+  const list = startListing("ix local auth config registration set");
+  list.commit();
 
   if (!VALID_REGISTRATION_MODES.includes(mode as RegistrationMode)) {
     const msg = `Invalid mode '${mode}'. Valid values: ${VALID_REGISTRATION_MODES.join(", ")}`;
-    outroError(msg);
+    list.error(msg);
     throw new Error(msg);
   }
 
@@ -618,9 +625,9 @@ export async function runAuthConfigRegistrationSet(
 
   try {
     await tasks.run();
-    outroSuccess(`Registration mode set to '${mode}' and identity restarted.`);
+    list.success(`Registration mode set to '${mode}' and identity restarted.`);
   } catch (err) {
-    outroError(
+    list.error(
       `auth config registration set failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
@@ -630,9 +637,12 @@ export async function runAuthConfigRegistrationSet(
 export async function runAuthConfigRegistrationShow(
   _config: IxConfig,
 ): Promise<void> {
-  introCommand("ix local auth config registration show");
+  const list = startListing("ix local auth config registration show");
+  list.commit();
 
   const cmData = await getConfigMap();
 
-  outroInfo(`registration.mode: ${cmData["registration.mode"] ?? "(not set)"}`);
+  list.success(
+    `registration.mode: ${cmData["registration.mode"] ?? "(not set)"}`,
+  );
 }

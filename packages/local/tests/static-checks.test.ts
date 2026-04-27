@@ -70,12 +70,12 @@ describe("NFR-001-AC-1: no console.* or stderr in src", () => {
 });
 
 // ---------------------------------------------------------------------------
-// NFR-001-AC-2: introCommand imported from @agent-ix/ix-ui-cli in command files
+// NFR-001-AC-2: startListing imported from @agent-ix/ix-ui-cli in command files
 // ---------------------------------------------------------------------------
-describe("NFR-001-AC-2: ix-ui-cli used for intro/outro in command files", () => {
+describe("NFR-001-AC-2: ix-ui-cli used for command framing", () => {
   const cmdDir = join(PKG_SRC, "commands");
 
-  it("every command file that calls introCommand imports it from @agent-ix/ix-ui-cli", () => {
+  it("every command file that calls startListing imports it from @agent-ix/ix-ui-cli", () => {
     const walk = (d: string): void => {
       for (const entry of readdirSync(d, { withFileTypes: true })) {
         const full = join(d, entry.name);
@@ -85,12 +85,33 @@ describe("NFR-001-AC-2: ix-ui-cli used for intro/outro in command files", () => 
         }
         if (!entry.name.endsWith(".ts")) continue;
         const src = readFileSync(full, "utf-8");
-        if (/introCommand\(/.test(src)) {
+        if (/startListing\(/.test(src)) {
           expect(
             src,
-            `${entry.name} should import introCommand from @agent-ix/ix-ui-cli`,
+            `${entry.name} should import startListing from @agent-ix/ix-ui-cli`,
           ).toContain("@agent-ix/ix-ui-cli");
         }
+      }
+    };
+    walk(cmdDir);
+  });
+
+  it("no command file uses the deprecated intro/outro API", () => {
+    const walk = (d: string): void => {
+      for (const entry of readdirSync(d, { withFileTypes: true })) {
+        const full = join(d, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith(".ts")) continue;
+        const src = readFileSync(full, "utf-8");
+        expect(
+          src,
+          `${entry.name} should not call deprecated introCommand/outro* helpers`,
+        ).not.toMatch(
+          /\b(introCommand|outroSuccess|outroError|outroWarning|outroInfo)\(/,
+        );
       }
     };
     walk(cmdDir);

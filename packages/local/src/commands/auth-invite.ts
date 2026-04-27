@@ -7,7 +7,7 @@
 import { Listr } from "listr2";
 import type { IxConfig } from "../config.js";
 import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
-import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 
 type ResolveFn = typeof resolveIdentityUrl;
 type FetchFn = typeof fetchJson;
@@ -50,7 +50,7 @@ export async function runAuthInvite(
   const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
   const _fetch = deps?.fetchJson ?? fetchJson;
 
-  introCommand("ix local auth invite");
+  const list = startListing("ix local auth invite");
 
   let identityBaseUrl = "";
   let cleanup: () => void = () => {};
@@ -58,9 +58,10 @@ export async function runAuthInvite(
 
   const ttlHours = opts.ttl ?? 72;
   if (ttlHours < 1 || ttlHours > 168) {
-    outroError("--ttl must be between 1 and 168 hours");
+    list.error("--ttl must be between 1 and 168 hours");
     throw new Error("--ttl must be between 1 and 168 hours");
   }
+  list.commit();
 
   const tasks = new Listr(
     [
@@ -159,21 +160,17 @@ export async function runAuthInvite(
     if (!inviteResp) throw new Error("No invite response");
     const resp = inviteResp as InviteResponse;
 
-    const lines = [
-      "Invite created.",
-      `  User:        ${resp.email}`,
-      `  Expires:     ${resp.expires_at}`,
-      `  Invite URL:  ${resp.invite_url}`,
-      `  Email sent:  ${resp.email_sent}`,
-    ];
+    list.note(`User:        ${resp.email}`);
+    list.note(`Expires:     ${resp.expires_at}`);
+    list.note(`Invite URL:  ${resp.invite_url}`);
+    list.note(`Email sent:  ${resp.email_sent}`);
     if (!resp.email_sent) {
-      lines.push("Share the URL above with the user; it is single-use.");
+      list.note("Share the URL above with the user; it is single-use.");
     }
-
-    outroSuccess(lines.join("\n"));
+    list.success("Invite created.");
   } catch (err) {
     cleanup();
-    outroError(
+    list.error(
       `auth invite failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;

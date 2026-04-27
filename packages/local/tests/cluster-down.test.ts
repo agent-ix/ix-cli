@@ -6,15 +6,34 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("execa");
-vi.mock("@agent-ix/ix-ui-cli");
+vi.mock("@agent-ix/ix-ui-cli", async () => {
+  const success = vi.fn();
+  const warn = vi.fn();
+  const error = vi.fn();
+  const pause = vi.fn(async (fn: () => unknown) => await fn());
+  return {
+    confirm: vi.fn(),
+    isCancel: vi.fn(() => false),
+    startListing: vi.fn(() => ({
+      group: vi.fn(),
+      item: vi.fn(),
+      note: vi.fn(),
+      raw: vi.fn(),
+      commit: vi.fn(),
+      pause,
+      success,
+      warn,
+      error,
+    })),
+    __success: success,
+    __warn: warn,
+    __error: error,
+    __pause: pause,
+  };
+});
 
 import { execa } from "execa";
-import {
-  confirm,
-  isCancel,
-  outroSuccess,
-  outroError,
-} from "@agent-ix/ix-ui-cli";
+import * as ui from "@agent-ix/ix-ui-cli";
 import { runClusterDown } from "../src/commands/cluster-down.js";
 import type { IxConfig } from "../src/config.js";
 
@@ -35,17 +54,21 @@ const config: IxConfig = {
 };
 
 const mockExeca = vi.mocked(execa);
-const mockConfirm = vi.mocked(confirm);
-const mockIsCancel = vi.mocked(isCancel);
-const mockOutroSuccess = vi.mocked(outroSuccess);
-const mockOutroError = vi.mocked(outroError);
+const mockConfirm = vi.mocked(ui.confirm);
+const mockIsCancel = vi.mocked(ui.isCancel);
+type Bag = typeof ui & {
+  __success: ReturnType<typeof vi.fn>;
+  __warn: ReturnType<typeof vi.fn>;
+  __error: ReturnType<typeof vi.fn>;
+};
+const mockSuccess = (ui as unknown as Bag).__success;
+const mockWarn = (ui as unknown as Bag).__warn;
+const mockError = (ui as unknown as Bag).__error;
 
-// kind get clusters returns the cluster name — cluster exists
 function stubClusterExists() {
   mockExeca.mockResolvedValueOnce({ stdout: "ix\nother-cluster\n" } as never);
 }
 
-// kind get clusters returns empty — cluster absent
 function stubClusterAbsent() {
   mockExeca.mockResolvedValueOnce({ stdout: "" } as never);
 }
@@ -58,7 +81,7 @@ beforeEach(() => {
 describe("runClusterDown", () => {
   it("TC-032: --yes flag skips prompt and calls kind delete cluster", async () => {
     stubClusterExists();
-    mockExeca.mockResolvedValueOnce({} as never); // kind delete cluster
+    mockExeca.mockResolvedValueOnce({} as never);
 
     await runClusterDown(config, { yes: true });
 
@@ -70,19 +93,17 @@ describe("runClusterDown", () => {
     );
   });
 
-  it("TC-033: prompt returns false — no deletion, success outro", async () => {
+  it("TC-033: prompt returns false — no deletion, warn outro", async () => {
     mockConfirm.mockResolvedValueOnce(false as never);
     mockIsCancel.mockReturnValue(false);
 
     await runClusterDown(config);
 
     expect(mockExeca).not.toHaveBeenCalled();
-    expect(mockOutroSuccess).toHaveBeenCalledWith(
-      expect.stringContaining("Cancelled"),
-    );
+    expect(mockWarn).toHaveBeenCalledWith(expect.stringContaining("Cancelled"));
   });
 
-  it("TC-034: prompt cancelled (isCancel) — no deletion, success outro", async () => {
+  it("TC-034: prompt cancelled (isCancel) — no deletion, warn outro", async () => {
     const cancelSymbol = Symbol("cancel");
     mockConfirm.mockResolvedValueOnce(cancelSymbol as never);
     mockIsCancel.mockReturnValue(true);
@@ -90,7 +111,7 @@ describe("runClusterDown", () => {
     await runClusterDown(config);
 
     expect(mockExeca).not.toHaveBeenCalled();
-    expect(mockOutroSuccess).toHaveBeenCalled();
+    expect(mockWarn).toHaveBeenCalled();
   });
 
   it("TC-035: cluster does not exist — exits cleanly without deletion", async () => {
@@ -103,23 +124,23 @@ describe("runClusterDown", () => {
       (args) => args[0] === "kind" && (args[1] as string[]).includes("delete"),
     );
     expect(deleteCalls).toHaveLength(0);
-    expect(mockOutroSuccess).toHaveBeenCalledWith(
+    expect(mockSuccess).toHaveBeenCalledWith(
       expect.stringContaining("does not exist"),
     );
   });
 
-  it("TC-036: kind delete cluster fails — outroError called and error rethrown", async () => {
+  it("TC-036: kind delete cluster fails — error called and error rethrown", async () => {
     stubClusterExists();
     const boom = new Error("kind: failed to delete");
     mockExeca.mockRejectedValueOnce(boom as never);
 
     await expect(runClusterDown(config, { yes: true })).rejects.toThrow(boom);
-    expect(mockOutroError).toHaveBeenCalled();
+    expect(mockError).toHaveBeenCalled();
   });
 
   it("TC-037: no helm uninstall called during cluster down", async () => {
     stubClusterExists();
-    mockExeca.mockResolvedValueOnce({} as never); // kind delete
+    mockExeca.mockResolvedValueOnce({} as never);
 
     await runClusterDown(config, { yes: true });
 

@@ -6,17 +6,33 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../src/tap-config.js");
-vi.mock("@agent-ix/ix-ui-cli");
+vi.mock("@agent-ix/ix-ui-cli", () => {
+  const success = vi.fn();
+  return {
+    startListing: vi.fn(() => ({
+      group: vi.fn(),
+      item: vi.fn(),
+      note: vi.fn(),
+      raw: vi.fn(),
+      commit: vi.fn(),
+      pause: vi.fn(),
+      success,
+      warn: vi.fn(),
+      error: vi.fn(),
+    })),
+    __success: success,
+  };
+});
 vi.mock("../src/registry/resolver.js");
 
 import { loadTapConfig, ROOT_TAP } from "../src/tap-config.js";
-import { outroSuccess } from "@agent-ix/ix-ui-cli";
+import * as ui from "@agent-ix/ix-ui-cli";
 import { resolveAllElements } from "../src/registry/resolver.js";
 import { runTapList } from "../src/commands/tap/list.js";
 import { runElementsList } from "../src/commands/list.js";
 
 const mockLoadTapConfig = vi.mocked(loadTapConfig);
-const mockOutroSuccess = vi.mocked(outroSuccess);
+const mockStartListing = vi.mocked(ui.startListing);
 const mockResolveAll = vi.mocked(resolveAllElements);
 
 beforeEach(() => {
@@ -27,30 +43,31 @@ beforeEach(() => {
 // TC-077: FR-012-AC-6
 // ---------------------------------------------------------------------------
 describe("runTapList — root tap marker", () => {
-  it("TC-077: appends (root) suffix to the root tap entry", () => {
+  it("TC-077: passes (root) description for the root tap", () => {
     mockLoadTapConfig.mockReturnValue({
       taps: [ROOT_TAP, "github.com/other-org"],
     });
 
-    const written: string[] = [];
-    const spy = vi
-      .spyOn(process.stdout, "write")
-      .mockImplementation((s: unknown) => {
-        written.push(String(s));
-        return true;
-      });
+    const items: Array<[string, string | undefined]> = [];
+    const item = vi.fn((name: string, desc?: string) => {
+      items.push([name, desc]);
+    });
+    mockStartListing.mockReturnValueOnce({
+      group: vi.fn(),
+      item,
+      note: vi.fn(),
+      raw: vi.fn(),
+      commit: vi.fn(),
+      pause: vi.fn() as never,
+      success: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    });
 
     runTapList();
 
-    spy.mockRestore();
-
-    const rootLine = written.find((l) => l.includes(ROOT_TAP));
-    expect(rootLine).toBeDefined();
-    expect(rootLine).toContain("(root)");
-
-    const otherLine = written.find((l) => l.includes("other-org"));
-    expect(otherLine).toBeDefined();
-    expect(otherLine).not.toContain("(root)");
+    expect(items).toContainEqual([ROOT_TAP, "(root)"]);
+    expect(items).toContainEqual(["github.com/other-org", undefined]);
   });
 });
 
@@ -60,10 +77,22 @@ describe("runTapList — root tap marker", () => {
 describe("runElementsList — empty state", () => {
   it("TC-078: directs user to add a tap when no elements found", async () => {
     mockResolveAll.mockResolvedValue([]);
+    const success = vi.fn();
+    mockStartListing.mockReturnValueOnce({
+      group: vi.fn(),
+      item: vi.fn(),
+      note: vi.fn(),
+      raw: vi.fn(),
+      commit: vi.fn(),
+      pause: vi.fn() as never,
+      success,
+      warn: vi.fn(),
+      error: vi.fn(),
+    });
 
     await runElementsList();
 
-    expect(mockOutroSuccess).toHaveBeenCalledWith(
+    expect(success).toHaveBeenCalledWith(
       expect.stringContaining("ix elements tap add"),
     );
   });

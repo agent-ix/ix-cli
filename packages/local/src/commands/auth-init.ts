@@ -15,12 +15,7 @@ import { Listr } from "listr2";
 import type { IxConfig } from "../config.js";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
 import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
-import {
-  introCommand,
-  outroSuccess,
-  outroError,
-  outroInfo,
-} from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 
 type ResolveFn = typeof resolveIdentityUrl;
 type FetchFn = typeof fetchJson;
@@ -84,7 +79,8 @@ export async function runAuthInit(
   const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
   const _fetch = deps?.fetchJson ?? fetchJson;
 
-  introCommand("ix local init");
+  const list = startListing("ix local init");
+  list.commit();
 
   let identityBaseUrl = "";
   let cleanup: () => void = () => {};
@@ -190,14 +186,12 @@ export async function runAuthInit(
         expiresAt: string;
         loginUrl: string;
       };
-      outroInfo(
-        [
-          "Admin account already bootstrapped.",
-          `  Expires at: ${bootstrapped.expiresAt}`,
-          `  Log in at:  ${bootstrapped.loginUrl}`,
-          `Retrievable via: kubectl -n ix-system get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
-        ].join("\n"),
+      list.note(`Expires at: ${bootstrapped.expiresAt}`);
+      list.note(`Log in at:  ${bootstrapped.loginUrl}`);
+      list.note(
+        `Retrievable via: kubectl -n ix-system get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
       );
+      list.success("Admin account already bootstrapped.");
       process.exit(0);
       return;
     }
@@ -206,18 +200,18 @@ export async function runAuthInit(
     const resp = seedResp as SeedResponse;
 
     // FR-015-B6: print to stdout once — never to a log (NFR-004-AC-2)
-    outroSuccess(
-      [
-        "Admin account created.",
-        `  Username:      admin`,
-        `  Temp password: ${resp.password}     (expires ${resp.expires_at})`,
-        `  Log in at:     ${resp.login_url}`,
-        `Retrievable via: kubectl -n ix-system get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
-      ].join("\n"),
+    list.note(`Username:      admin`);
+    list.note(
+      `Temp password: ${resp.password}     (expires ${resp.expires_at})`,
     );
+    list.note(`Log in at:     ${resp.login_url}`);
+    list.note(
+      `Retrievable via: kubectl -n ix-system get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
+    );
+    list.success("Admin account created.");
   } catch (err) {
     cleanup();
-    outroError(
+    list.error(
       `init failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;

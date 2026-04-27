@@ -9,7 +9,7 @@ import { Listr } from "listr2";
 import type { IxConfig } from "../config.js";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
 import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
-import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 
 type ResolveFn = typeof resolveIdentityUrl;
 type FetchFn = typeof fetchJson;
@@ -84,7 +84,8 @@ export async function runAuthResetAdmin(
   const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
   const _fetch = deps?.fetchJson ?? fetchJson;
 
-  introCommand("ix local auth reset-admin");
+  const list = startListing("ix local auth reset-admin");
+  list.commit();
 
   let adminEmail = opts.user;
   let resetResp: ResetResponse | null = null;
@@ -138,9 +139,9 @@ export async function runAuthResetAdmin(
             task.output = `Found admin: ${adminEmail}`;
           } else {
             // FR-016-AC-5: multiple admins, no --user flag
-            const list = admins.map((u) => `  • ${u.email}`).join("\n");
+            const adminList = admins.map((u) => `  • ${u.email}`).join("\n");
             throw new Error(
-              `Multiple active admins found. Use --user <email> to select one:\n${list}`,
+              `Multiple active admins found. Use --user <email> to select one:\n${adminList}`,
             );
           }
         },
@@ -194,17 +195,15 @@ export async function runAuthResetAdmin(
       (resetResp as ResetResponse).reset_url;
 
     // FR-016-B5: print to stdout (never to a log)
-    outroSuccess(
-      [
-        "Admin password reset.",
-        `  User:          ${adminEmail}`,
-        `  Temp password: ${password}   (expires ${(resetResp as ResetResponse).expires_at})`,
-        `  Log in at:     ${(resetResp as ResetResponse).reset_url}`,
-      ].join("\n"),
+    list.note(`User:          ${adminEmail}`);
+    list.note(
+      `Temp password: ${password}   (expires ${(resetResp as ResetResponse).expires_at})`,
     );
+    list.note(`Log in at:     ${(resetResp as ResetResponse).reset_url}`);
+    list.success("Admin password reset.");
   } catch (err) {
     cleanup();
-    outroError(
+    list.error(
       `auth reset-admin failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;

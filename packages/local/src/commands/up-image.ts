@@ -35,10 +35,8 @@ import {
   HEADER_TICK_DIV,
   colorOrbitFrame,
   renderHeader,
-  introCommand,
-  outroSuccess,
-  outroWarning,
-  outroError,
+  startListing,
+  type Listing,
 } from "@agent-ix/ix-ui-cli";
 import type { Phase } from "../phases.js";
 import { loadConcurrencyConfig, createPools } from "../pool.js";
@@ -222,15 +220,14 @@ export async function runImageModeUp(
   }
 
   let installs: ChildInstall[];
+  let serviceList: Listing | null = null;
   if (deployable.role === "app") {
     const deps = await expandApp(deployable, config);
     if (deps.length === 0) {
       // FR-013-AC-6
-      const err = new Error(
+      throw new Error(
         `App '${deployable.name}' has no chart dependencies to install.`,
       );
-      outroError(err.message);
-      throw err;
     }
     installs = deps;
   } else {
@@ -241,7 +238,8 @@ export async function runImageModeUp(
         chartVersion: deployable.version,
       },
     ];
-    introCommand(`ix local up (image mode)`);
+    serviceList = startListing(`ix local up (image mode)`);
+    serviceList.commit();
   }
 
   // Resolve credentials before entering Listr / PhaseTable — interactive
@@ -259,6 +257,7 @@ export async function runImageModeUp(
       }
     }
     await runSingleServiceListr(
+      serviceList!,
       installs[0],
       deployable,
       config,
@@ -456,6 +455,7 @@ export async function runImageModeUp(
 }
 
 async function runSingleServiceListr(
+  list: Listing,
   install: ChildInstall,
   deployable: Deployable,
   config: IxConfig,
@@ -537,15 +537,16 @@ async function runSingleServiceListr(
   try {
     await tasks.run();
     if (failures.length > 0) {
-      outroWarning(
-        `Deployed ${pc.cyan(deployable.name)} with failures: ${failures.join("; ")}`,
+      list.warn(
+        `Deployed ${deployable.name} with failures: ${failures.join("; ")}`,
       );
     } else {
       const url = `https://${deployable.name}.${config.internalBaseDomain}`;
-      outroSuccess(`Service available at: ${pc.cyan(pc.underline(url))}`);
+      list.note(`→  ${url}`);
+      list.success(`${deployable.name} deployed.`);
     }
   } catch (err) {
-    outroError(
+    list.error(
       `Failed to deploy ${deployable.name}: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;

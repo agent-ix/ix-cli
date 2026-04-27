@@ -9,7 +9,7 @@ import { runImageModeUp } from "./commands/up-image.js";
 import { runSourceModeUp } from "./commands/up-source.js";
 import { loadRegistry, findDeployable } from "./registry.js";
 import { resolveGhcrToken } from "./credentials.js";
-import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 
 // Re-export everything needed by apps/ix command files.
 export {
@@ -64,7 +64,8 @@ function deployableMatchesTags(
 }
 
 export async function executeLocals(services: string[], action: "up" | "down") {
-  introCommand(`ix local ${action}`);
+  const list = startListing(`ix local ${action}`);
+  list.commit();
 
   // M6: If user passes both named services and "all", that's a conflicting
   // intent — error rather than silently dropping named services.
@@ -146,12 +147,12 @@ export async function executeLocals(services: string[], action: "up" | "down") {
 
   try {
     await tasks.run();
-    outroSuccess(
+    list.success(
       `Successfully ${action === "up" ? "started" : "stopped"} everything.`,
     );
   } catch (err) {
     // FR-003-AC-3: failure outro
-    outroError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+    list.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
     throw err;
   }
 }
@@ -267,7 +268,8 @@ export async function runDown(
     }
   }
 
-  introCommand("ix local down (image mode)");
+  const list = startListing("ix local down (image mode)");
+  list.commit();
   const tasks = new Listr(
     releases.map((name) => ({
       title: `Uninstall ${pc.cyan(name)}`,
@@ -287,13 +289,14 @@ export async function runDown(
     { concurrent: false, rendererOptions: { collapseSubtasks: false } },
   );
   await tasks.run();
-  outroSuccess(`Uninstalled: ${releases.join(", ")}`);
+  list.success(`Uninstalled: ${releases.join(", ")}`);
 }
 
 export async function runRefresh(
   config: import("./config.js").IxConfig,
 ): Promise<void> {
-  introCommand("ix local refresh");
+  const list = startListing("ix local refresh");
+  list.commit();
   try {
     const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
     const reg = await loadRegistry({
@@ -301,9 +304,9 @@ export async function runRefresh(
       githubToken: token,
       refresh: true,
     });
-    outroSuccess(`Refreshed registry: ${reg.length} deployable(s).`);
+    list.success(`Refreshed registry: ${reg.length} deployable(s).`);
   } catch (err) {
-    outroError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+    list.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
     throw err;
   }
 }

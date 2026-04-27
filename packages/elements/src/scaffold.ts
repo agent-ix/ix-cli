@@ -2,7 +2,7 @@ import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
 import { execa } from "execa";
-import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 import { resolveElementByType } from "./registry/resolver.js";
 
 export interface ScaffoldOptions {
@@ -17,37 +17,44 @@ export async function runElementsInit(
   projectName: string,
   opts: ScaffoldOptions = {},
 ): Promise<void> {
-  introCommand(`ix elements init ${type} ${projectName}`);
+  const list = startListing(`ix elements init ${type} ${projectName}`);
+  try {
+    const element = await resolveElementByType(type);
+    const outputDir = opts.outputDir ?? process.cwd();
+    const org = opts.org ?? "agent-ix";
 
-  const element = await resolveElementByType(type);
-  const outputDir = opts.outputDir ?? process.cwd();
-  const org = opts.org ?? "agent-ix";
+    const cacheDir = path.join(
+      os.homedir(),
+      ".cache",
+      "ix",
+      "elements",
+      "repos",
+      element.name,
+    );
 
-  const cacheDir = path.join(
-    os.homedir(),
-    ".cache",
-    "ix",
-    "elements",
-    "repos",
-    element.name,
-  );
+    // Subprocesses inherit stdio — commit the header so their output lands as body.
+    list.commit();
 
-  await cloneOrUpdate(element.repoUrl, cacheDir);
-  await runCookiecutter(cacheDir, outputDir, projectName, org);
+    await cloneOrUpdate(element.repoUrl, cacheDir);
+    await runCookiecutter(cacheDir, outputDir, projectName, org);
 
-  const projectDir = path.join(outputDir, toSlug(projectName));
+    const projectDir = path.join(outputDir, toSlug(projectName));
 
-  if (!opts.noGit) {
-    await initGit(projectDir, type, element.name);
+    if (!opts.noGit) {
+      await initGit(projectDir, type, element.name);
+    }
+
+    if (!opts.noGithub && !opts.noGit) {
+      await createGithubRepo(projectDir, org, toSlug(projectName));
+    }
+
+    list.success(
+      `Scaffolded ${type} project '${toSlug(projectName)}' in ${projectDir}`,
+    );
+  } catch (err) {
+    list.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+    throw err;
   }
-
-  if (!opts.noGithub && !opts.noGit) {
-    await createGithubRepo(projectDir, org, toSlug(projectName));
-  }
-
-  outroSuccess(
-    `Scaffolded ${type} project '${toSlug(projectName)}' in ${projectDir}`,
-  );
 }
 
 async function cloneOrUpdate(repoUrl: string, dest: string): Promise<void> {
@@ -79,10 +86,9 @@ async function runCookiecutter(
       { stdio: "inherit" },
     );
   } catch (err) {
-    outroError(
+    throw new Error(
       `cookiecutter failed: ${err instanceof Error ? err.message : String(err)}`,
     );
-    throw err;
   }
 }
 

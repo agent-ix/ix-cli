@@ -10,12 +10,7 @@ import { resolveGhcrToken } from "../credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
 import { applySecretContract, loadSecretContract } from "../local-secrets.js";
 import { waitForRollout } from "../rollout.js";
-import {
-  introCommand,
-  outroSuccess,
-  outroError,
-  outroWarning,
-} from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 
 interface LocalInstall {
   name: string;
@@ -295,7 +290,8 @@ export async function runSourceModeUp(
   devDir: string,
   opts: UpFilterOptions = {},
 ): Promise<void> {
-  introCommand("ix local up (source mode)");
+  const list = startListing("ix local up (source mode)");
+  list.commit();
 
   const imageTag = tagOverride ?? config.imageTag;
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-local-source-"));
@@ -438,16 +434,17 @@ export async function runSourceModeUp(
       (i) => `https://${i.name}.${config.internalBaseDomain}`,
     );
     if (failures.length > 0) {
-      outroWarning(
+      list.warn(
         `Deployed from local source with failures: ${failures.join("; ")}`,
       );
     } else {
-      outroSuccess(
-        `Deployed from local source via Helm release(s): ${pc.cyan(installs.map((i) => i.name).join(", "))}\n\n  ${urls.map((u) => pc.cyan(pc.underline(u))).join("\n  ")}`,
+      for (const url of urls) list.note(url);
+      list.success(
+        `Deployed via Helm: ${installs.map((i) => i.name).join(", ")}`,
       );
     }
   } catch (err) {
-    outroError(
+    list.error(
       `Failed to deploy from local source: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;

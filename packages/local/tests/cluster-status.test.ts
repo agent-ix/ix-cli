@@ -6,7 +6,27 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("execa");
-vi.mock("@agent-ix/ix-ui-cli");
+vi.mock("@agent-ix/ix-ui-cli", () => {
+  const success = vi.fn();
+  const warn = vi.fn();
+  const error = vi.fn();
+  return {
+    startListing: vi.fn(() => ({
+      group: vi.fn(),
+      item: vi.fn(),
+      note: vi.fn(),
+      raw: vi.fn(),
+      commit: vi.fn(),
+      pause: vi.fn(),
+      success,
+      warn,
+      error,
+    })),
+    __success: success,
+    __warn: warn,
+    __error: error,
+  };
+});
 vi.mock("picocolors", () => ({
   default: {
     green: (s: string) => s,
@@ -18,12 +38,18 @@ vi.mock("picocolors", () => ({
 }));
 
 import { execa } from "execa";
-import { outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
+import * as ui from "@agent-ix/ix-ui-cli";
 import { runClusterStatus } from "../src/commands/cluster-status.js";
 
 const mockExeca = vi.mocked(execa);
-const mockOutroSuccess = vi.mocked(outroSuccess);
-const mockOutroError = vi.mocked(outroError);
+type Bag = typeof ui & {
+  __success: ReturnType<typeof vi.fn>;
+  __warn: ReturnType<typeof vi.fn>;
+  __error: ReturnType<typeof vi.fn>;
+};
+const mockSuccess = (ui as unknown as Bag).__success;
+const mockWarn = (ui as unknown as Bag).__warn;
+const mockError = (ui as unknown as Bag).__error;
 
 const makeNode = (
   name: string,
@@ -92,7 +118,7 @@ describe("runClusterStatus", () => {
     expect(written).toContain("control-plane");
   });
 
-  it("TC-040: all pods healthy — outroSuccess with 'All pods healthy.' and no pod table", async () => {
+  it("TC-040: all pods healthy — success outro with 'All pods healthy.' and no pod table", async () => {
     stubKubectl(
       [makeNode("ix-control-plane", true, true)],
       [
@@ -103,7 +129,7 @@ describe("runClusterStatus", () => {
 
     await runClusterStatus();
 
-    expect(mockOutroSuccess).toHaveBeenCalledWith("All pods healthy.");
+    expect(mockSuccess).toHaveBeenCalledWith("All pods healthy.");
     const written = (
       process.stdout.write as ReturnType<typeof vi.fn>
     ).mock.calls
@@ -123,7 +149,8 @@ describe("runClusterStatus", () => {
 
     await runClusterStatus();
 
-    expect(mockOutroSuccess).not.toHaveBeenCalledWith("All pods healthy.");
+    expect(mockSuccess).not.toHaveBeenCalledWith("All pods healthy.");
+    expect(mockWarn).toHaveBeenCalled();
     const written = (
       process.stdout.write as ReturnType<typeof vi.fn>
     ).mock.calls
@@ -137,20 +164,18 @@ describe("runClusterStatus", () => {
     expect(written).toContain("kube-system");
   });
 
-  it("TC-042: kubectl get nodes fails — outroError called and descriptive error thrown", async () => {
+  it("TC-042: kubectl get nodes fails — error outro called and descriptive error thrown", async () => {
     mockExeca.mockRejectedValueOnce(new Error("connection refused") as never);
 
     await expect(runClusterStatus()).rejects.toThrow(
       "kubectl get nodes failed",
     );
-    expect(mockOutroError).toHaveBeenCalled();
+    expect(mockError).toHaveBeenCalled();
   });
 
   it("TC-043: picocolors mock strips color codes from node status and pod phase", async () => {
-    // picocolors is mocked at the top of this file to return plain strings.
-    // Verify the node STATUS and pod PHASE cells contain plain text (no ANSI codes).
     stubKubectl(
-      [makeNode("ix-control-plane", false, true)], // NotReady → pc.red("NotReady") without mock
+      [makeNode("ix-control-plane", false, true)],
       [makePod("bad-pod", "default", "CrashLoopBackOff")],
     );
 
@@ -161,10 +186,8 @@ describe("runClusterStatus", () => {
     ).mock.calls
       .map((c: unknown[]) => c[0] as string)
       .join("");
-    // With picocolors mocked, these strings appear without ANSI escape sequences.
     expect(written).toContain("NotReady");
     expect(written).toContain("CrashLoopBackOff");
-    // Specifically: no ANSI codes wrapping the values picocolors would colorize.
     expect(written).not.toMatch(/\x1b\[[\d;]*mNotReady/);
     expect(written).not.toMatch(/\x1b\[[\d;]*mCrashLoopBackOff/);
   });

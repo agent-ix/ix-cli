@@ -1,16 +1,15 @@
-import pc from "picocolors";
-import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 import { resolveAllElements } from "../registry/resolver.js";
 
 export async function runElementsList(
   opts: { refresh?: boolean } = {},
 ): Promise<void> {
-  introCommand("ix elements list");
+  const list = startListing("ix elements list");
   try {
     const elements = await resolveAllElements(opts);
 
     if (elements.length === 0) {
-      outroSuccess(
+      list.success(
         "No elements found. Add a tap with `ix elements tap add <github-url>`.",
       );
       return;
@@ -24,16 +23,15 @@ export async function runElementsList(
     }
 
     for (const [tap, entries] of byTap) {
-      process.stdout.write(`\n${pc.bold(pc.cyan(tap))}\n`);
+      list.group(tap);
       for (const entry of entries) {
-        const desc = entry.description ? pc.dim(` — ${entry.description}`) : "";
-        process.stdout.write(`  ${pc.green(entry.type)}${desc}\n`);
+        list.item(entry.type, entry.description);
       }
     }
 
-    outroSuccess(`${elements.length} element type(s) available.`);
+    list.success(`${elements.length} element type(s) available.`);
   } catch (err) {
-    outroError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+    list.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
     throw err;
   }
 }

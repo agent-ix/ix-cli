@@ -3,12 +3,11 @@
  */
 
 import Table from "cli-table3";
-import pc from "picocolors";
 import type { IxConfig } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { loadRegistry } from "../registry.js";
 import type { Deployable } from "../discovery.js";
-import { introCommand, outroSuccess, outroWarning } from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 
 export interface ListOptions {
   refresh?: boolean;
@@ -34,7 +33,7 @@ export async function runList(
   config: IxConfig,
   opts: ListOptions,
 ): Promise<void> {
-  introCommand("ix local list");
+  const list = startListing("ix local list");
 
   const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
 
@@ -51,7 +50,7 @@ export async function runList(
   if (opts.tag) filtered = filtered.filter((d) => d.tags.includes(opts.tag!));
 
   if (filtered.length === 0) {
-    outroWarning("No deployables found.");
+    list.warn("No deployables found.");
     return;
   }
 
@@ -59,7 +58,8 @@ export async function runList(
   const categories = [...grouped.keys()].sort();
 
   for (const cat of categories) {
-    process.stdout.write(pc.bold(pc.cyan(`\n${cat}`)) + "\n");
+    list.group(cat);
+    list.commit();
     const table = new Table({
       head: ["name", "type", "version", "title", "tags"],
       style: { head: ["dim"] },
@@ -70,5 +70,5 @@ export async function runList(
     process.stdout.write(table.toString() + "\n");
   }
 
-  outroSuccess(`${filtered.length} deployable(s)`);
+  list.success(`${filtered.length} deployable(s)`);
 }

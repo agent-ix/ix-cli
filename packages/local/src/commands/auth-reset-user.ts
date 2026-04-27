@@ -7,7 +7,7 @@
 import { Listr } from "listr2";
 import type { IxConfig } from "../config.js";
 import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
-import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 
 type ResolveFn = typeof resolveIdentityUrl;
 type FetchFn = typeof fetchJson;
@@ -33,13 +33,14 @@ export async function runAuthResetUser(
   const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
   const _fetch = deps?.fetchJson ?? fetchJson;
 
-  introCommand("ix local auth reset-user");
+  const list = startListing("ix local auth reset-user");
 
   const ttlHours = opts.ttl ?? 1;
   if (ttlHours < 1 || ttlHours > 24) {
-    outroError("--ttl must be between 1 and 24 hours");
+    list.error("--ttl must be between 1 and 24 hours");
     throw new Error("--ttl must be between 1 and 24 hours");
   }
+  list.commit();
 
   let identityBaseUrl = "";
   let cleanup: () => void = () => {};
@@ -109,18 +110,14 @@ export async function runAuthResetUser(
     if (!resetResp) throw new Error("No reset response");
     const resp = resetResp as ResetResponse;
 
-    outroSuccess(
-      [
-        "Password reset.",
-        `  User:       ${resp.email}`,
-        `  Expires:    ${resp.expires_at}`,
-        `  Reset URL:  ${resp.reset_url}`,
-        `  Email sent: ${resp.email_sent}`,
-      ].join("\n"),
-    );
+    list.note(`User:       ${resp.email}`);
+    list.note(`Expires:    ${resp.expires_at}`);
+    list.note(`Reset URL:  ${resp.reset_url}`);
+    list.note(`Email sent: ${resp.email_sent}`);
+    list.success("Password reset.");
   } catch (err) {
     cleanup();
-    outroError(
+    list.error(
       `auth reset-user failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;

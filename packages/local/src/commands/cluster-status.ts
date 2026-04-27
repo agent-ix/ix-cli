@@ -6,7 +6,7 @@
 import { execa } from "execa";
 import pc from "picocolors";
 import Table from "cli-table3";
-import { outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 
 interface NodeItem {
   metadata: { name: string; creationTimestamp: string };
@@ -54,12 +54,13 @@ function podRestarts(pod: PodItem): number {
 const HEALTHY_PHASES = new Set(["Running", "Succeeded"]);
 
 export async function runClusterStatus(): Promise<void> {
+  const list = startListing("ix local cluster status");
   let nodesJson: string;
   try {
     const { stdout } = await execa("kubectl", ["get", "nodes", "-o", "json"]);
     nodesJson = stdout;
   } catch (err) {
-    outroError(
+    list.error(
       `Cannot reach cluster: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw new Error("kubectl get nodes failed — is the cluster running?");
@@ -68,6 +69,7 @@ export async function runClusterStatus(): Promise<void> {
   const nodes: NodeItem[] = (JSON.parse(nodesJson) as { items: NodeItem[] })
     .items;
 
+  list.commit();
   const nodeTable = new Table({
     head: ["NAME", "ROLE", "STATUS", "AGE"],
     style: { head: ["cyan"] },
@@ -90,7 +92,7 @@ export async function runClusterStatus(): Promise<void> {
   );
 
   if (unhealthy.length === 0) {
-    outroSuccess("All pods healthy.");
+    list.success("All pods healthy.");
     return;
   }
 
@@ -107,4 +109,5 @@ export async function runClusterStatus(): Promise<void> {
     ]);
   }
   process.stdout.write(podTable.toString() + "\n");
+  list.warn(`${unhealthy.length} unhealthy pod(s).`);
 }

@@ -4,13 +4,7 @@
  */
 
 import { execa } from "execa";
-import {
-  confirm,
-  isCancel,
-  introCommand,
-  outroSuccess,
-  outroError,
-} from "@agent-ix/ix-ui-cli";
+import { confirm, isCancel, startListing } from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "../config.js";
 
 export async function runClusterDown(
@@ -18,21 +12,22 @@ export async function runClusterDown(
   opts: { yes?: boolean } = {},
 ): Promise<void> {
   const clusterName = config.kindClusterName;
+  const list = startListing("ix local cluster down");
 
   if (!opts.yes) {
     // NFR-002: prompt must name the specific cluster
-    const confirmed = await confirm({
-      message: `Delete kind cluster '${clusterName}'? This will destroy all cluster state and cannot be undone.`,
-      initialValue: false,
-    });
+    const confirmed = await list.pause(() =>
+      confirm({
+        message: `Delete kind cluster '${clusterName}'? This will destroy all cluster state and cannot be undone.`,
+        initialValue: false,
+      }),
+    );
 
     if (isCancel(confirmed) || !confirmed) {
-      outroSuccess("Cancelled. Cluster not deleted.");
+      list.warn("Cancelled. Cluster not deleted.");
       return;
     }
   }
-
-  introCommand("ix local cluster down");
 
   // FR-006-AC-3: idempotent — check existence before deleting
   let clusterExists = false;
@@ -47,17 +42,18 @@ export async function runClusterDown(
   }
 
   if (!clusterExists) {
-    outroSuccess(`Cluster '${clusterName}' does not exist. Nothing to delete.`);
+    list.success(`Cluster '${clusterName}' does not exist. Nothing to delete.`);
     return;
   }
 
+  list.commit();
   try {
     await execa("kind", ["delete", "cluster", "--name", clusterName], {
       stdio: "inherit",
     });
-    outroSuccess(`Cluster '${clusterName}' deleted.`);
+    list.success(`Cluster '${clusterName}' deleted.`);
   } catch (err) {
-    outroError(
+    list.error(
       `Failed to delete cluster: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
