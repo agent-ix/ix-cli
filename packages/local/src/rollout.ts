@@ -118,6 +118,61 @@ export async function diagnosePodFailure(
 }
 
 /**
+ * Non-transient waiting reasons that indicate a pod will not self-recover.
+ * Used by the early-failure poller to abort rollout watches fast.
+ */
+const TERMINAL_WAITING_REASONS = new Set([
+  "CrashLoopBackOff",
+  "ImagePullBackOff",
+  "ErrImagePull",
+  "CreateContainerConfigError",
+  "InvalidImageName",
+  "RunContainerError",
+  "OOMKilled",
+]);
+
+/**
+ * Checks whether any pod matching labelSelector is stuck in a terminal
+ * waiting or terminated state. Returns the reason string, or null if
+ * everything looks transient / still starting.
+ */
+async function detectTerminalFailure(
+  labelSelector: string,
+  namespace: string,
+): Promise<string | null> {
+  try {
+    const { stdout } = await execa(
+      "kubectl",
+      ["get", "pods", "-n", namespace, "-l", labelSelector, "-o", "json"],
+      { all: true },
+    );
+    const pods = (JSON.parse(stdout) as { items: unknown[] }).items as Array<{
+      status: {
+        containerStatuses?: Array<{
+          state: {
+            waiting?: { reason?: string };
+            terminated?: { reason?: string; exitCode?: number };
+          };
+        }>;
+      };
+    }>;
+    for (const pod of pods) {
+      for (const cs of pod.status.containerStatuses ?? []) {
+        const wr = cs.state.waiting?.reason;
+        if (wr && TERMINAL_WAITING_REASONS.has(wr)) return wr;
+        const tr = cs.state.terminated?.reason;
+        if (tr && tr !== "Completed") {
+          return `${tr} (exit ${cs.state.terminated?.exitCode ?? "?"})`;
+        }
+      }
+    }
+  } catch {
+    // pod may not exist yet
+  }
+  return null;
+}
+
+/**
  * Reads ready/desired replica counts directly from the workload resource.
  * Works for both Deployments and StatefulSets — both expose
  * .status.readyReplicas and .spec.replicas.
@@ -232,7 +287,29 @@ export async function waitForRollout(
       }
     });
 
-    await subprocess; // FR-010-AC-3: throws on non-zero exit
+    // Poll for terminal pod states every 5 s so we abort immediately instead
+    // of waiting for the full --timeout when pods are stuck in e.g. CrashLoopBackOff.
+    let earlyFailure: string | null = null;
+    const pollSelector = labelSelector ?? `app=${svc}`;
+    const poller = setInterval(() => {
+      void detectTerminalFailure(pollSelector, namespace).then((reason) => {
+        if (reason && !earlyFailure) {
+          earlyFailure = reason;
+          subprocess.kill();
+        }
+      });
+    }, 5000);
+
+    try {
+      await subprocess; // FR-010-AC-3: throws on non-zero exit
+    } catch (err) {
+      if (earlyFailure) {
+        throw new Error(`Rollout failed: ${earlyFailure}`);
+      }
+      throw err;
+    } finally {
+      clearInterval(poller);
+    }
   }
 
   // Emit final count once rollout is confirmed complete.
