@@ -43,7 +43,7 @@ importers:
         version: link:../../packages/local
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.2.2
+        version: 0.1.8-20260427.014617-c8d1929.f9c97ff5
       '@oclif/core':
         specifier: '>=4.10.6'
         version: 4.10.6
@@ -68,7 +68,7 @@ importers:
         version: 0.1.0
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.2.2
+        version: 0.1.8-20260427.014617-c8d1929.f9c97ff5
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.2.0
@@ -96,7 +96,7 @@ importers:
     dependencies:
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.2.2
+        version: 0.1.8-20260427.014617-c8d1929.f9c97ff5
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.2.0
@@ -131,11 +131,11 @@ packages:
   '@agent-ix/ix-cli-core@0.1.0':
     resolution: {integrity: sha512-f1A/9cCPu/2mXcpO1sUpM0citppC/V+3/gLGfJ65pl924UcYOdo6o5MGY2AYDVjUUskqdpOR2rAD8npPxWJi5w==}
 
-  '@agent-ix/ix-ui-cli@0.2.2':
-    resolution: {integrity: sha512-mxaPJA0eh8R9C+R9lb1nc7EJkuXRKB71midOkuIeubHNpkWQ1iwqrGXud/DWBpnRPCqtAQsn0Xa0f5KTadm3XA==}
+  '@agent-ix/ix-ui-cli@0.1.8-20260427.014617-c8d1929.f9c97ff5':
+    resolution: {integrity: sha512-5wY6Md7SJbJvAqriX8Yb669wSnp5F+20L3i2+yq33ajZ+nN919qStiwg8eCG/B/32U2L/2TA42A0IjrSr9QAwg==}
 
-  '@agent-ix/ix-ui-semantic@0.1.5':
-    resolution: {integrity: sha512-WVL2vVJ8O0SOzqu8Q89UWzmTtpl1akBvocWrQHlyY2wkWrsGzhmlyZvHWJeWDqWKjiudOkk9kPTnvtj4w+7HcQ==}
+  '@agent-ix/ix-ui-semantic@0.1.8-20260427.014617-c8d1929.f9c97ff5':
+    resolution: {integrity: sha512-Vk3to2sy5qQIHGPA0mUPTMLAm1dfnu482nyNe9cdlMYQ+KLp9qUKZZgfrKx3BCSXygpcC6hAy0GARugCNiEldA==}
 
   '@babel/helper-string-parser@7.27.1':
     resolution: {integrity: sha512-qMlSxKbpRlAridDExk92nSobyDdpPijUq2DW6oDnUqd0iOGxmQjyqhMIihI9+zv4LPyZdRje2cavWPbCbWm3eA==}
@@ -1590,14 +1590,14 @@ snapshots:
     dependencies:
       yaml: 2.8.3
 
-  '@agent-ix/ix-ui-cli@0.2.2':
+  '@agent-ix/ix-ui-cli@0.1.8-20260427.014617-c8d1929.f9c97ff5':
     dependencies:
-      '@agent-ix/ix-ui-semantic': 0.1.5
+      '@agent-ix/ix-ui-semantic': 0.1.8-20260427.014617-c8d1929.f9c97ff5
       '@clack/prompts': 1.2.0
       listr2: 10.2.1
       picocolors: 1.1.1
 
-  '@agent-ix/ix-ui-semantic@0.1.5': {}
+  '@agent-ix/ix-ui-semantic@0.1.8-20260427.014617-c8d1929.f9c97ff5': {}
 
   '@babel/helper-string-parser@7.27.1': {}
 
