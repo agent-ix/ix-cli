@@ -119,6 +119,21 @@ describe("NFR-001-AC-2: ix-ui-cli used for command framing", () => {
 });
 
 // ---------------------------------------------------------------------------
+// NFR-001-AC-5: no inline ANSI / no inline box-drawing connectors in src
+// ---------------------------------------------------------------------------
+describe("NFR-001-AC-5: no inline ANSI or connectors", () => {
+  it("src contains no inline ANSI escape sequences", () => {
+    const hits = grepSrc(/\\x1b\[|\\u001b\[/);
+    expect(hits).toHaveLength(0);
+  });
+
+  it("src contains no inline box-drawing connectors", () => {
+    const hits = grepSrc(/└──┐|└──•|└──/);
+    expect(hits).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // NFR-001-AC-3: PhaseTable imported from @agent-ix/ix-ui-cli (not a local file)
 // ---------------------------------------------------------------------------
 describe("NFR-001-AC-3: PhaseTable imported from @agent-ix/ix-ui-cli", () => {

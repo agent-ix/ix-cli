@@ -77,6 +77,21 @@ describe("NFR-001-AC-1: no stderr.write in src", () => {
 });
 
 // ---------------------------------------------------------------------------
+// NFR-001-AC-5: no inline ANSI / no inline box-drawing connectors in src
+// ---------------------------------------------------------------------------
+describe("NFR-001-AC-5: no inline ANSI or connectors", () => {
+  it("src contains no inline ANSI escape sequences", () => {
+    const hits = grepSrc(/\\x1b\[|\\u001b\[/);
+    expect(hits).toHaveLength(0);
+  });
+
+  it("src contains no inline box-drawing connectors", () => {
+    const hits = grepSrc(/└──┐|└──•|└──/);
+    expect(hits).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // TC-050: NFR-001-AC-2 — startListing imported from @agent-ix/ix-ui-cli
 // ---------------------------------------------------------------------------
 describe("NFR-001-AC-2: ix-ui-cli used for command framing", () => {
