@@ -39,7 +39,7 @@ import {
 import type { Phase } from "../phases.js";
 import { loadConcurrencyConfig, createPools } from "../pool.js";
 
-const ORBIT_SPINNER = ["∘⦿  ", " ⊚  ", " ⦿ ∘ ", " ⦿ ⋅", " ⦿  ", "⋅⦿  "];
+const ORBIT_SPINNER = ["∘⦿   ", " ⊚   ", " ⦿ ∘ ", " ⦿  ⋅", " ⦿   ", "⋅⦿   "];
 
 function renderOrbitFrame(frame: string): string {
   return [...frame]
