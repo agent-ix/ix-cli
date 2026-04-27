@@ -118,9 +118,9 @@ export async function diagnosePodFailure(
 }
 
 /**
- * Reads ready/desired replica counts directly from the deployment resource.
- * More reliable than `kubectl get pods -l <selector>` because it doesn't
- * depend on pod labels matching the selector used to find the deployment.
+ * Reads ready/desired replica counts directly from the workload resource.
+ * Works for both Deployments and StatefulSets — both expose
+ * .status.readyReplicas and .spec.replicas.
  */
 async function getDeploymentStatus(
   deployments: string[],
@@ -179,7 +179,7 @@ export async function waitForRollout(
           "kubectl",
           [
             "get",
-            "deployments",
+            "deployments,statefulsets",
             "-n",
             namespace,
             "-l",
@@ -197,7 +197,7 @@ export async function waitForRollout(
 
   if (deployments.length === 0) {
     throw new Error(
-      `No deployments found for selector '${labelSelector}' in namespace '${namespace}'`,
+      `No workloads (deployment/statefulset) found for selector '${labelSelector}' in namespace '${namespace}'`,
     );
   }
 

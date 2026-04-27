@@ -128,6 +128,18 @@ export const HOST_MOUNT_CATALOG: HostMountCatalogEntry[] = [
       local: { type: "hostPath", path: () => "/var/run/docker.sock" },
     },
   },
+  {
+    name: "vaultKeys",
+    containerPath: "/var/ix/vault-keys",
+    localEnvOverride: "IX_VAULT_KEYS_DIR",
+    sources: {
+      local: {
+        type: "hostPath",
+        path: () => path.join(os.homedir(), ".ix", "vault-keys"),
+        hostPathType: "DirectoryOrCreate",
+      },
+    },
+  },
 ];
 
 /** Read the active profile from env. Defaults to `local`. */
