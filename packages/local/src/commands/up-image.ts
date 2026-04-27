@@ -31,6 +31,7 @@ import {
 } from "../local-secrets.js";
 import {
   PhaseTable,
+  ORBIT_SPINNER,
   introCommand,
   outroSuccess,
   outroWarning,
@@ -38,8 +39,6 @@ import {
 } from "@agent-ix/ix-ui-cli";
 import type { Phase } from "../phases.js";
 import { loadConcurrencyConfig, createPools } from "../pool.js";
-
-const ORBIT_SPINNER = ["∘⦿   ", " ⊚   ", " ⦿ ∘ ", " ⦿  ⋅", " ⦿   ", "⋅⦿   "];
 
 function renderOrbitFrame(frame: string): string {
   return [...frame]
