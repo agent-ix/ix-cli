@@ -1,6 +1,6 @@
 import { Args, Command } from "@oclif/core";
 import { removePlugin } from "@agent-ix/ix-cli-core";
-import { introCommand, outroSuccess, outroError } from "@agent-ix/ix-ui-cli";
+import { startListing } from "@agent-ix/ix-ui-cli";
 
 export default class PluginRemove extends Command {
   static description = "Remove an installed ix CLI plugin.";
@@ -11,12 +11,13 @@ export default class PluginRemove extends Command {
 
   async run(): Promise<void> {
     const { args } = await this.parse(PluginRemove);
-    introCommand(`ix plugin remove`);
+    const list = startListing(`ix plugin remove`);
+    list.commit();
     try {
       await removePlugin(args.name);
-      outroSuccess(`Plugin ${args.name} removed.`);
+      list.success(`Plugin ${args.name} removed.`);
     } catch (err) {
-      outroError(
+      list.error(
         `Failed to remove plugin: ${err instanceof Error ? err.message : String(err)}`,
       );
       this.exit(1);
