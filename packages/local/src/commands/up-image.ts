@@ -213,7 +213,7 @@ export async function runImageModeUp(
           Math.floor(preflightFrame / HEADER_TICK_DIV) % ORBIT_SPINNER.length
         ];
       process.stdout.write(
-        `\r${colorOrbitFrame(frame)} ${renderHeader(appHeaderText)}\x1B[K`,
+        `\r${colorOrbitFrame(frame)}${renderHeader(appHeaderText)}\x1B[K`,
       );
       preflightFrame++;
     };

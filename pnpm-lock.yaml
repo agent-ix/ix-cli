@@ -43,7 +43,7 @@ importers:
         version: link:../../packages/local
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.2.0
+        version: 0.2.1
       '@oclif/core':
         specifier: '>=4.10.6'
         version: 4.10.6
@@ -68,7 +68,7 @@ importers:
         version: 0.1.0
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.2.0
+        version: 0.2.1
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.2.0
@@ -96,7 +96,7 @@ importers:
     dependencies:
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.2.0
+        version: 0.2.1
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.2.0
@@ -131,11 +131,11 @@ packages:
   '@agent-ix/ix-cli-core@0.1.0':
     resolution: {integrity: sha512-f1A/9cCPu/2mXcpO1sUpM0citppC/V+3/gLGfJ65pl924UcYOdo6o5MGY2AYDVjUUskqdpOR2rAD8npPxWJi5w==}
 
-  '@agent-ix/ix-ui-cli@0.2.0':
-    resolution: {integrity: sha512-MogizB5xKSeaUNbFKOvPzC3p7YfpCcSTk8S9e9925XsR2ATA+6/+LC9xjSCWc6jA8aN23uPMYUBkSeLnLiBtCg==}
+  '@agent-ix/ix-ui-cli@0.2.1':
+    resolution: {integrity: sha512-XqPiZqeIiX01dqSQvsFCbF6d3QQlflXLDdLARubEL1hByIyfDN3rgRPlFizYSevcN5nZ3GpCXDBfWnaNiZ12wQ==}
 
-  '@agent-ix/ix-ui-semantic@0.1.4':
-    resolution: {integrity: sha512-GTc1TLKJGD9UxKOkROHcr/os/RS4f0RsV7XUuvOGvz5jUfWMmuPOXGZLWfdVKeVL+KOKQETEeayUFqe05KAH8w==}
+  '@agent-ix/ix-ui-semantic@0.1.5':
+    resolution: {integrity: sha512-WVL2vVJ8O0SOzqu8Q89UWzmTtpl1akBvocWrQHlyY2wkWrsGzhmlyZvHWJeWDqWKjiudOkk9kPTnvtj4w+7HcQ==}
 
   '@babel/helper-string-parser@7.27.1':
     resolution: {integrity: sha512-qMlSxKbpRlAridDExk92nSobyDdpPijUq2DW6oDnUqd0iOGxmQjyqhMIihI9+zv4LPyZdRje2cavWPbCbWm3eA==}
@@ -1590,14 +1590,14 @@ snapshots:
     dependencies:
       yaml: 2.8.3
 
-  '@agent-ix/ix-ui-cli@0.2.0':
+  '@agent-ix/ix-ui-cli@0.2.1':
     dependencies:
-      '@agent-ix/ix-ui-semantic': 0.1.4
+      '@agent-ix/ix-ui-semantic': 0.1.5
       '@clack/prompts': 1.2.0
       listr2: 10.2.1
       picocolors: 1.1.1
 
-  '@agent-ix/ix-ui-semantic@0.1.4': {}
+  '@agent-ix/ix-ui-semantic@0.1.5': {}
 
   '@babel/helper-string-parser@7.27.1': {}
 
