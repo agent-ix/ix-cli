@@ -61,6 +61,28 @@ refresh-local:
 	pnpm run pkg:refresh-local
 
 # =============================================================================
+# Publish (local npm.ix)
+# =============================================================================
+# `make publish` publishes every workspace package to the local npm.ix registry
+# configured in .npmrc. Version is derived from git (tag + commit + dirty hash)
+# via scripts/build-tools.js so dev cycles don't require tag pushes. Original
+# package.json versions are restored after publish.
+
+.PHONY: publish
+publish: build
+	@VERSION=$$(node scripts/build-tools.js version | sed 's/^v//'); \
+	echo "Publishing @ $$VERSION to npm.ix"; \
+	for pkg in packages/*/package.json; do \
+	  ORIG=$$(node -p "require('./$$pkg').version"); \
+	  echo "$$pkg: $$ORIG -> $$VERSION"; \
+	  (cd $$(dirname $$pkg) && npm pkg set version=$$VERSION); \
+	done; \
+	pnpm -r --filter './packages/*' publish --no-git-checks --registry http://npm.ix/ --tag local; \
+	for pkg in packages/*/package.json; do \
+	  (cd $$(dirname $$pkg) && git checkout -- package.json); \
+	done
+
+# =============================================================================
 # Versioning & Info
 # =============================================================================
 
