@@ -5,6 +5,7 @@ import { execa } from "execa";
 import pc from "picocolors";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { IxConfig } from "../config.js";
+import { resolveNamespaceByName } from "../discovery.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
 import { applySecretContract, loadSecretContract } from "../local-secrets.js";
@@ -18,6 +19,8 @@ interface LocalInstall {
   repoDir: string;
   dependencyUpdate: boolean;
   tags: string[];
+  /** Target Kubernetes namespace, resolved via the four-tier name fallback. */
+  namespace: string;
 }
 
 interface RawDependency {
@@ -136,6 +139,7 @@ function resolveServiceInstall(name: string, devDir: string): LocalInstall {
     repoDir,
     dependencyUpdate: shouldDependencyUpdate(chartPath),
     tags: parseChartTags(chartPath),
+    namespace: resolveNamespaceByName(name),
   };
 }
 
@@ -247,7 +251,8 @@ function buildLocalHelmArgs(
     install.name,
     install.chartPath,
     "--namespace",
-    "default",
+    install.namespace,
+    "--create-namespace",
     "--take-ownership",
   ];
 
@@ -396,7 +401,7 @@ export async function runSourceModeUp(
                   "restart",
                   `deployment/${install.name}`,
                   "-n",
-                  "default",
+                  install.namespace,
                 ],
                 { all: true },
               );
@@ -408,7 +413,7 @@ export async function runSourceModeUp(
 
               await waitForRollout(
                 install.name,
-                "default",
+                install.namespace,
                 config.rolloutTimeoutSeconds,
                 task as Parameters<typeof waitForRollout>[3],
                 `app.kubernetes.io/part-of=${install.name}`,

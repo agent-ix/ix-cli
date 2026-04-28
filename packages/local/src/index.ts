@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { loadConfig } from "./config.js";
+import { resolveDeployableNamespace } from "./discovery.js";
 import { runImageModeUp } from "./commands/up-image.js";
 import { runSourceModeUp } from "./commands/up-source.js";
 import { loadRegistry, findDeployable } from "./registry.js";
@@ -250,15 +251,19 @@ export async function runDown(
 
   const config = loadConfig();
   const registry = await loadRegistryForCommand(config);
-  const releases: string[] = [];
+  const releases: { name: string; namespace: string }[] = [];
   for (const svc of services) {
     const deployable = findDeployable(registry, svc);
     if (deployable.role === "app") {
       const { defaultExpandApp } = await import("./commands/up-image.js");
       const installs = await defaultExpandApp(deployable, config);
-      for (const install of installs) releases.push(install.name);
+      for (const install of installs)
+        releases.push({ name: install.name, namespace: install.namespace });
     } else {
-      releases.push(deployable.name);
+      releases.push({
+        name: deployable.name,
+        namespace: resolveDeployableNamespace(deployable),
+      });
     }
   }
 
@@ -267,12 +272,12 @@ export async function runDown(
   );
   list.commit();
   const tasks = makeListr(
-    releases.map((name) => ({
-      title: `Uninstall ${pc.cyan(name)}`,
+    releases.map(({ name, namespace }) => ({
+      title: `Uninstall ${pc.cyan(name)} (${namespace})`,
       task: async (_ctx: unknown, task: { output: string }) => {
         const subprocess = execa(
           "helm",
-          ["uninstall", name, "--namespace", "default", "--ignore-not-found"],
+          ["uninstall", name, "--namespace", namespace, "--ignore-not-found"],
           { all: true },
         );
         subprocess.all?.on("data", (chunk) => {
@@ -285,7 +290,7 @@ export async function runDown(
     { concurrent: false },
   );
   await tasks.run();
-  list.success(`Uninstalled: ${releases.join(", ")}`);
+  list.success(`Uninstalled: ${releases.map((r) => r.name).join(", ")}`);
 }
 
 export async function runRefresh(

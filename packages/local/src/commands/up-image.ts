@@ -19,6 +19,7 @@ import pc from "picocolors";
 import { parse as parseYaml } from "yaml";
 import type { IxConfig } from "../config.js";
 import type { Deployable } from "../discovery.js";
+import { resolveDeployableNamespace } from "../discovery.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
 import { waitForRollout, diagnosePodFailure } from "../rollout.js";
@@ -57,6 +58,13 @@ export interface ChildInstall {
   chartRef: string;
   /** Chart version to pull */
   chartVersion: string;
+  /**
+   * Target Kubernetes namespace. Resolved by the caller from the parent
+   * Deployable's namespace (`resolveDeployableNamespace`). Children inherit
+   * the parent's namespace; per-child namespaces require chart-side support
+   * via `org.agent-ix.namespace` on the child chart.
+   */
+  namespace: string;
 }
 
 export interface UpImageOptions {
@@ -79,7 +87,10 @@ interface ChartShow {
  * URL pointing at the chart's OCI namespace (the chart name is appended
  * by the caller to form the full chartRef).
  */
-export function parseChartDependencies(chartYaml: string): ChildInstall[] {
+export function parseChartDependencies(
+  chartYaml: string,
+  namespace: string,
+): ChildInstall[] {
   const parsed = parseYaml(chartYaml) as ChartShow | null;
   const deps = parsed?.dependencies ?? [];
   return deps
@@ -93,6 +104,7 @@ export function parseChartDependencies(chartYaml: string): ChildInstall[] {
       name: d.name,
       chartVersion: d.version,
       chartRef: `${d.repository.replace(/\/$/, "")}/${d.name}`,
+      namespace,
     }));
 }
 
@@ -113,7 +125,7 @@ export const defaultExpandApp: AppExpander = async (deployable, config) => {
     "--version",
     deployable.version,
   ]);
-  return parseChartDependencies(stdout);
+  return parseChartDependencies(stdout, resolveDeployableNamespace(deployable));
 };
 
 function buildHelmInstallArgs(
@@ -129,7 +141,8 @@ function buildHelmInstallArgs(
     "--version",
     install.chartVersion,
     "--namespace",
-    "default",
+    install.namespace,
+    "--create-namespace",
     "--take-ownership",
     "--set-string",
     `global.imageRegistry=${config.imageRegistry}`,
@@ -154,6 +167,7 @@ function buildHelmInstallArgs(
 function buildHelmLocalInstallArgs(
   name: string,
   tgzPath: string,
+  namespace: string,
   config: IxConfig,
   imageTagOverride: string | null,
 ): string[] {
@@ -163,7 +177,8 @@ function buildHelmLocalInstallArgs(
     name,
     tgzPath,
     "--namespace",
-    "default",
+    namespace,
+    "--create-namespace",
     "--take-ownership",
     "--set-string",
     `global.imageRegistry=${config.imageRegistry}`,
@@ -216,6 +231,7 @@ export async function runImageModeUp(
         name: deployable.name,
         chartRef: `oci://${config.helmChartRegistry}/${deployable.chartRepository}/${deployable.name}`,
         chartVersion: deployable.version,
+        namespace: resolveDeployableNamespace(deployable),
       },
     ];
     serviceList = startListing(headerText);
@@ -362,6 +378,7 @@ export async function runImageModeUp(
             const args = buildHelmLocalInstallArgs(
               install.name,
               tgzPath,
+              install.namespace,
               config,
               tagOverride,
             );
@@ -379,7 +396,7 @@ export async function runImageModeUp(
             } as unknown as ListrTaskWrapper<unknown, never, never>;
             await waitForRollout(
               install.name,
-              "default",
+              install.namespace,
               config.rolloutTimeoutSeconds,
               rolloutSink,
               `app.kubernetes.io/part-of=${install.name}`,
@@ -406,7 +423,7 @@ export async function runImageModeUp(
           if (currentPhase === "ready") {
             const diagnosis = await diagnosePodFailure(
               `app.kubernetes.io/part-of=${install.name}`,
-              "default",
+              install.namespace,
             );
             if (diagnosis) displayMsg = `${currentPhase}: ${diagnosis}`;
           }
@@ -488,7 +505,7 @@ async function runSingleServiceListr(
             await subprocess;
             await waitForRollout(
               install.name,
-              "default",
+              install.namespace,
               config.rolloutTimeoutSeconds,
               task as Parameters<typeof waitForRollout>[3],
               `app.kubernetes.io/part-of=${install.name}`,
