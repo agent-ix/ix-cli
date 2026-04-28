@@ -27,6 +27,37 @@ export interface Deployable {
   source: string | null;
   /** FR-007-AC-4: org.agent-ix.entry — name of the primary user-facing dependency (app charts only) */
   entry: string | null;
+  /**
+   * Target Kubernetes namespace, declared via OCI annotation `org.agent-ix.namespace`
+   * on the chart. When unset, callers SHALL resolve via {@link resolveDeployableNamespace}
+   * which applies a name-based fallback map, then defaults to `apps`.
+   *
+   * Optional so cached `registry.json` entries written before this field existed
+   * still deserialize cleanly.
+   */
+  namespace?: string | null;
+}
+
+import { IX_NAMESPACE_BY_CHART, IX_APPS_NAMESPACE } from "./config.js";
+
+/**
+ * Resolve the deploy namespace for a Deployable.
+ *
+ * Precedence: chart-declared annotation → name-based fallback → `apps` default.
+ * See `ix-cli/spec/functional/local/auth.md` for the four-tier contract.
+ */
+export function resolveDeployableNamespace(d: Deployable): string {
+  if (d.namespace) return d.namespace;
+  return IX_NAMESPACE_BY_CHART[d.name] ?? IX_APPS_NAMESPACE;
+}
+
+/**
+ * Resolve the deploy namespace by chart name only — used by source-mode where
+ * we don't have an OCI manifest's annotations available. Falls back to the
+ * same name table, then `apps`.
+ */
+export function resolveNamespaceByName(name: string): string {
+  return IX_NAMESPACE_BY_CHART[name] ?? IX_APPS_NAMESPACE;
 }
 
 export function parseDeployableTags(raw: string | null | undefined): string[] {
@@ -209,6 +240,7 @@ function manifestToDeployable(
     tags: parseDeployableTags(ann["org.agent-ix.tags"]),
     source: ann["org.opencontainers.image.source"] ?? null,
     entry: role === "app" ? (ann["org.agent-ix.entry"] ?? null) : null,
+    namespace: ann["org.agent-ix.namespace"] ?? null,
   };
 }
 
