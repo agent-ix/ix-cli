@@ -72,13 +72,13 @@ refresh-local:
 publish: build
 	@VERSION=$$(node scripts/build-tools.js version | sed 's/^v//'); \
 	echo "Publishing @ $$VERSION to npm.ix"; \
-	for pkg in packages/*/package.json; do \
+	for pkg in packages/*/package.json apps/*/package.json; do \
 	  ORIG=$$(node -p "require('./$$pkg').version"); \
 	  echo "$$pkg: $$ORIG -> $$VERSION"; \
 	  (cd $$(dirname $$pkg) && npm pkg set version=$$VERSION); \
 	done; \
-	pnpm -r --filter './packages/*' publish --no-git-checks --registry http://npm.ix/ --tag local; \
-	for pkg in packages/*/package.json; do \
+	pnpm -r --filter './packages/*' --filter './apps/*' publish --no-git-checks --registry http://npm.ix/ --tag local; \
+	for pkg in packages/*/package.json apps/*/package.json; do \
 	  (cd $$(dirname $$pkg) && git checkout -- package.json); \
 	done
 
