@@ -1,180 +1,131 @@
 /**
- * FR-016 — auth reset-admin Command
- * Re-seeds a one-time temporary credential for the existing admin user.
- * Calls identity POST /internal/users/reset and writes the admin-bootstrap
- * Secret via the shared write path (FR-019, FR-016-CON-1).
+ * FR-016 — `ix local auth reset-admin`
+ *
+ * Re-seeds a fresh single-use credential for the existing admin user by
+ * invoking identity's in-pod CLI via `kubectl exec`. Result is written to the
+ * `system/admin-bootstrap` Secret (FR-019).
+ *
+ * Per auth/ADR-004 + auth/FR-008-CON-1, this command SHALL NOT reach identity
+ * via any HTTP / HTTPS / API server proxy / port / network endpoint. The only
+ * acceptable mechanism is `kubectl exec` against the identity pod (identity
+ * FR-029, FR-020 §2.3). Verified by static analysis (TC-080, TC-086).
  */
 
 import type { IxConfig } from "../config.js";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
-import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
+import {
+  kubectlExecJson,
+  KubectlExecError,
+  IX_SYSTEM_NAMESPACE,
+  IX_AUTH_NAMESPACE,
+} from "./auth-identity.js";
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
-type ResolveFn = typeof resolveIdentityUrl;
-type FetchFn = typeof fetchJson;
+type ExecFn = typeof kubectlExecJson;
 export interface IdentityDeps {
-  resolveIdentityUrl?: ResolveFn;
-  fetchJson?: FetchFn;
-}
-
-interface IdentityUser {
-  id: string;
-  email: string;
-  role: string;
-  status: string;
+  kubectlExecJson?: ExecFn;
 }
 
 interface ResetResponse {
   user_id: string;
-  email: string;
-  reset_url: string;
+  password: string;
   expires_at: string;
-  // The reset URL embeds the token; we extract it as the "password" field.
-  password?: string;
+  login_url: string;
 }
 
-async function listAdminUsers(
-  baseUrl: string,
-  _fetch: FetchFn,
-): Promise<IdentityUser[]> {
-  const { status, body } = await _fetch<IdentityUser[] | { detail: string }>(
-    `${baseUrl}/internal/users?role=admin&status=active`,
-  );
-  if (status !== 200) {
-    throw new Error(
-      `Failed to list admin users (HTTP ${status}): ${JSON.stringify(body)}`,
-    );
+const IDENTITY_DEPLOYMENT = "identity";
+
+function buildResetArgv(opts: { user?: string }): string[] {
+  const argv = [
+    "python",
+    "-m",
+    "identity.cli",
+    "reset-admin",
+    "--output",
+    "json",
+  ];
+  if (opts.user) {
+    // identity FR-020 §2.3: --email / --username selector for ambiguous case.
+    argv.push("--email", opts.user);
   }
-  return body as IdentityUser[];
+  return argv;
 }
 
-async function resetUser(
-  baseUrl: string,
-  email: string,
-  ttlHours: number,
-  _fetch: FetchFn,
-): Promise<ResetResponse> {
-  const { status, body } = await _fetch<ResetResponse | { detail: string }>(
-    `${baseUrl}/internal/users/reset`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email_or_username: email, ttl_hours: ttlHours }),
-    },
-  );
+interface AmbiguousAdminEnvelope {
+  error: string;
+  detail?: string;
+  candidates?: string[];
+}
 
-  if (status === 404) {
-    throw new Error(`user not found: ${email}`);
+function diagnoseExecError(err: KubectlExecError): string {
+  // identity FR-029 §5: stable exit code contract.
+  const stderr = err.stderr.trim();
+  if (err.exitCode === 4) {
+    return "No admin user exists. Run `ix local init` to bootstrap one.";
   }
-  if (status === 503) {
-    throw new Error("identity service unavailable (503)");
+  if (err.exitCode === 5) {
+    // Try to surface the candidate list from the structured error envelope.
+    try {
+      const env = JSON.parse(stderr) as AmbiguousAdminEnvelope;
+      const list = (env.candidates ?? []).map((c) => `  • ${c}`).join("\n");
+      return `Multiple active admins. Use \`ix local auth reset-admin --user <email>\` to disambiguate:\n${list}`;
+    } catch {
+      return `Multiple active admins; pass --user <email>. Identity output: ${stderr}`;
+    }
   }
-  if (status !== 201 && status !== 200) {
-    throw new Error(`Reset failed (HTTP ${status}): ${JSON.stringify(body)}`);
+  if (err.exitCode === 3) {
+    return `identity database unreachable: ${stderr || err.message}`;
   }
-  return body as ResetResponse;
+  return `identity reset-admin failed (exit ${err.exitCode}): ${stderr || err.message}`;
 }
 
 export async function runAuthResetAdmin(
-  config: IxConfig,
-  opts: { user?: string; ttl?: number },
+  _config: IxConfig,
+  opts: { user?: string },
   deps?: IdentityDeps,
 ): Promise<void> {
-  const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
-  const _fetch = deps?.fetchJson ?? fetchJson;
+  const _exec = deps?.kubectlExecJson ?? kubectlExecJson;
+  const argv = buildResetArgv(opts);
 
   const list = startListing("ix local auth reset-admin");
   list.commit();
 
-  let adminEmail = opts.user;
   let resetResp: ResetResponse | null = null;
-  let identityBaseUrl = "";
-  let cleanup: () => void = () => {};
 
   const tasks = makeListr(
     [
       {
-        title: "Connecting to identity service",
-        task: async (ctx, task) => {
+        title:
+          "Resetting admin password (kubectl exec → identity.cli reset-admin)",
+        task: async (_ctx, task) => {
+          task.output = `kubectl exec -n ${IX_AUTH_NAMESPACE} deployment/${IDENTITY_DEPLOYMENT} -- ${argv.join(" ")}`;
           try {
-            const resolved = await _resolve(18920);
-            identityBaseUrl = resolved.baseUrl;
-            cleanup = resolved.cleanup;
-            task.output = `Connected at ${identityBaseUrl}`;
-          } catch (err) {
-            throw new Error(
-              `identity service not found in namespace ix-system: ${err instanceof Error ? err.message : String(err)}`,
+            resetResp = await _exec<ResetResponse>(
+              IX_AUTH_NAMESPACE,
+              IDENTITY_DEPLOYMENT,
+              argv,
             );
-          }
-        },
-      },
-
-      {
-        title: "Discovering admin user",
-        task: async (ctx, task) => {
-          let admins: IdentityUser[];
-          try {
-            admins = await listAdminUsers(identityBaseUrl, _fetch);
           } catch (err) {
-            throw new Error(
-              `identity service not found in namespace ix-system: ${err instanceof Error ? err.message : String(err)}`,
-            );
-          }
-
-          if (admins.length === 0) {
-            throw new Error("no admin to reset; run `ix local init`");
-          }
-
-          if (adminEmail) {
-            const match = admins.find((u) => u.email === adminEmail);
-            if (!match) {
-              throw new Error(
-                `No active admin user with email '${adminEmail}'. Active admins: ${admins.map((u) => u.email).join(", ")}`,
-              );
+            if (err instanceof KubectlExecError) {
+              throw new Error(diagnoseExecError(err));
             }
-            task.output = `Using admin: ${adminEmail}`;
-          } else if (admins.length === 1) {
-            adminEmail = admins[0].email;
-            task.output = `Found admin: ${adminEmail}`;
-          } else {
-            // FR-016-AC-5: multiple admins, no --user flag
-            const adminList = admins.map((u) => `  • ${u.email}`).join("\n");
-            throw new Error(
-              `Multiple active admins found. Use --user <email> to select one:\n${adminList}`,
-            );
+            throw err;
           }
+          task.output = "Reset credential obtained";
         },
       },
 
       {
-        title: "Resetting admin password",
-        task: async (ctx, task) => {
-          const ttlHours = opts.ttl ?? 1;
-          task.output = `Calling identity reset for ${adminEmail}...`;
-          resetResp = await resetUser(
-            identityBaseUrl,
-            adminEmail!,
-            ttlHours,
-            _fetch,
-          );
-          task.output = "Reset token obtained";
-        },
-      },
-
-      {
-        title: "Writing admin-bootstrap Secret",
-        task: async (ctx, task) => {
+        title: `Writing admin-bootstrap Secret to ${IX_SYSTEM_NAMESPACE}`,
+        task: async (_ctx, task) => {
           if (!resetResp) throw new Error("No reset response available");
-          // The reset URL contains the token; treat it as both token and URL.
-          // If identity returns a separate password field, prefer that.
-          const password = resetResp.password ?? resetResp.reset_url;
           await writeAdminBootstrapSecret({
-            password,
+            password: resetResp.password,
             expiresAt: resetResp.expires_at,
             userId: resetResp.user_id,
-            loginUrl: resetResp.reset_url,
+            loginUrl: resetResp.login_url,
           });
-          task.output = "Secret ix-system/admin-bootstrap written";
+          task.output = `Secret ${IX_SYSTEM_NAMESPACE}/admin-bootstrap written`;
         },
       },
     ],
@@ -183,22 +134,18 @@ export async function runAuthResetAdmin(
 
   try {
     await tasks.run();
-    cleanup();
-
     if (!resetResp) throw new Error("No reset response");
-    const password =
-      (resetResp as ResetResponse).password ??
-      (resetResp as ResetResponse).reset_url;
+    const resp = resetResp as ResetResponse;
 
-    // FR-016-B5: print to stdout (never to a log)
-    list.note(`User:          ${adminEmail}`);
+    // FR-016-B5: print to stdout once — never to a log.
+    list.note(`User id:       ${resp.user_id}`);
+    list.note(`Temp password: ${resp.password}   (expires ${resp.expires_at})`);
+    list.note(`Log in at:     ${resp.login_url}`);
     list.note(
-      `Temp password: ${password}   (expires ${(resetResp as ResetResponse).expires_at})`,
+      `Retrievable via: kubectl -n ${IX_SYSTEM_NAMESPACE} get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
     );
-    list.note(`Log in at:     ${(resetResp as ResetResponse).reset_url}`);
     list.success("Admin password reset.");
   } catch (err) {
-    cleanup();
     list.error(
       `auth reset-admin failed: ${err instanceof Error ? err.message : String(err)}`,
     );

@@ -1,31 +1,37 @@
 /**
- * FR-015 — ix-local init: Admin Bootstrap
- * Seeds the initial admin account by calling identity POST /internal/admin/seed
- * and persists the returned temp credential in the ix-system/admin-bootstrap
- * Secret (FR-019).
+ * FR-015 — `ix local init`: Admin Bootstrap
  *
- * NFR-005: calls identity via port-forward (mode 2) or in-cluster DNS (mode 1),
- * never via public Ingress.
- * NFR-004: temp password is written to stdout once and stored only in the K8s
- * Secret — never in files, env vars, or logs.
+ * Bootstraps the initial admin account by invoking identity's in-pod CLI via
+ * `kubectl exec`, then writes the captured credential to the
+ * `system/admin-bootstrap` Secret (FR-019).
+ *
+ * Per auth/ADR-004 + auth/FR-008-CON-1, this command SHALL NOT reach identity
+ * via any HTTP / HTTPS / API server proxy / port / network endpoint. The only
+ * acceptable mechanism is `kubectl exec` against the identity pod (identity
+ * FR-029, FR-017). Verified by static analysis (TC-080, TC-086).
+ *
+ * NFR-004 (auth): the temp password is printed to stdout once and stored only
+ * in the K8s Secret — never in files, env vars, or logs.
  */
 
 import { execa } from "execa";
 import type { IxConfig } from "../config.js";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
-import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
+import {
+  kubectlExecJson,
+  KubectlExecError,
+  IX_SYSTEM_NAMESPACE,
+  IX_AUTH_NAMESPACE,
+} from "./auth-identity.js";
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
-type ResolveFn = typeof resolveIdentityUrl;
-type FetchFn = typeof fetchJson;
+type ExecFn = typeof kubectlExecJson;
 export interface IdentityDeps {
-  resolveIdentityUrl?: ResolveFn;
-  fetchJson?: FetchFn;
+  kubectlExecJson?: ExecFn;
 }
 
 interface SeedResponse {
   user_id: string;
-  email: string;
   password: string;
   expires_at: string;
   login_url: string;
@@ -38,8 +44,18 @@ interface SecretData {
   };
 }
 
+const IDENTITY_DEPLOYMENT = "identity";
+const IDENTITY_CLI_INIT = [
+  "python",
+  "-m",
+  "identity.cli",
+  "init-admin",
+  "--output",
+  "json",
+];
+
 /**
- * Check whether the admin-bootstrap Secret already exists.
+ * Check whether the admin-bootstrap Secret already exists in `system`.
  * Returns the decoded data if found, or null if absent.
  */
 async function getExistingBootstrapSecret(): Promise<{
@@ -51,7 +67,7 @@ async function getExistingBootstrapSecret(): Promise<{
       "get",
       "secret/admin-bootstrap",
       "-n",
-      "ix-system",
+      IX_SYSTEM_NAMESPACE,
       "-o",
       "json",
       "--ignore-not-found",
@@ -71,18 +87,30 @@ async function getExistingBootstrapSecret(): Promise<{
   }
 }
 
+function diagnoseExecError(err: KubectlExecError): string {
+  // identity FR-029 §5: stable exit code contract.
+  if (err.exitCode === 2) {
+    // admin_exists
+    return "An admin already exists. To recover a lost password use: ix local auth reset-admin";
+  }
+  if (err.exitCode === 3) {
+    return `identity database unreachable: ${err.stderr.trim() || err.message}`;
+  }
+  // Generic surface — bubble up the in-pod CLI's error envelope verbatim so the
+  // operator can see what happened.
+  const detail = err.stderr.trim() || err.message;
+  return `identity init-admin failed (exit ${err.exitCode}): ${detail}`;
+}
+
 export async function runAuthInit(
   _config: IxConfig,
   deps?: IdentityDeps,
 ): Promise<void> {
-  const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
-  const _fetch = deps?.fetchJson ?? fetchJson;
+  const _exec = deps?.kubectlExecJson ?? kubectlExecJson;
 
   const list = startListing("ix local auth init");
   list.commit();
 
-  let identityBaseUrl = "";
-  let cleanup: () => void = () => {};
   let seedResp: SeedResponse | null = null;
   let alreadyBootstrapped: { expiresAt: string; loginUrl: string } | null =
     null;
@@ -90,24 +118,8 @@ export async function runAuthInit(
   const tasks = makeListr(
     [
       {
-        title: "Connecting to identity service",
-        task: async (ctx, task) => {
-          try {
-            const resolved = await _resolve(18923);
-            identityBaseUrl = resolved.baseUrl;
-            cleanup = resolved.cleanup;
-            task.output = `Connected at ${identityBaseUrl}`;
-          } catch (err) {
-            throw new Error(
-              `identity service not found in namespace ix-system: ${err instanceof Error ? err.message : String(err)}`,
-            );
-          }
-        },
-      },
-
-      {
         title: "Checking for existing admin bootstrap Secret",
-        task: async (ctx, task) => {
+        task: async (_ctx, task) => {
           const existing = await getExistingBootstrapSecret();
           if (existing) {
             // FR-015-AC-2: idempotent re-run before first rotation — record and skip remainder
@@ -120,43 +132,30 @@ export async function runAuthInit(
       },
 
       {
-        title: "Seeding admin account",
+        title: "Seeding admin account (kubectl exec → identity.cli init-admin)",
         skip: () => alreadyBootstrapped !== null,
-        task: async (ctx, task) => {
-          task.output = "Calling identity /internal/admin/seed...";
-
-          const { status, body } = await _fetch<
-            SeedResponse | { detail?: string; code?: string }
-          >(`${identityBaseUrl}/internal/admin/seed`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({}),
-          });
-
-          if (status === 409) {
-            const errBody = body as { code?: string };
-            if (errBody.code === "admin_exists" || status === 409) {
-              throw new Error(
-                "An admin already exists. To recover a lost password use: ix local admin-reset",
-              );
-            }
-          }
-
-          if (status !== 201 && status !== 200) {
-            throw new Error(
-              `Admin seed failed (HTTP ${status}): ${JSON.stringify(body)}`,
+        task: async (_ctx, task) => {
+          task.output = `kubectl exec -n ${IX_AUTH_NAMESPACE} deployment/${IDENTITY_DEPLOYMENT} -- ${IDENTITY_CLI_INIT.join(" ")}`;
+          try {
+            seedResp = await _exec<SeedResponse>(
+              IX_AUTH_NAMESPACE,
+              IDENTITY_DEPLOYMENT,
+              IDENTITY_CLI_INIT,
             );
+          } catch (err) {
+            if (err instanceof KubectlExecError) {
+              throw new Error(diagnoseExecError(err));
+            }
+            throw err;
           }
-
-          seedResp = body as SeedResponse;
           task.output = "Admin account created";
         },
       },
 
       {
-        title: "Writing admin-bootstrap Secret",
+        title: `Writing admin-bootstrap Secret to ${IX_SYSTEM_NAMESPACE}`,
         skip: () => alreadyBootstrapped !== null,
-        task: async (ctx, task) => {
+        task: async (_ctx, task) => {
           if (!seedResp) throw new Error("No seed response available");
           await writeAdminBootstrapSecret({
             password: seedResp.password,
@@ -164,7 +163,7 @@ export async function runAuthInit(
             userId: seedResp.user_id,
             loginUrl: seedResp.login_url,
           });
-          task.output = "Secret ix-system/admin-bootstrap written";
+          task.output = `Secret ${IX_SYSTEM_NAMESPACE}/admin-bootstrap written`;
         },
       },
     ],
@@ -173,11 +172,9 @@ export async function runAuthInit(
 
   try {
     await tasks.run();
-    cleanup();
 
     // FR-015-AC-2: idempotent re-run — secret already exists
     if (alreadyBootstrapped) {
-      // TS 5.4+ loses narrowing for let-vars mutated in async closures; cast is safe here
       const bootstrapped = alreadyBootstrapped as {
         expiresAt: string;
         loginUrl: string;
@@ -185,7 +182,7 @@ export async function runAuthInit(
       list.note(`Expires at: ${bootstrapped.expiresAt}`);
       list.note(`Log in at:  ${bootstrapped.loginUrl}`);
       list.note(
-        `Retrievable via: kubectl -n ix-system get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
+        `Retrievable via: kubectl -n ${IX_SYSTEM_NAMESPACE} get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
       );
       list.success("Admin account already bootstrapped.");
       process.exit(0);
@@ -196,17 +193,16 @@ export async function runAuthInit(
     const resp = seedResp as SeedResponse;
 
     // FR-015-B6: print to stdout once — never to a log (NFR-004-AC-2)
-    list.note(`Username:      admin`);
+    list.note("Username:      admin");
     list.note(
       `Temp password: ${resp.password}     (expires ${resp.expires_at})`,
     );
     list.note(`Log in at:     ${resp.login_url}`);
     list.note(
-      `Retrievable via: kubectl -n ix-system get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
+      `Retrievable via: kubectl -n ${IX_SYSTEM_NAMESPACE} get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
     );
     list.success("Admin account created.");
   } catch (err) {
-    cleanup();
     list.error(
       `init failed: ${err instanceof Error ? err.message : String(err)}`,
     );
