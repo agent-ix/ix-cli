@@ -1,4 +1,4 @@
-import { makeListr } from "@agent-ix/ix-ui-cli";
+import { makeListr, startListing } from "@agent-ix/ix-ui-cli";
 import { execa } from "execa";
 import pc from "picocolors";
 import fs from "node:fs";
@@ -9,7 +9,6 @@ import { runImageModeUp } from "./commands/up-image.js";
 import { runSourceModeUp } from "./commands/up-source.js";
 import { loadRegistry, findDeployable } from "./registry.js";
 import { resolveGhcrToken } from "./credentials.js";
-import { startListing } from "@agent-ix/ix-ui-cli";
 
 // Re-export everything needed by apps/ix command files.
 export {
@@ -310,5 +309,10 @@ export async function runRefresh(
 
 async function loadRegistryForCommand(config: import("./config.js").IxConfig) {
   const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
-  return loadRegistry({ org: config.org, githubToken: token });
+  const list = startListing(`ix local · resolving registry · ${config.org}`);
+  try {
+    return await loadRegistry({ org: config.org, githubToken: token });
+  } finally {
+    list.stop();
+  }
 }
