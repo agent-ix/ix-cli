@@ -6,6 +6,7 @@
  */
 
 import { execa } from "execa";
+import { IX_SYSTEM_NAMESPACE } from "./auth-identity.js";
 
 export interface AdminBootstrapPayload {
   password: string;
@@ -27,7 +28,7 @@ function buildAdminBootstrapManifest(payload: AdminBootstrapPayload): string {
     "kind: Secret",
     "metadata:",
     "  name: admin-bootstrap",
-    "  namespace: ix-system",
+    `  namespace: ${IX_SYSTEM_NAMESPACE}`,
     "  labels:",
     '    app.kubernetes.io/managed-by: "ix-local-cli"',
     '    ix/purpose: "admin-bootstrap"',

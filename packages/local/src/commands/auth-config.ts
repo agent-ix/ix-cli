@@ -7,6 +7,7 @@
 
 import { execa } from "execa";
 import type { IxConfig } from "../config.js";
+import { IX_AUTH_NAMESPACE } from "./auth-identity.js";
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
 // ---------------------------------------------------------------------------
@@ -24,13 +25,15 @@ async function ensureIdentityDeploymentExists(): Promise<void> {
       "get",
       "deployment/identity",
       "-n",
-      "ix-system",
+      IX_AUTH_NAMESPACE,
       "--ignore-not-found=false",
       "-o",
       "name",
     ]);
   } catch {
-    throw new Error("identity service not found in namespace ix-system");
+    throw new Error(
+      `identity service not found in namespace ${IX_AUTH_NAMESPACE}`,
+    );
   }
 }
 
@@ -38,7 +41,14 @@ async function getConfigMap(): Promise<Record<string, string>> {
   try {
     const cm = await kubectlGetJson<{
       data?: Record<string, string>;
-    }>(["get", "configmap/identity-config", "-n", "ix-system", "-o", "json"]);
+    }>([
+      "get",
+      "configmap/identity-config",
+      "-n",
+      IX_AUTH_NAMESPACE,
+      "-o",
+      "json",
+    ]);
     return cm.data ?? {};
   } catch {
     return {};
@@ -49,7 +59,14 @@ async function getSecretData(): Promise<Record<string, string>> {
   try {
     const secret = await kubectlGetJson<{
       data?: Record<string, string>;
-    }>(["get", "secret/identity-secrets", "-n", "ix-system", "-o", "json"]);
+    }>([
+      "get",
+      "secret/identity-secrets",
+      "-n",
+      IX_AUTH_NAMESPACE,
+      "-o",
+      "json",
+    ]);
     // Decode base64 values
     const raw = secret.data ?? {};
     const decoded: Record<string, string> = {};
@@ -71,7 +88,7 @@ function buildConfigMapManifest(data: Record<string, string>): string {
     "kind: ConfigMap",
     "metadata:",
     "  name: identity-config",
-    "  namespace: ix-system",
+    `  namespace: ${IX_AUTH_NAMESPACE}`,
     "data:",
     dataLines,
     "",
@@ -87,7 +104,7 @@ function buildSecretManifest(data: Record<string, string>): string {
     "kind: Secret",
     "metadata:",
     "  name: identity-secrets",
-    "  namespace: ix-system",
+    `  namespace: ${IX_AUTH_NAMESPACE}`,
     "type: Opaque",
     "data:",
     dataLines,
@@ -117,14 +134,14 @@ async function rolloutIdentity(timeoutSeconds: number): Promise<void> {
     "restart",
     "deployment/identity",
     "-n",
-    "ix-system",
+    IX_AUTH_NAMESPACE,
   ]);
   await execa("kubectl", [
     "rollout",
     "status",
     "deployment/identity",
     "-n",
-    "ix-system",
+    IX_AUTH_NAMESPACE,
     `--timeout=${timeoutSeconds}s`,
   ]);
 }
@@ -300,7 +317,7 @@ export async function runAuthConfigEmailTest(
           await execa("kubectl", [
             "exec",
             "-n",
-            "ix-system",
+            IX_AUTH_NAMESPACE,
             "deployment/identity",
             "--",
             "python",
