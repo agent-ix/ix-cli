@@ -8,6 +8,12 @@
 import fs from "node:fs";
 import { execa } from "execa";
 import type { IxConfig } from "../config.js";
+import {
+  IX_APPS_NAMESPACE,
+  IX_AUTH_NAMESPACE,
+  IX_PLATFORM_NAMESPACE,
+  IX_SYSTEM_NAMESPACE,
+} from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { PhaseTable } from "@agent-ix/ix-ui-cli";
 import {
@@ -93,6 +99,88 @@ function buildKindConfig(
     "",
   ].join("\n");
 }
+
+/**
+ * NFR-003 — four-tier namespace contract + identity → admin-bootstrap RBAC.
+ *
+ * Creates the four namespaces (system / auth / platform / apps) and grants
+ * the identity ServiceAccount (in `auth`) a narrow `delete`-only
+ * Role + RoleBinding scoped to `secrets/admin-bootstrap` in `system`. This
+ * is what makes identity FR-019-AC-4 / FR-019-CON-3 work in production:
+ * without it, identity's best-effort delete on rotation gets HTTP 403 from
+ * the API server.
+ *
+ * The Role is intentionally `delete`-only — no `get`/`list`/`watch`/`create`/
+ * `update`. A compromised auth-namespace pod still cannot read or modify
+ * the bootstrap Secret; it can only delete the one named entry.
+ */
+const NAMESPACE_AND_RBAC_YAML = `
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${IX_SYSTEM_NAMESPACE}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${IX_AUTH_NAMESPACE}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${IX_PLATFORM_NAMESPACE}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${IX_APPS_NAMESPACE}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: identity
+  namespace: ${IX_AUTH_NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: identity-delete-admin-bootstrap
+  namespace: ${IX_SYSTEM_NAMESPACE}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["admin-bootstrap"]
+    verbs: ["delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: identity-delete-admin-bootstrap
+  namespace: ${IX_SYSTEM_NAMESPACE}
+subjects:
+  - kind: ServiceAccount
+    name: identity
+    namespace: ${IX_AUTH_NAMESPACE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: identity-delete-admin-bootstrap
+---
+# NFR-003-CON-4 / NetworkPolicy table: deny all pod ingress to the system
+# namespace as belt-and-suspenders. The system namespace is operator-only;
+# no pods are deployed here. If anything ever lands in system by accident,
+# it cannot be reached from in-cluster traffic.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: system-deny-all-ingress
+  namespace: ${IX_SYSTEM_NAMESPACE}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress: []
+`;
 
 const CERT_MANAGER_URL = (version: string) =>
   `https://github.com/jetstack/cert-manager/releases/download/${version}/cert-manager.yaml`;
@@ -184,6 +272,7 @@ const INIT_STEPS = [
   "wildcard cert",
   "ingress tls",
   "wait cert",
+  "namespaces + rbac",
   "ghcr secret",
   "npm secret",
   "dns config",
@@ -445,6 +534,15 @@ export async function runInitCluster(
         `Certificate(s) did not become Ready within ${config.certWaitTimeoutSeconds}s: ${missing}. ` +
           `Run: kubectl describe certificate -A`,
       );
+    });
+
+    // Step 5b: NFR-003 namespace contract + identity Secret-deletion RBAC
+    // (FR-019-AC-4 / FR-019-CON-3).
+    await run("namespaces + rbac", async () => {
+      await execa("kubectl", ["apply", "-f", "-"], {
+        input: NAMESPACE_AND_RBAC_YAML,
+        all: true,
+      });
     });
 
     // Step 6: create ghcr-creds imagePullSecret
