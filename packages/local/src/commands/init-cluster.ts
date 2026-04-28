@@ -4,10 +4,16 @@
  * GHCR credentials, DNS instructions. Idempotent (FR-007-AC-1).
  */
 
+import fs from "node:fs";
 import { execa } from "execa";
 import type { IxConfig } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { PhaseTable } from "@agent-ix/ix-ui-cli";
+import {
+  resolveCatalog,
+  HOST_MOUNT_CATALOG,
+  type ResolvedHostMount,
+} from "../host-mounts.js";
 
 /**
  * C2: Build a kubernetes.io/dockerconfigjson Secret manifest containing the
@@ -29,11 +35,60 @@ function buildGhcrSecretManifest(token: string): string {
     "apiVersion: v1",
     "kind: Secret",
     "metadata:",
-    "  name: ghcr-credentials",
+    "  name: ghcr-creds",
     "  namespace: default",
     "type: kubernetes.io/dockerconfigjson",
     "data:",
     `  .dockerconfigjson: ${encoded}`,
+    "",
+  ].join("\n");
+}
+
+function buildKindConfig(
+  clusterName: string,
+  mounts: ResolvedHostMount[],
+): string {
+  const mountLines = mounts
+    .filter((m) => m.source.type === "hostPath")
+    .flatMap((m) => {
+      const src = m.source as {
+        type: "hostPath";
+        path: string;
+        hostPathType?: string;
+      };
+      // kind extraMounts don't support hostPathType — pre-create DirectoryOrCreate paths
+      if (src.hostPathType === "DirectoryOrCreate") {
+        fs.mkdirSync(src.path, { recursive: true });
+      }
+      return [
+        `      - hostPath: ${src.path}`,
+        `        containerPath: ${m.containerPath}`,
+      ];
+    });
+
+  return [
+    "kind: Cluster",
+    "apiVersion: kind.x-k8s.io/v1alpha4",
+    `name: ${clusterName}`,
+    "networking:",
+    '  apiServerAddress: "127.0.0.1"',
+    "nodes:",
+    "  - role: control-plane",
+    "    extraPortMappings:",
+    "      - containerPort: 80",
+    "        hostPort: 80",
+    "        protocol: TCP",
+    "      - containerPort: 443",
+    "        hostPort: 443",
+    "        protocol: TCP",
+    "    kubeadmConfigPatches:",
+    "      - |",
+    "        kind: InitConfiguration",
+    "        nodeRegistration:",
+    "          kubeletExtraArgs:",
+    '            node-labels: "ingress-ready=true"',
+    "    extraMounts:",
+    ...mountLines,
     "",
   ].join("\n");
 }
@@ -161,14 +216,16 @@ export async function runInitCluster(
         throw err;
       }
       try {
-        await execa(
-          "kind",
-          ["create", "cluster", "--name", config.kindClusterName],
-          { all: true },
-        );
-      } catch {
+        const mounts = resolveCatalog(HOST_MOUNT_CATALOG);
+        const kindConfig = buildKindConfig(config.kindClusterName, mounts);
+        await execa("kind", ["create", "cluster", "--config", "-"], {
+          input: kindConfig,
+          all: true,
+        });
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
         throw new Error(
-          `Failed to create kind cluster '${config.kindClusterName}'.`,
+          `Failed to create kind cluster '${config.kindClusterName}': ${detail}`,
         );
       }
     });
@@ -257,7 +314,7 @@ export async function runInitCluster(
       );
     });
 
-    // Step 6: create ghcr-credentials imagePullSecret
+    // Step 6: create ghcr-creds imagePullSecret
     // C2: token piped via stdin in a Secret manifest, never on argv.
     await run("ghcr secret", async () => {
       await execa("kubectl", ["apply", "-f", "-"], {

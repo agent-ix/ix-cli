@@ -138,7 +138,7 @@ export async function runAuthInit(
             const errBody = body as { code?: string };
             if (errBody.code === "admin_exists" || status === 409) {
               throw new Error(
-                "An admin already exists. To recover a lost password use: ix local auth reset-admin",
+                "An admin already exists. To recover a lost password use: ix local admin-reset",
               );
             }
           }

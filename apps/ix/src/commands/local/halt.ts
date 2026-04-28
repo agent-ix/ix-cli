@@ -1,7 +1,7 @@
 import { Args, Command, Flags } from "@oclif/core";
 import { runDown } from "@agent-ix/ix-cli-local";
 
-export default class LocalDown extends Command {
+export default class LocalHalt extends Command {
   static description = "Stop services.";
 
   static args = {
@@ -19,7 +19,7 @@ export default class LocalDown extends Command {
   };
 
   async run(): Promise<void> {
-    const { args, flags } = await this.parse(LocalDown);
+    const { args, flags } = await this.parse(LocalHalt);
     const services = (args.services as string[] | undefined) ?? [];
     try {
       await runDown(services, {

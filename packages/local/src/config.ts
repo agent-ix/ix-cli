@@ -173,7 +173,7 @@ export function loadConfig(): IxConfig {
     helmChartRegistry: process.env.IX_HELM_CHART_REGISTRY ?? "ghcr.io",
     org: process.env.IX_ORG ?? "agent-ix",
     ghcrToken: resolveConfiguredGhcrToken(),
-    kindClusterName: process.env.IX_KIND_CLUSTER_NAME ?? "ix",
+    kindClusterName: process.env.IX_KIND_CLUSTER_NAME ?? "platform",
     certManagerVersion: process.env.IX_CERT_MANAGER_VERSION ?? "v1.14.5",
     certManagerTimeoutSeconds: parsePositiveInt(
       "IX_CERT_MANAGER_TIMEOUT_SECONDS",
