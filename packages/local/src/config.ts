@@ -93,6 +93,8 @@ export interface IxConfig {
   certManagerVersion: string;
   certManagerTimeoutSeconds: number;
   certWaitTimeoutSeconds: number;
+  ingressNginxVersion: string;
+  ingressNginxTimeoutSeconds: number;
   rolloutTimeoutSeconds: number;
 }
 
@@ -184,6 +186,12 @@ export function loadConfig(): IxConfig {
       "IX_CERT_WAIT_TIMEOUT_SECONDS",
       process.env.IX_CERT_WAIT_TIMEOUT_SECONDS ?? "",
       120,
+    ),
+    ingressNginxVersion: process.env.IX_INGRESS_NGINX_VERSION ?? "v1.15.1",
+    ingressNginxTimeoutSeconds: parsePositiveInt(
+      "IX_INGRESS_NGINX_TIMEOUT_SECONDS",
+      process.env.IX_INGRESS_NGINX_TIMEOUT_SECONDS ?? "",
+      180,
     ),
     rolloutTimeoutSeconds: parsePositiveInt(
       "IX_ROLLOUT_TIMEOUT_SECONDS",

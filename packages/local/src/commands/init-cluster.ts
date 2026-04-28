@@ -1,7 +1,8 @@
 /**
  * FR-007 — init-cluster Command
- * Full cluster bootstrap: kind create, cert-manager, ix-ca-issuer, wildcard TLS,
- * GHCR credentials, DNS instructions. Idempotent (FR-007-AC-1).
+ * Full cluster bootstrap: kind create, cert-manager, ix-ca-issuer, ingress-nginx,
+ * wildcard TLS (per-app + ingress default), GHCR credentials, DNS instructions.
+ * Idempotent (FR-007-AC-1).
  */
 
 import fs from "node:fs";
@@ -148,11 +149,40 @@ spec:
 `.trim();
 }
 
+const INGRESS_NGINX_URL = (version: string) =>
+  `https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-${version}/deploy/static/provider/kind/deploy.yaml`;
+
+/**
+ * Default-SSL Certificate for the ingress-nginx controller. Issued by the
+ * ix-local-issuer (CA chain established in step 3) and consumed via the
+ * controller's --default-ssl-certificate flag so any HTTPS request to *.{domain}
+ * gets a trusted cert without per-Ingress TLS blocks.
+ */
+function ingressTlsCertYaml(domain: string): string {
+  return `
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ix-tls
+  namespace: ingress-nginx
+spec:
+  secretName: ix-tls
+  dnsNames:
+    - "*.${domain}"
+  issuerRef:
+    name: ix-local-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+`.trim();
+}
+
 const INIT_STEPS = [
   "kind cluster",
   "cert-manager",
   "ca-issuer",
+  "ingress-nginx",
   "wildcard cert",
+  "ingress tls",
   "wait cert",
   "ghcr secret",
   "npm secret",
@@ -272,7 +302,38 @@ export async function runInitCluster(
       });
     });
 
-    // Step 4: issue wildcard TLS certificate (FR-007-AC-3)
+    // Step 4: install ingress-nginx (singleton controller — pairs with the
+    // ingress-ready=true node label and the 80/443 extraPortMappings on the
+    // kind node). Apps that ship Ingress resources rely on this controller
+    // being present cluster-wide.
+    await run("ingress-nginx", async () => {
+      await execa(
+        "kubectl",
+        ["apply", "-f", INGRESS_NGINX_URL(config.ingressNginxVersion)],
+        { all: true },
+      );
+      try {
+        await execa(
+          "kubectl",
+          [
+            "rollout",
+            "status",
+            "deployment/ingress-nginx-controller",
+            "-n",
+            "ingress-nginx",
+            `--timeout=${config.ingressNginxTimeoutSeconds}s`,
+          ],
+          { all: true },
+        );
+      } catch {
+        throw new Error(
+          `ingress-nginx-controller did not become Ready within ${config.ingressNginxTimeoutSeconds}s. ` +
+            `Run: kubectl describe deployment/ingress-nginx-controller -n ingress-nginx`,
+        );
+      }
+    });
+
+    // Step 5: issue wildcard TLS certificate for default ns (FR-007-AC-3)
     await run("wildcard cert", async () => {
       await execa("kubectl", ["apply", "-f", "-"], {
         input: wildcardCertYaml(config.internalBaseDomain),
@@ -280,8 +341,73 @@ export async function runInitCluster(
       });
     });
 
-    // Step 5: wait for certificate Ready (FR-007-AC-9)
+    // Step 6: TLS border for ingress-nginx — issue ix-tls in ingress-nginx ns,
+    // wire it to the controller as --default-ssl-certificate so every HTTPS
+    // request to *.{domain} terminates with a trusted cert without per-Ingress
+    // TLS blocks. Configmap patch disables ssl-redirect/hsts so plain-HTTP
+    // *.{domain} hosts (e.g. npm.ix) keep working.
+    await run("ingress tls", async () => {
+      await execa("kubectl", ["apply", "-f", "-"], {
+        input: ingressTlsCertYaml(config.internalBaseDomain),
+        all: true,
+      });
+
+      // Append --default-ssl-certificate arg only if not already present
+      // (controller pods restart on patch — keep idempotent).
+      const { stdout: argsJson } = await execa("kubectl", [
+        "get",
+        "deployment/ingress-nginx-controller",
+        "-n",
+        "ingress-nginx",
+        "-o",
+        "jsonpath={.spec.template.spec.containers[0].args}",
+      ]);
+      if (!argsJson.includes("--default-ssl-certificate")) {
+        await execa(
+          "kubectl",
+          [
+            "patch",
+            "deployment/ingress-nginx-controller",
+            "-n",
+            "ingress-nginx",
+            "--type=json",
+            "-p",
+            JSON.stringify([
+              {
+                op: "add",
+                path: "/spec/template/spec/containers/0/args/-",
+                value: "--default-ssl-certificate=ingress-nginx/ix-tls",
+              },
+            ]),
+          ],
+          { all: true },
+        );
+      }
+
+      await execa(
+        "kubectl",
+        [
+          "patch",
+          "configmap/ingress-nginx-controller",
+          "-n",
+          "ingress-nginx",
+          "--type=merge",
+          "-p",
+          JSON.stringify({
+            data: { "ssl-redirect": "false", hsts: "false" },
+          }),
+        ],
+        { all: true },
+      );
+    });
+
+    // Step 7: wait for both certificates Ready (FR-007-AC-9)
     await run("wait cert", async () => {
+      const targets: { name: string; ns: string }[] = [
+        { name: "ix-dev-wildcard-cert", ns: "default" },
+        { name: "ix-tls", ns: "ingress-nginx" },
+      ];
+
       // H5: monotonic deadline, clamped sleep so loop never overruns timeout.
       const POLL_MS = 5000;
       const timeoutMs = config.certWaitTimeoutSeconds * 1000;
@@ -289,28 +415,35 @@ export async function runInitCluster(
       const elapsedMs = () =>
         Number((process.hrtime.bigint() - startNs) / 1_000_000n);
 
-      while (elapsedMs() < timeoutMs) {
-        try {
-          const { stdout } = await execa("kubectl", [
-            "get",
-            "certificate",
-            "ix-dev-wildcard-cert",
-            "-n",
-            "default",
-            "-o",
-            "jsonpath={.status.conditions[?(@.type=='Ready')].status}",
-          ]);
-          if (stdout.trim() === "True") return;
-        } catch {
-          // cert not yet created, keep polling
+      const pending = new Set(targets.map((t) => `${t.ns}/${t.name}`));
+      while (elapsedMs() < timeoutMs && pending.size > 0) {
+        for (const t of targets) {
+          const key = `${t.ns}/${t.name}`;
+          if (!pending.has(key)) continue;
+          try {
+            const { stdout } = await execa("kubectl", [
+              "get",
+              "certificate",
+              t.name,
+              "-n",
+              t.ns,
+              "-o",
+              "jsonpath={.status.conditions[?(@.type=='Ready')].status}",
+            ]);
+            if (stdout.trim() === "True") pending.delete(key);
+          } catch {
+            // cert not yet created, keep polling
+          }
         }
+        if (pending.size === 0) return;
         const remaining = timeoutMs - elapsedMs();
         if (remaining <= 0) break;
         await new Promise((r) => setTimeout(r, Math.min(POLL_MS, remaining)));
       }
+      const missing = [...pending].join(", ");
       throw new Error(
-        `Wildcard certificate did not become Ready within ${config.certWaitTimeoutSeconds}s. ` +
-          `Run: kubectl describe certificate ix-dev-wildcard-cert -n default`,
+        `Certificate(s) did not become Ready within ${config.certWaitTimeoutSeconds}s: ${missing}. ` +
+          `Run: kubectl describe certificate -A`,
       );
     });
 
