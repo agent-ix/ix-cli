@@ -72,6 +72,17 @@ Tests fall into four types:
 | FR-009 | AC-1: absent file returns defaults | TC-022 | ✅ Complete (unit) |
 | FR-009 | AC-2: valid cluster key parsed | TC-023 | ✅ Complete (unit) |
 | FR-009 | AC-3: non-array throws ConfigValidationError | TC-024 | ✅ Complete (unit) |
+| auth | ix-cli-auth-AC-1: no HTTP transport in `auth-init.ts` / `auth-reset-admin.ts` | TC-080 | ❌ Missing (static) |
+| auth | ix-cli-auth-AC-2: `system`, `auth`, `platform`, `apps` namespaces all present after `ix up` | TC-081 | ❌ Missing (integration) |
+| auth | ix-cli-auth-AC-3: bootstrap Secret at `system/admin-bootstrap` (not `auth/admin-bootstrap`) | TC-082 | ❌ Missing (integration) |
+| auth | ix-cli-auth-AC-4: identity deployment in `auth` namespace | TC-083 | ❌ Missing (integration) |
+| auth | ix-cli-auth-AC-5: `auth reset-user <admin>` surfaces clear "use reset-admin" message on 403 | TC-084 | ❌ Missing (integration) |
+| auth | ix-cli-auth-AC-6: no namespace string literals in `packages/local/src` outside `config.ts` | TC-085 | ❌ Missing (static) |
+| auth | ix-cli-auth-CON-1: `auth-init.ts` / `auth-reset-admin.ts` contain no `fetch`/`http`/`https`/`kubectlRaw`/`--raw` | TC-086 | ❌ Missing (static) |
+| auth | ix-cli-auth-CON-2: `auth-secret.ts` writes Secret to `IX_SYSTEM_NAMESPACE` only | TC-087 | ❌ Missing (static + integration) |
+| auth | ix-cli-auth-CON-3: all `kubectlRaw` calls target `IX_AUTH_NAMESPACE` | TC-088 | ❌ Missing (static) |
+| auth | ix-cli-auth-CON-4: no namespace string literals (covered by TC-085) | TC-085 | ❌ Missing (static) |
+| auth | ix-cli-auth-CON-5: Deployable registry — identity/auth-service/permission-service declare `namespace: IX_AUTH_NAMESPACE`; up-image/up-source honor `deployable.namespace` | TC-089 | ❌ Missing (integration) |
 
 ### Non-Functional Requirement Coverage
 
@@ -135,6 +146,16 @@ Tests fall into four types:
 | TC-041 | runClusterStatus: unhealthy pod → pod table shown | Unit | P1 | FR-007-AC-5 | ✅ Complete |
 | TC-042 | runClusterStatus: kubectl failure throws descriptive error | Unit | P1 | FR-007-AC-6 | ✅ Complete |
 | TC-043 | runClusterStatus: picocolors mock strips ANSI codes | Unit | P2 | FR-007-AC-7 | ✅ Complete |
+| TC-080 | Static grep: `auth-init.ts` and `auth-reset-admin.ts` contain no `fetch\|http://\|https://\|kubectlRaw\|--raw` references | Static | P1 | ix-cli-auth-AC-1, ix-cli-auth-CON-1 | ❌ Missing |
+| TC-081 | After `ix up`: `kubectl get ns system auth platform apps` returns all four | Integration | P1 | ix-cli-auth-AC-2 | ❌ Missing |
+| TC-082 | After `ix local init`: `kubectl get secret admin-bootstrap -n system` succeeds; `-n auth` returns NotFound | Integration | P1 | ix-cli-auth-AC-3, ix-cli-auth-CON-2 | ❌ Missing |
+| TC-083 | After `ix up`: `kubectl get deployment identity -n auth` returns the deployment | Integration | P1 | ix-cli-auth-AC-4, ix-cli-auth-CON-5 | ❌ Missing |
+| TC-084 | `ix local auth reset-user <admin-email>` displays "use `ix local auth reset-admin`" guidance and exits non-zero | Integration | P1 | ix-cli-auth-AC-5 | ❌ Missing |
+| TC-085 | Static grep: no namespace string literals (`"default"`, `"auth"`, `"system"`, `"platform"`, `"apps"`, `"ix-system"`) in `packages/local/src/` outside `config.ts` | Static | P1 | ix-cli-auth-AC-6, ix-cli-auth-CON-4 | ❌ Missing |
+| TC-086 | Static grep: `auth-init.ts` only uses `kubectlExecJson`/`kubectl` shell-out; `auth-reset-admin.ts` likewise; neither imports `fetch`/`undici` | Static | P1 | ix-cli-auth-CON-1 | ❌ Missing |
+| TC-087 | Static + integration: `auth-secret.ts` builds manifest with `metadata.namespace: ${IX_SYSTEM_NAMESPACE}`; applied Secret in `system`, never `auth` | Static + Integration | P1 | ix-cli-auth-CON-2 | ❌ Missing |
+| TC-088 | Static grep: every `kubectlRaw(...)` invocation in `packages/local/src/commands/auth-*.ts` passes `IX_AUTH_NAMESPACE` (or equivalent constant) as the namespace argument | Static | P1 | ix-cli-auth-CON-3 | ❌ Missing |
+| TC-089 | Integration: Deployable entries for `identity`, `auth-service`, `permission-service` declare `namespace: IX_AUTH_NAMESPACE`; helm releases land in `auth` after `ix up` | Integration | P1 | ix-cli-auth-CON-5 | ❌ Missing |
 
 ---
 
