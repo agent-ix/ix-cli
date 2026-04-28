@@ -77,7 +77,7 @@ export async function runClusterStatus(): Promise<void> {
   for (const n of nodes) {
     nodeTable.push([n.metadata.name, nodeRole(n), nodeReady(n), nodeAge(n)]);
   }
-  process.stdout.write(nodeTable.toString() + "\n");
+  list.raw(nodeTable.toString());
 
   const { stdout: podsJson } = await execa("kubectl", [
     "get",
@@ -108,6 +108,6 @@ export async function runClusterStatus(): Promise<void> {
       String(podRestarts(pod)),
     ]);
   }
-  process.stdout.write(podTable.toString() + "\n");
+  list.raw(podTable.toString());
   list.warn(`${unhealthy.length} unhealthy pod(s).`);
 }

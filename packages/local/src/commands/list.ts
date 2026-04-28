@@ -67,7 +67,7 @@ export async function runList(
     for (const d of grouped.get(cat)!) {
       table.push([d.name, d.role, d.version, d.title ?? "", d.tags.join(",")]);
     }
-    process.stdout.write(table.toString() + "\n");
+    list.raw(table.toString());
   }
 
   list.success(`${filtered.length} deployable(s)`);
