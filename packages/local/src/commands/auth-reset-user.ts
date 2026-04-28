@@ -1,18 +1,29 @@
 /**
- * FR-018 — auth reset-user Command
- * Triggers an admin-initiated password reset on any existing user.
- * Works regardless of identity.password_reset.mode (admin path is always available).
+ * FR-018 — `ix local auth reset-user <email>`
+ *
+ * Triggers an admin-initiated password reset on a non-admin user via identity's
+ * `POST /internal/users/reset` endpoint.
+ *
+ * Per ix-cli/spec/functional/local/auth.md, identity is reached through the
+ * Kubernetes API server's authenticated service proxy (kubeconfig-gated),
+ * never via the public ingress.
+ *
+ * Identity SHALL refuse this endpoint when the target has the admin role
+ * (returns 403 `cannot_reset_admin_via_api`); admin recovery uses
+ * `ix local auth reset-admin` (kubectl exec → identity.cli reset-admin).
  */
 
 import type { IxConfig } from "../config.js";
-import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
+import {
+  kubectlRaw,
+  identityServicePath,
+  IX_AUTH_NAMESPACE,
+} from "./auth-identity.js";
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
-type ResolveFn = typeof resolveIdentityUrl;
-type FetchFn = typeof fetchJson;
+type RawFn = typeof kubectlRaw;
 export interface IdentityDeps {
-  resolveIdentityUrl?: ResolveFn;
-  fetchJson?: FetchFn;
+  kubectlRaw?: RawFn;
 }
 
 interface ResetResponse {
@@ -23,14 +34,19 @@ interface ResetResponse {
   email_sent: boolean;
 }
 
+interface ErrorResponse {
+  error?: string;
+  detail?: string;
+  code?: string;
+}
+
 export async function runAuthResetUser(
-  config: IxConfig,
+  _config: IxConfig,
   email: string,
   opts: { ttl?: number },
   deps?: IdentityDeps,
 ): Promise<void> {
-  const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
-  const _fetch = deps?.fetchJson ?? fetchJson;
+  const _raw = deps?.kubectlRaw ?? kubectlRaw;
 
   const list = startListing("ix local auth reset-user");
 
@@ -41,44 +57,39 @@ export async function runAuthResetUser(
   }
   list.commit();
 
-  let identityBaseUrl = "";
-  let cleanup: () => void = () => {};
   let resetResp: ResetResponse | null = null;
 
   const tasks = makeListr(
     [
       {
-        title: "Connecting to identity service",
-        task: async (ctx, task) => {
-          try {
-            const resolved = await _resolve(18922);
-            identityBaseUrl = resolved.baseUrl;
-            cleanup = resolved.cleanup;
-            task.output = `Connected at ${identityBaseUrl}`;
-          } catch (err) {
+        title: `Resetting password for ${email}`,
+        task: async (_ctx, task) => {
+          task.output = `kubectl --raw POST /internal/users/reset (${IX_AUTH_NAMESPACE}/identity)`;
+
+          const { status, body } = await _raw<ResetResponse | ErrorResponse>(
+            IX_AUTH_NAMESPACE,
+            identityServicePath("/internal/users/reset"),
+            "POST",
+            { email_or_username: email, ttl_hours: ttlHours },
+          );
+
+          // identity FR-020-CON-5 / auth FR-008-CON-7: admin role refusal.
+          // FastAPI wraps HTTPException payloads under `detail`, so check both
+          // shapes to surface the structured `error` key.
+          if (status === 403) {
+            const errBody = body as ErrorResponse & { detail?: ErrorResponse };
+            const inner = errBody.detail ?? errBody;
+            const code = inner.error ?? inner.code;
+            if (code === "cannot_reset_admin_via_api") {
+              throw new Error(
+                "Admin password reset is not exposed over any HTTP/API endpoint. " +
+                  "Use `ix local auth reset-admin` (kubectl exec into identity pod).",
+              );
+            }
             throw new Error(
-              `identity service not found in namespace ix-system: ${err instanceof Error ? err.message : String(err)}`,
+              `Reset forbidden (HTTP 403): ${JSON.stringify(body)}`,
             );
           }
-        },
-      },
-
-      {
-        title: `Resetting password for ${email}`,
-        task: async (ctx, task) => {
-          task.output = `Calling identity reset for ${email}...`;
-
-          const { status, body } = await _fetch<
-            ResetResponse | { detail?: string; code?: string }
-          >(`${identityBaseUrl}/internal/users/reset`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email_or_username: email,
-              ttl_hours: ttlHours,
-            }),
-          });
-
           if (status === 404) {
             throw new Error(`user not found: ${email}`);
           }
@@ -101,7 +112,6 @@ export async function runAuthResetUser(
 
   try {
     await tasks.run();
-    cleanup();
 
     if (!resetResp) throw new Error("No reset response");
     const resp = resetResp as ResetResponse;
@@ -112,7 +122,6 @@ export async function runAuthResetUser(
     list.note(`Email sent: ${resp.email_sent}`);
     list.success("Password reset.");
   } catch (err) {
-    cleanup();
     list.error(
       `auth reset-user failed: ${err instanceof Error ? err.message : String(err)}`,
     );

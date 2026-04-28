@@ -1,18 +1,29 @@
 /**
- * FR-017 — auth invite Command
- * Creates a pending user via identity's invite endpoint and surfaces the
- * invite URL. Email delivery is handled entirely by identity.
+ * FR-017 — `ix local auth invite <email>`
+ *
+ * Creates a pending user via identity's `POST /internal/users/invite` endpoint
+ * and surfaces the invite URL to the operator.
+ *
+ * Per ix-cli/spec/functional/local/auth.md, identity is reached through the
+ * Kubernetes API server's authenticated service proxy (kubeconfig-gated),
+ * never via the public ingress. NetworkPolicy on the `auth` namespace SHALL
+ * additionally restrict `/internal/*` to in-cluster callers (the API server
+ * proxy counts as in-cluster).
+ *
+ * Email delivery is handled entirely by identity (auth/FR-027).
  */
 
 import type { IxConfig } from "../config.js";
-import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
+import {
+  kubectlRaw,
+  identityServicePath,
+  IX_AUTH_NAMESPACE,
+} from "./auth-identity.js";
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
-type ResolveFn = typeof resolveIdentityUrl;
-type FetchFn = typeof fetchJson;
+type RawFn = typeof kubectlRaw;
 export interface IdentityDeps {
-  resolveIdentityUrl?: ResolveFn;
-  fetchJson?: FetchFn;
+  kubectlRaw?: RawFn;
 }
 
 interface PublicConfig {
@@ -36,7 +47,7 @@ interface ErrorResponse {
 }
 
 export async function runAuthInvite(
-  config: IxConfig,
+  _config: IxConfig,
   email: string,
   opts: {
     username?: string;
@@ -46,13 +57,10 @@ export async function runAuthInvite(
   },
   deps?: IdentityDeps,
 ): Promise<void> {
-  const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
-  const _fetch = deps?.fetchJson ?? fetchJson;
+  const _raw = deps?.kubectlRaw ?? kubectlRaw;
 
   const list = startListing("ix local auth invite");
 
-  let identityBaseUrl = "";
-  let cleanup: () => void = () => {};
   let inviteResp: InviteResponse | null = null;
 
   const ttlHours = opts.ttl ?? 72;
@@ -65,26 +73,12 @@ export async function runAuthInvite(
   const tasks = makeListr(
     [
       {
-        title: "Connecting to identity service",
-        task: async (ctx, task) => {
-          try {
-            const resolved = await _resolve(18921);
-            identityBaseUrl = resolved.baseUrl;
-            cleanup = resolved.cleanup;
-            task.output = `Connected at ${identityBaseUrl}`;
-          } catch (err) {
-            throw new Error(
-              `identity service not found in namespace ix-system: ${err instanceof Error ? err.message : String(err)}`,
-            );
-          }
-        },
-      },
-
-      {
         title: "Pre-flight: checking registration mode",
-        task: async (ctx, task) => {
-          const { status, body } = await _fetch<PublicConfig>(
-            `${identityBaseUrl}/config/public`,
+        task: async (_ctx, task) => {
+          const { status, body } = await _raw<PublicConfig>(
+            IX_AUTH_NAMESPACE,
+            identityServicePath("/config/public"),
+            "GET",
           );
           if (status !== 200) {
             throw new Error(`Failed to read identity config (HTTP ${status})`);
@@ -101,7 +95,7 @@ export async function runAuthInvite(
 
       {
         title: `Inviting ${email}`,
-        task: async (ctx, task) => {
+        task: async (_ctx, task) => {
           const payload: Record<string, unknown> = {
             email,
             ttl_hours: ttlHours,
@@ -111,16 +105,14 @@ export async function runAuthInvite(
           if (opts.groups)
             payload.groups = opts.groups.split(",").map((g) => g.trim());
 
-          const { status, body } = await _fetch<InviteResponse | ErrorResponse>(
-            `${identityBaseUrl}/internal/users/invite`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            },
+          const { status, body } = await _raw<InviteResponse | ErrorResponse>(
+            IX_AUTH_NAMESPACE,
+            identityServicePath("/internal/users/invite"),
+            "POST",
+            payload,
           );
 
-          if (status === 201) {
+          if (status === 201 || status === 200) {
             inviteResp = body as InviteResponse;
             task.output = "Invite created";
             return;
@@ -151,7 +143,6 @@ export async function runAuthInvite(
 
   try {
     await tasks.run();
-    cleanup();
 
     if (!inviteResp) throw new Error("No invite response");
     const resp = inviteResp as InviteResponse;
@@ -165,7 +156,6 @@ export async function runAuthInvite(
     }
     list.success("Invite created.");
   } catch (err) {
-    cleanup();
     list.error(
       `auth invite failed: ${err instanceof Error ? err.message : String(err)}`,
     );
