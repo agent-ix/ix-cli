@@ -4,10 +4,9 @@
  * Works regardless of identity.password_reset.mode (admin path is always available).
  */
 
-import { Listr } from "listr2";
 import type { IxConfig } from "../config.js";
 import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
-import { startListing } from "@agent-ix/ix-ui-cli";
+import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
 type ResolveFn = typeof resolveIdentityUrl;
 type FetchFn = typeof fetchJson;
@@ -46,7 +45,7 @@ export async function runAuthResetUser(
   let cleanup: () => void = () => {};
   let resetResp: ResetResponse | null = null;
 
-  const tasks = new Listr(
+  const tasks = makeListr(
     [
       {
         title: "Connecting to identity service",
@@ -97,10 +96,7 @@ export async function runAuthResetUser(
         },
       },
     ],
-    {
-      concurrent: false,
-      rendererOptions: { collapseSubtasks: false },
-    },
+    { concurrent: false },
   );
 
   try {

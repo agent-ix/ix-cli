@@ -38,6 +38,7 @@ export default class LocalInit extends Command {
         excludeTags: flags["exclude-tag"] ? [flags["exclude-tag"]] : undefined,
       });
       if (!flags["skip-auth"]) {
+        process.stdout.write("\n");
         await runAuthInit(config);
       }
     } catch {

@@ -6,9 +6,8 @@
  */
 
 import { execa } from "execa";
-import { Listr } from "listr2";
 import type { IxConfig } from "../config.js";
-import { startListing } from "@agent-ix/ix-ui-cli";
+import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -175,9 +174,8 @@ function makeMutationListr(
   secretData: Record<string, string>,
   rolloutTimeoutSeconds: number,
 ) {
-  return new Listr(mutationTasks(cmData, secretData, rolloutTimeoutSeconds), {
+  return makeListr(mutationTasks(cmData, secretData, rolloutTimeoutSeconds), {
     concurrent: false,
-    rendererOptions: { collapseSubtasks: false },
   });
 }
 
@@ -287,7 +285,7 @@ export async function runAuthConfigEmailTest(
   const list = startListing("ix local auth config email test");
   list.commit();
 
-  const tasks = new Listr(
+  const tasks = makeListr(
     [
       {
         title: "Checking identity deployment",
@@ -313,10 +311,7 @@ export async function runAuthConfigEmailTest(
         },
       },
     ],
-    {
-      concurrent: false,
-      rendererOptions: { collapseSubtasks: false },
-    },
+    { concurrent: false },
   );
 
   try {

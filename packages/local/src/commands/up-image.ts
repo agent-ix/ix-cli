@@ -14,7 +14,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execa } from "execa";
-import { Listr } from "listr2";
 import type { ListrTaskWrapper } from "listr2";
 import pc from "picocolors";
 import { parse as parseYaml } from "yaml";
@@ -31,10 +30,7 @@ import {
 } from "../local-secrets.js";
 import {
   PhaseTable,
-  ORBIT_SPINNER,
-  HEADER_TICK_DIV,
-  colorOrbitFrame,
-  renderHeader,
+  makeListr,
   startListing,
   type Listing,
 } from "@agent-ix/ix-ui-cli";
@@ -197,33 +193,17 @@ export async function runImageModeUp(
   opts: UpImageOptions = {},
   devDir: string = "",
 ): Promise<void> {
-  // Spin the header immediately so there is no blank gap during expandApp + registry login.
-  const appHeaderText =
-    deployable.role === "app"
-      ? `ix local up · ${deployable.name} · ${config.helmChartRegistry}`
-      : null;
-  let preflightFrame = 0;
-  let preflightTicker: ReturnType<typeof setInterval> | null = null;
-  if (appHeaderText && (process.stdout.isTTY ?? false)) {
-    const drawPreflight = () => {
-      const frame =
-        ORBIT_SPINNER[
-          Math.floor(preflightFrame / HEADER_TICK_DIV) % ORBIT_SPINNER.length
-        ];
-      process.stdout.write(
-        `\r${colorOrbitFrame(frame)}${renderHeader(appHeaderText)}\x1B[K`,
-      );
-      preflightFrame++;
-    };
-    drawPreflight();
-    preflightTicker = setInterval(drawPreflight, 80);
-  }
+  const headerText = `ix local up · ${deployable.name} · ${config.helmChartRegistry}`;
 
   let installs: ChildInstall[];
   let serviceList: Listing | null = null;
+  let preflightList: Listing | null = null;
+
   if (deployable.role === "app") {
+    preflightList = startListing(headerText);
     const deps = await expandApp(deployable, config);
     if (deps.length === 0) {
+      preflightList.stop();
       // FR-013-AC-6
       throw new Error(
         `App '${deployable.name}' has no chart dependencies to install.`,
@@ -238,7 +218,7 @@ export async function runImageModeUp(
         chartVersion: deployable.version,
       },
     ];
-    serviceList = startListing(`ix local up (image mode)`);
+    serviceList = startListing(headerText);
     serviceList.commit();
   }
 
@@ -295,9 +275,8 @@ export async function runImageModeUp(
     {
       phases: UP_PHASES,
       phaseLabels: UP_PHASE_LABELS,
-      header: `ix local up · ${deployable.name} · ${config.helmChartRegistry}`,
-      initialLineCount:
-        appHeaderText && (process.stdout.isTTY ?? false) ? 1 : 0,
+      header: headerText,
+      initialLineCount: 0,
     },
   );
 
@@ -315,11 +294,7 @@ export async function runImageModeUp(
     ],
     { input: ghcrToken, all: true },
   );
-  if (preflightTicker !== null) {
-    clearInterval(preflightTicker);
-    preflightTicker = null;
-    process.stdout.write("\n");
-  }
+  preflightList!.stop();
   display.start();
 
   const failures: string[] = [];
@@ -466,7 +441,7 @@ async function runSingleServiceListr(
 ): Promise<void> {
   const failures: string[] = [];
 
-  const tasks = new Listr(
+  const tasks = makeListr(
     [
       {
         title: `Authenticate Helm registry`,
@@ -530,7 +505,6 @@ async function runSingleServiceListr(
     {
       concurrent: false,
       exitOnError: !opts.continueOnError,
-      rendererOptions: { collapseSubtasks: false },
     },
   );
 

@@ -2,7 +2,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execa } from "execa";
-import { Listr } from "listr2";
 import pc from "picocolors";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { IxConfig } from "../config.js";
@@ -10,7 +9,7 @@ import { resolveGhcrToken } from "../credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
 import { applySecretContract, loadSecretContract } from "../local-secrets.js";
 import { waitForRollout } from "../rollout.js";
-import { startListing } from "@agent-ix/ix-ui-cli";
+import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
 interface LocalInstall {
   name: string;
@@ -290,7 +289,7 @@ export async function runSourceModeUp(
   devDir: string,
   opts: UpFilterOptions = {},
 ): Promise<void> {
-  const list = startListing("ix local up (source mode)");
+  const list = startListing(`ix local up · ${services.join(", ")} · source`);
   list.commit();
 
   const imageTag = tagOverride ?? config.imageTag;
@@ -319,7 +318,7 @@ export async function runSourceModeUp(
     );
 
     const failures: string[] = [];
-    const tasks = new Listr(
+    const tasks = makeListr(
       [
         ...secretContracts.map((contract) => ({
           title: `Apply repo secrets: ${pc.cyan(path.basename(contract.repoDir))}`,
@@ -423,10 +422,7 @@ export async function runSourceModeUp(
           },
         })),
       ],
-      {
-        concurrent: false,
-        exitOnError: !opts.continueOnError,
-      },
+      { concurrent: false, exitOnError: !opts.continueOnError },
     );
 
     await tasks.run();

@@ -1,4 +1,4 @@
-import { Listr } from "listr2";
+import { makeListr } from "@agent-ix/ix-ui-cli";
 import { execa } from "execa";
 import pc from "picocolors";
 import fs from "node:fs";
@@ -89,7 +89,7 @@ export async function executeLocals(services: string[], action: "up" | "down") {
     );
   }
 
-  const tasks = new Listr(
+  const tasks = makeListr(
     services.map((svc) => {
       const isGlobal = svc === "all";
       const serviceDir = isGlobal
@@ -137,12 +137,7 @@ export async function executeLocals(services: string[], action: "up" | "down") {
         },
       };
     }),
-    {
-      concurrent: false,
-      rendererOptions: {
-        collapseSubtasks: false,
-      },
-    },
+    { concurrent: false },
   );
 
   try {
@@ -268,9 +263,11 @@ export async function runDown(
     }
   }
 
-  const list = startListing("ix local down (image mode)");
+  const list = startListing(
+    `ix local down · ${services.join(", ")} · ${config.helmChartRegistry}`,
+  );
   list.commit();
-  const tasks = new Listr(
+  const tasks = makeListr(
     releases.map((name) => ({
       title: `Uninstall ${pc.cyan(name)}`,
       task: async (_ctx: unknown, task: { output: string }) => {
@@ -286,7 +283,7 @@ export async function runDown(
         await subprocess;
       },
     })),
-    { concurrent: false, rendererOptions: { collapseSubtasks: false } },
+    { concurrent: false },
   );
   await tasks.run();
   list.success(`Uninstalled: ${releases.join(", ")}`);

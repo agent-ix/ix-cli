@@ -4,10 +4,9 @@
  * invite URL. Email delivery is handled entirely by identity.
  */
 
-import { Listr } from "listr2";
 import type { IxConfig } from "../config.js";
 import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
-import { startListing } from "@agent-ix/ix-ui-cli";
+import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
 type ResolveFn = typeof resolveIdentityUrl;
 type FetchFn = typeof fetchJson;
@@ -63,7 +62,7 @@ export async function runAuthInvite(
   }
   list.commit();
 
-  const tasks = new Listr(
+  const tasks = makeListr(
     [
       {
         title: "Connecting to identity service",
@@ -147,10 +146,7 @@ export async function runAuthInvite(
         },
       },
     ],
-    {
-      concurrent: false,
-      rendererOptions: { collapseSubtasks: false },
-    },
+    { concurrent: false },
   );
 
   try {

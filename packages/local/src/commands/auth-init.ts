@@ -11,11 +11,10 @@
  */
 
 import { execa } from "execa";
-import { Listr } from "listr2";
 import type { IxConfig } from "../config.js";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
 import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
-import { startListing } from "@agent-ix/ix-ui-cli";
+import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
 type ResolveFn = typeof resolveIdentityUrl;
 type FetchFn = typeof fetchJson;
@@ -79,7 +78,7 @@ export async function runAuthInit(
   const _resolve = deps?.resolveIdentityUrl ?? resolveIdentityUrl;
   const _fetch = deps?.fetchJson ?? fetchJson;
 
-  const list = startListing("ix local init");
+  const list = startListing("ix local auth init");
   list.commit();
 
   let identityBaseUrl = "";
@@ -88,7 +87,7 @@ export async function runAuthInit(
   let alreadyBootstrapped: { expiresAt: string; loginUrl: string } | null =
     null;
 
-  const tasks = new Listr(
+  const tasks = makeListr(
     [
       {
         title: "Connecting to identity service",
@@ -169,10 +168,7 @@ export async function runAuthInit(
         },
       },
     ],
-    {
-      concurrent: false,
-      rendererOptions: { collapseSubtasks: false },
-    },
+    { concurrent: false },
   );
 
   try {

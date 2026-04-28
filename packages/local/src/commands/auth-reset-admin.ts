@@ -5,11 +5,10 @@
  * Secret via the shared write path (FR-019, FR-016-CON-1).
  */
 
-import { Listr } from "listr2";
 import type { IxConfig } from "../config.js";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
 import { resolveIdentityUrl, fetchJson } from "./auth-identity.js";
-import { startListing } from "@agent-ix/ix-ui-cli";
+import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
 type ResolveFn = typeof resolveIdentityUrl;
 type FetchFn = typeof fetchJson;
@@ -92,7 +91,7 @@ export async function runAuthResetAdmin(
   let identityBaseUrl = "";
   let cleanup: () => void = () => {};
 
-  const tasks = new Listr(
+  const tasks = makeListr(
     [
       {
         title: "Connecting to identity service",
@@ -179,10 +178,7 @@ export async function runAuthResetAdmin(
         },
       },
     ],
-    {
-      concurrent: false,
-      rendererOptions: { collapseSubtasks: false },
-    },
+    { concurrent: false },
   );
 
   try {
