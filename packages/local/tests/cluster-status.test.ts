@@ -10,12 +10,13 @@ vi.mock("@agent-ix/ix-ui-cli", () => {
   const success = vi.fn();
   const warn = vi.fn();
   const error = vi.fn();
+  const raw = vi.fn();
   return {
     startListing: vi.fn(() => ({
       group: vi.fn(),
       item: vi.fn(),
       note: vi.fn(),
-      raw: vi.fn(),
+      raw,
       commit: vi.fn(),
       pause: vi.fn(),
       success,
@@ -25,6 +26,7 @@ vi.mock("@agent-ix/ix-ui-cli", () => {
     __success: success,
     __warn: warn,
     __error: error,
+    __raw: raw,
   };
 });
 vi.mock("picocolors", () => ({
@@ -46,10 +48,20 @@ type Bag = typeof ui & {
   __success: ReturnType<typeof vi.fn>;
   __warn: ReturnType<typeof vi.fn>;
   __error: ReturnType<typeof vi.fn>;
+  __raw: ReturnType<typeof vi.fn>;
 };
 const mockSuccess = (ui as unknown as Bag).__success;
 const mockWarn = (ui as unknown as Bag).__warn;
 const mockError = (ui as unknown as Bag).__error;
+const mockRaw = (ui as unknown as Bag).__raw;
+
+function rawText(): string {
+  // runClusterStatus emits its tables via Listing.raw(...). Concatenate every
+  // captured call's first argument to reconstruct the rendered output.
+  return mockRaw.mock.calls
+    .map((c: unknown[]) => (typeof c[0] === "string" ? c[0] : ""))
+    .join("");
+}
 
 const makeNode = (
   name: string,
@@ -105,11 +117,7 @@ describe("runClusterStatus", () => {
 
     await runClusterStatus();
 
-    const written = (
-      process.stdout.write as ReturnType<typeof vi.fn>
-    ).mock.calls
-      .map((c: unknown[]) => c[0] as string)
-      .join("");
+    const written = rawText();
     expect(written).toContain("NAME");
     expect(written).toContain("ROLE");
     expect(written).toContain("STATUS");
@@ -130,12 +138,7 @@ describe("runClusterStatus", () => {
     await runClusterStatus();
 
     expect(mockSuccess).toHaveBeenCalledWith("All pods healthy.");
-    const written = (
-      process.stdout.write as ReturnType<typeof vi.fn>
-    ).mock.calls
-      .map((c: unknown[]) => c[0] as string)
-      .join("");
-    expect(written).not.toContain("NAMESPACE");
+    expect(rawText()).not.toContain("NAMESPACE");
   });
 
   it("TC-041: unhealthy pod present — pod table rendered with NAMESPACE, NAME, PHASE, RESTARTS", async () => {
@@ -151,11 +154,7 @@ describe("runClusterStatus", () => {
 
     expect(mockSuccess).not.toHaveBeenCalledWith("All pods healthy.");
     expect(mockWarn).toHaveBeenCalled();
-    const written = (
-      process.stdout.write as ReturnType<typeof vi.fn>
-    ).mock.calls
-      .map((c: unknown[]) => c[0] as string)
-      .join("");
+    const written = rawText();
     expect(written).toContain("NAMESPACE");
     expect(written).toContain("NAME");
     expect(written).toContain("PHASE");
@@ -181,11 +180,7 @@ describe("runClusterStatus", () => {
 
     await runClusterStatus();
 
-    const written = (
-      process.stdout.write as ReturnType<typeof vi.fn>
-    ).mock.calls
-      .map((c: unknown[]) => c[0] as string)
-      .join("");
+    const written = rawText();
     expect(written).toContain("NotReady");
     expect(written).toContain("CrashLoopBackOff");
     expect(written).not.toMatch(/\x1b\[[\d;]*mNotReady/);
