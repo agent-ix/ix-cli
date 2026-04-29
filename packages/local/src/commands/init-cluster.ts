@@ -389,6 +389,31 @@ export async function runInitCluster(
             `Run: kubectl describe deployment/ingress-nginx-controller -n ingress-nginx`,
         );
       }
+
+      // Rollout returning Ready only confirms the controller pod's readiness
+      // probe (port 10254) — the validating admission webhook on :8443 may
+      // still be unreachable, causing downstream Ingress applies to fail with
+      // "connection refused" to ingress-nginx-controller-admission. Wait until
+      // the admission Service has at least one endpoint address before
+      // returning from this step.
+      try {
+        await execa(
+          "kubectl",
+          [
+            "wait",
+            "--namespace=ingress-nginx",
+            "--for=jsonpath={.subsets[0].addresses[0].ip}",
+            "endpoints/ingress-nginx-controller-admission",
+            `--timeout=${config.ingressNginxTimeoutSeconds}s`,
+          ],
+          { all: true },
+        );
+      } catch {
+        throw new Error(
+          `ingress-nginx admission webhook endpoint not ready within ${config.ingressNginxTimeoutSeconds}s. ` +
+            `Run: kubectl get endpoints ingress-nginx-controller-admission -n ingress-nginx`,
+        );
+      }
     });
 
     // Step 5: issue wildcard TLS certificate for default ns (FR-007-AC-3)
