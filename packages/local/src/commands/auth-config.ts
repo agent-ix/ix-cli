@@ -8,6 +8,7 @@
 import { execa } from "execa";
 import type { IxConfig } from "../config.js";
 import { IX_AUTH_NAMESPACE } from "./auth-identity.js";
+import { buildSecretManifest as buildContractSecretManifest } from "../local-secrets.js";
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
 // ---------------------------------------------------------------------------
@@ -96,20 +97,15 @@ function buildConfigMapManifest(data: Record<string, string>): string {
 }
 
 function buildSecretManifest(data: Record<string, string>): string {
-  const dataLines = Object.entries(data)
-    .map(([k, v]) => `  ${k}: ${Buffer.from(v, "utf-8").toString("base64")}`)
-    .join("\n");
-  return [
-    "apiVersion: v1",
-    "kind: Secret",
-    "metadata:",
-    "  name: identity-secrets",
-    `  namespace: ${IX_AUTH_NAMESPACE}`,
-    "type: Opaque",
-    "data:",
-    dataLines,
-    "",
-  ].join("\n");
+  return buildContractSecretManifest({
+    type: "opaque",
+    name: "identity-secrets",
+    namespace: IX_AUTH_NAMESPACE,
+    keys: Object.entries(data).map(([secretKey, value]) => ({
+      secretKey,
+      value,
+    })),
+  });
 }
 
 async function applyManifest(manifest: string): Promise<void> {

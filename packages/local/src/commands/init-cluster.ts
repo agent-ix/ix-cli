@@ -1,8 +1,13 @@
 /**
  * FR-007 — init-cluster Command
  * Full cluster bootstrap: kind create, cert-manager, ix-ca-issuer, ingress-nginx,
- * wildcard TLS (per-app + ingress default), GHCR credentials, DNS instructions.
- * Idempotent (FR-007-AC-1).
+ * wildcard TLS (per-app + ingress default), DNS instructions. Idempotent
+ * (FR-007-AC-1).
+ *
+ * Image-pull / registry credentials are NOT created here. Each service that
+ * needs them declares the Secret in its own ix-local.secrets.yaml; the
+ * standard secret-contract path (local-secrets.ts) materializes them in the
+ * service's namespace during `ix local up`.
  */
 
 import fs from "node:fs";
@@ -14,42 +19,12 @@ import {
   IX_PLATFORM_NAMESPACE,
   IX_SYSTEM_NAMESPACE,
 } from "../config.js";
-import { resolveGhcrToken } from "../credentials.js";
 import { PhaseTable } from "@agent-ix/ix-ui-cli";
 import {
   resolveCatalog,
   HOST_MOUNT_CATALOG,
   type ResolvedHostMount,
 } from "../host-mounts.js";
-
-/**
- * C2: Build a kubernetes.io/dockerconfigjson Secret manifest containing the
- * GHCR token and apply via stdin. The token never appears on the kubectl
- * command line, so it cannot leak via `ps aux` or shell history.
- */
-function buildGhcrSecretManifest(token: string): string {
-  const dockerconfig = {
-    auths: {
-      "ghcr.io": {
-        username: "_token",
-        password: token,
-        auth: Buffer.from(`_token:${token}`).toString("base64"),
-      },
-    },
-  };
-  const encoded = Buffer.from(JSON.stringify(dockerconfig)).toString("base64");
-  return [
-    "apiVersion: v1",
-    "kind: Secret",
-    "metadata:",
-    "  name: ghcr-creds",
-    "  namespace: default",
-    "type: kubernetes.io/dockerconfigjson",
-    "data:",
-    `  .dockerconfigjson: ${encoded}`,
-    "",
-  ].join("\n");
-}
 
 function buildKindConfig(
   clusterName: string,
@@ -273,8 +248,6 @@ const INIT_STEPS = [
   "ingress tls",
   "wait cert",
   "namespaces + rbac",
-  "ghcr secret",
-  "npm secret",
   "dns config",
 ] as const;
 
@@ -282,12 +255,8 @@ type InitStep = (typeof INIT_STEPS)[number];
 
 export async function runInitCluster(
   config: IxConfig,
-  reconfigureCredentials: boolean,
+  _reconfigureCredentials: boolean,
 ): Promise<void> {
-  // Resolve credentials before the display starts — clack prompts need direct
-  // terminal access.
-  const ghcrToken = await resolveGhcrToken(reconfigureCredentials);
-
   const display = new PhaseTable<"run">([...INIT_STEPS], {
     phases: ["run"] as const,
     phaseLabels: { run: "running" },
@@ -545,36 +514,7 @@ export async function runInitCluster(
       });
     });
 
-    // Step 6: create ghcr-creds imagePullSecret
-    // C2: token piped via stdin in a Secret manifest, never on argv.
-    await run("ghcr secret", async () => {
-      await execa("kubectl", ["apply", "-f", "-"], {
-        input: buildGhcrSecretManifest(ghcrToken),
-        all: true,
-      });
-    });
-
-    // Step 7: create npm-proxy-github Secret for Verdaccio → GitHub Packages
-    await run("npm secret", async () => {
-      const encoded = Buffer.from(ghcrToken).toString("base64");
-      const manifest = [
-        "apiVersion: v1",
-        "kind: Secret",
-        "metadata:",
-        "  name: npm-proxy-github",
-        "  namespace: default",
-        "type: Opaque",
-        "data:",
-        `  GH_TOKEN: ${encoded}`,
-        "",
-      ].join("\n");
-      await execa("kubectl", ["apply", "-f", "-"], {
-        input: manifest,
-        all: true,
-      });
-    });
-
-    // Step 8: collect DNS info (FR-007-AC-5)
+    // Step 6: collect DNS info (FR-007-AC-5)
     await run("dns config", async () => {
       const { stdout } = await execa("kubectl", [
         "get",
