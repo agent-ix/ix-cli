@@ -24,9 +24,9 @@ import { resolveGhcrToken } from "../credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
 import { waitForRollout, diagnosePodFailure } from "../rollout.js";
 import {
-  SECRETS_FILENAME,
   loadSecretContract,
   applySecretContract,
+  findSecretContractDir,
   type SecretContract,
 } from "../local-secrets.js";
 import {
@@ -69,6 +69,8 @@ export interface ChildInstall {
 
 export interface UpImageOptions {
   continueOnError?: boolean;
+  /** Deploy-time namespace override; wins over chart annotation. */
+  namespaceOverride?: string;
 }
 
 interface RawDependency {
@@ -224,14 +226,18 @@ export async function runImageModeUp(
         `App '${deployable.name}' has no chart dependencies to install.`,
       );
     }
-    installs = deps;
+    installs = opts.namespaceOverride?.trim()
+      ? deps.map((d) => ({ ...d, namespace: opts.namespaceOverride!.trim() }))
+      : deps;
   } else {
     installs = [
       {
         name: deployable.name,
         chartRef: `oci://${config.helmChartRegistry}/${deployable.chartRepository}/${deployable.name}`,
         chartVersion: deployable.version,
-        namespace: resolveDeployableNamespace(deployable),
+        namespace:
+          opts.namespaceOverride?.trim() ||
+          resolveDeployableNamespace(deployable),
       },
     ];
     serviceList = startListing(headerText);
@@ -246,8 +252,8 @@ export async function runImageModeUp(
     // Single-service: Listr2 path (FR-022-CON-1, FR-021-CON-1)
     const contracts: SecretContract[] = [];
     if (devDir) {
-      const repoDir = path.join(devDir, deployable.name);
-      if (fs.existsSync(path.join(repoDir, SECRETS_FILENAME))) {
+      const repoDir = findSecretContractDir(deployable.name, devDir);
+      if (repoDir) {
         const contract = await loadSecretContract(repoDir);
         if (contract && contract.secrets.length > 0) contracts.push(contract);
       }
@@ -278,8 +284,8 @@ export async function runImageModeUp(
       ...new Set([deployable.name, ...installs.map((i) => i.name)]),
     ];
     for (const name of candidateNames) {
-      const repoDir = path.join(devDir, name);
-      if (!fs.existsSync(path.join(repoDir, SECRETS_FILENAME))) continue;
+      const repoDir = findSecretContractDir(name, devDir);
+      if (!repoDir) continue;
       const contract = await loadSecretContract(repoDir);
       if (contract && contract.secrets.length > 0)
         contractsByName.set(name, contract);
@@ -334,7 +340,7 @@ export async function runImageModeUp(
           const contract = contractsByName.get(install.name);
           if (contract) {
             display.transition(install.name, "secrets", "running");
-            await applySecretContract(contract, () => {});
+            await applySecretContract(contract, install.namespace, () => {});
           }
           display.transition(install.name, "secrets", "done");
 
@@ -486,7 +492,7 @@ async function runSingleServiceListr(
       ...contracts.map((contract) => ({
         title: `Apply repo secrets ${pc.cyan(path.basename(contract.repoDir))}`,
         task: async (_ctx: unknown, task: { output: string }) => {
-          await applySecretContract(contract, (line) => {
+          await applySecretContract(contract, install.namespace, (line) => {
             task.output = line;
           });
         },

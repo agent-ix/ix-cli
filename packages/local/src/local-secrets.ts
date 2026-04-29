@@ -70,6 +70,34 @@ function readSecretsFile(repoDir: string): SecretsFile | null {
   return (parseYaml(fs.readFileSync(filePath, "utf-8")) as SecretsFile) ?? null;
 }
 
+/**
+ * Locate the directory that owns a service's ix-local.secrets.yaml.
+ *
+ * Two layouts are supported:
+ *   1. Single-service repo at `<devDir>/<name>/ix-local.secrets.yaml`.
+ *   2. Multi-chart repo with the file at
+ *      `<devDir>/<repo>/helm/<name>/ix-local.secrets.yaml` (e.g.
+ *      ix-local-build hosting npm-proxy and pypi-proxy).
+ *
+ * Returns null if no contract file is found.
+ */
+export function findSecretContractDir(
+  name: string,
+  devDir: string,
+): string | null {
+  const direct = path.join(devDir, name);
+  if (fs.existsSync(path.join(direct, SECRETS_FILENAME))) return direct;
+
+  if (!fs.existsSync(devDir)) return null;
+  for (const entry of fs.readdirSync(devDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    if (entry.name === name) continue;
+    const candidate = path.join(devDir, entry.name, "helm", name);
+    if (fs.existsSync(path.join(candidate, SECRETS_FILENAME))) return candidate;
+  }
+  return null;
+}
+
 function parseGenerateSpec(raw: unknown): "randomHex32" | "uuidV4" | null {
   return raw === "randomHex32" || raw === "uuidV4" ? raw : null;
 }
