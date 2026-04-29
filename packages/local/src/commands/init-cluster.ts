@@ -239,6 +239,63 @@ spec:
 `.trim();
 }
 
+// Probe Ingress used to verify the validating admission webhook actually
+// answers. Server-side dry-run routes through the apiserver → webhook path,
+// matching what helm install will hit. "connection refused" means keep
+// waiting; any other response (success or validation rejection) means the
+// webhook process is bound to :8443.
+const WEBHOOK_PROBE_INGRESS = `apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ix-init-webhook-probe
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: ix-init-webhook-probe.invalid
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nonexistent
+                port:
+                  number: 80
+`;
+
+async function waitAdmissionWebhookReady(
+  timeoutSeconds: number,
+): Promise<void> {
+  const POLL_MS = 2000;
+  const deadline = Date.now() + timeoutSeconds * 1000;
+  let lastErr = "";
+  while (Date.now() < deadline) {
+    try {
+      await execa("kubectl", ["apply", "--dry-run=server", "-f", "-"], {
+        input: WEBHOOK_PROBE_INGRESS,
+        all: true,
+      });
+      return;
+    } catch (e) {
+      lastErr = (e as { all?: string; message?: string }).all ?? String(e);
+      // "connection refused" / "no endpoints available" → webhook still
+      // coming up. Anything else (e.g. controller-side validation rejection
+      // with our intentionally-bogus probe) also means the webhook answered.
+      if (
+        !/connection refused|no endpoints available|EOF|x509|tls/i.test(lastErr)
+      ) {
+        return;
+      }
+    }
+    await new Promise((r) => setTimeout(r, POLL_MS));
+  }
+  throw new Error(
+    `ingress-nginx admission webhook did not become ready within ${timeoutSeconds}s. ` +
+      `Last error: ${lastErr.slice(0, 200)}`,
+  );
+}
+
 const INIT_STEPS = [
   "kind cluster",
   "cert-manager",
@@ -390,30 +447,10 @@ export async function runInitCluster(
         );
       }
 
-      // Rollout returning Ready only confirms the controller pod's readiness
-      // probe (port 10254) — the validating admission webhook on :8443 may
-      // still be unreachable, causing downstream Ingress applies to fail with
-      // "connection refused" to ingress-nginx-controller-admission. Wait until
-      // the admission Service has at least one endpoint address before
-      // returning from this step.
-      try {
-        await execa(
-          "kubectl",
-          [
-            "wait",
-            "--namespace=ingress-nginx",
-            "--for=jsonpath={.subsets[0].addresses[0].ip}",
-            "endpoints/ingress-nginx-controller-admission",
-            `--timeout=${config.ingressNginxTimeoutSeconds}s`,
-          ],
-          { all: true },
-        );
-      } catch {
-        throw new Error(
-          `ingress-nginx admission webhook endpoint not ready within ${config.ingressNginxTimeoutSeconds}s. ` +
-            `Run: kubectl get endpoints ingress-nginx-controller-admission -n ingress-nginx`,
-        );
-      }
+      // Rollout Ready only confirms the controller pod's readiness probe
+      // (port 10254) — the validating admission webhook on :8443 can lag.
+      // Probe the webhook path the apiserver will actually use.
+      await waitAdmissionWebhookReady(config.ingressNginxTimeoutSeconds);
     });
 
     // Step 5: issue wildcard TLS certificate for default ns (FR-007-AC-3)
@@ -482,6 +519,24 @@ export async function runInitCluster(
         ],
         { all: true },
       );
+
+      // The deployment patch above triggers a rolling restart of the
+      // controller pod. Wait for the new pod's webhook listener to bind
+      // before returning, so subsequent `ix local up` steps don't race the
+      // restart and hit "connection refused" on the admission webhook.
+      await execa(
+        "kubectl",
+        [
+          "rollout",
+          "status",
+          "deployment/ingress-nginx-controller",
+          "-n",
+          "ingress-nginx",
+          `--timeout=${config.ingressNginxTimeoutSeconds}s`,
+        ],
+        { all: true },
+      );
+      await waitAdmissionWebhookReady(config.ingressNginxTimeoutSeconds);
     });
 
     // Step 7: wait for both certificates Ready (FR-007-AC-9)
