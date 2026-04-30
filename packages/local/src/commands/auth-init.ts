@@ -44,6 +44,11 @@ interface SecretData {
   };
 }
 
+function formatExpiry(iso: string): string {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
 const IDENTITY_DEPLOYMENT = "identity";
 const IDENTITY_CLI_INIT = [
   "python",
@@ -179,12 +184,8 @@ export async function runAuthInit(
         expiresAt: string;
         loginUrl: string;
       };
-      list.note(`Expires at: ${bootstrapped.expiresAt}`);
+      list.note(`Expires at: ${formatExpiry(bootstrapped.expiresAt)}`);
       list.note(`Log in at:  ${bootstrapped.loginUrl}`);
-      list.note(
-        `Retrievable via: kubectl -n ${IX_SYSTEM_NAMESPACE} get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
-      );
-      list.success("Admin account already bootstrapped.");
       process.exit(0);
       return;
     }
@@ -195,12 +196,9 @@ export async function runAuthInit(
     // FR-015-B6: print to stdout once — never to a log (NFR-004-AC-2)
     list.note("Username:      admin");
     list.note(
-      `Temp password: ${resp.password}     (expires ${resp.expires_at})`,
+      `Temp password: ${resp.password}     (expires ${formatExpiry(resp.expires_at)})`,
     );
     list.note(`Log in at:     ${resp.login_url}`);
-    list.note(
-      `Retrievable via: kubectl -n ${IX_SYSTEM_NAMESPACE} get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
-    );
     list.success("Admin account created.");
   } catch (err) {
     list.error(
