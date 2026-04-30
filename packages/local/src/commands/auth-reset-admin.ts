@@ -21,6 +21,15 @@ import {
 } from "./auth-identity.js";
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
+const IDENTITY_CLI_INIT = [
+  "python",
+  "-m",
+  "identity.cli",
+  "init-admin",
+  "--output",
+  "json",
+];
+
 type ExecFn = typeof kubectlExecJson;
 export interface IdentityDeps {
   kubectlExecJson?: ExecFn;
@@ -28,9 +37,21 @@ export interface IdentityDeps {
 
 interface ResetResponse {
   user_id: string;
+  username?: string;
   password: string;
   expires_at: string;
   login_url: string;
+}
+
+function formatExpiresAt(iso: string): string {
+  // Drop fractional seconds and render as "YYYY-MM-DD HH:MM:SS UTC"
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ` +
+    `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} UTC`
+  );
 }
 
 const IDENTITY_DEPLOYMENT = "identity";
@@ -60,9 +81,6 @@ interface AmbiguousAdminEnvelope {
 function diagnoseExecError(err: KubectlExecError): string {
   // identity FR-029 §5: stable exit code contract.
   const stderr = err.stderr.trim();
-  if (err.exitCode === 4) {
-    return "No admin user exists. Run `ix local init` to bootstrap one.";
-  }
   if (err.exitCode === 5) {
     // Try to surface the candidate list from the structured error envelope.
     try {
@@ -80,7 +98,7 @@ function diagnoseExecError(err: KubectlExecError): string {
 }
 
 export async function runAuthResetAdmin(
-  _config: IxConfig,
+  config: IxConfig,
   opts: { user?: string },
   deps?: IdentityDeps,
 ): Promise<void> {
@@ -107,6 +125,17 @@ export async function runAuthResetAdmin(
             );
           } catch (err) {
             if (err instanceof KubectlExecError) {
+              if (err.exitCode === 4) {
+                // No admin exists yet — create one via init-admin
+                task.output = `kubectl exec -n ${IX_AUTH_NAMESPACE} deployment/${IDENTITY_DEPLOYMENT} -- ${IDENTITY_CLI_INIT.join(" ")}`;
+                resetResp = await _exec<ResetResponse>(
+                  IX_AUTH_NAMESPACE,
+                  IDENTITY_DEPLOYMENT,
+                  IDENTITY_CLI_INIT,
+                );
+                task.output = "Admin account created";
+                return;
+              }
               throw new Error(diagnoseExecError(err));
             }
             throw err;
@@ -123,7 +152,7 @@ export async function runAuthResetAdmin(
             password: resetResp.password,
             expiresAt: resetResp.expires_at,
             userId: resetResp.user_id,
-            loginUrl: resetResp.login_url,
+            loginUrl: `https://identity.${config.internalBaseDomain}/login`,
           });
           task.output = `Secret ${IX_SYSTEM_NAMESPACE}/admin-bootstrap written`;
         },
@@ -137,13 +166,16 @@ export async function runAuthResetAdmin(
     if (!resetResp) throw new Error("No reset response");
     const resp = resetResp as ResetResponse;
 
+    // The login_url returned by identity is built from its public_base_url
+    // (defaults to localhost:8000); override with the cluster ingress host
+    // derived from the configured internal base domain.
+    const loginUrl = `https://identity.${config.internalBaseDomain}/login`;
+
     // FR-016-B5: print to stdout once — never to a log.
-    list.note(`User id:       ${resp.user_id}`);
-    list.note(`Temp password: ${resp.password}   (expires ${resp.expires_at})`);
-    list.note(`Log in at:     ${resp.login_url}`);
-    list.note(
-      `Retrievable via: kubectl -n ${IX_SYSTEM_NAMESPACE} get secret admin-bootstrap -o jsonpath='{.data.password}' | base64 -d`,
-    );
+    list.note(`Username:      ${resp.username ?? "admin"}`);
+    list.note(`Temp password: ${resp.password}`);
+    list.note(`Expires at:    ${formatExpiresAt(resp.expires_at)}`);
+    list.note(`Log in at:     ${loginUrl}`);
     list.success("Admin password reset.");
   } catch (err) {
     list.error(
