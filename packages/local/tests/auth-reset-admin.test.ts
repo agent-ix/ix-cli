@@ -47,6 +47,7 @@ function makeExecError(exitCode: number, stderr = ""): KubectlExecError {
 
 const resetResp = {
   user_id: "u1",
+  email: "admin@dev.ix",
   username: "admin",
   password: "new-pass",
   expires_at: "2026-05-01T00:00:00+00:00",
@@ -70,7 +71,8 @@ describe("runAuthResetAdmin — happy path", () => {
       expect.objectContaining({ password: "new-pass" }),
     );
     expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("new-pass"));
-    expect(mockSuccess).toHaveBeenCalledWith("Admin password reset.");
+    expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("admin@dev.ix"));
+    expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("u1"));
   });
 
   it("passes --email when --user is provided", async () => {
@@ -110,10 +112,9 @@ describe("runAuthResetAdmin — no admin exists (exit 4)", () => {
       expect.objectContaining({ password: "init-pass" }),
     );
     expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("init-pass"));
-    expect(mockSuccess).toHaveBeenCalledWith("Admin password reset.");
   });
 
-  it("prints 'admin' as username when init-admin response omits it", async () => {
+  it("prints 'admin' as username/email fallback when init-admin response omits them", async () => {
     const mockExec = vi
       .fn()
       .mockRejectedValueOnce(makeExecError(4))

@@ -17,6 +17,11 @@ export default class LocalUp extends Command {
     }),
     src: Flags.boolean({ description: "Alias for --from-source." }),
     tag: Flags.string({ description: "Image tag override (image mode)." }),
+    namespace: Flags.string({
+      char: "n",
+      description:
+        "Override the chart's declared namespace; applies to all installs in this run.",
+    }),
     "include-tag": Flags.string({
       description: "Only deploy children carrying this tag.",
     }),
@@ -39,12 +44,14 @@ export default class LocalUp extends Command {
       await runUp(services, {
         fromSource: flags["from-source"] || flags.src,
         tag: flags.tag,
+        namespace: flags.namespace,
         includeTag: flags["include-tag"],
         excludeTag: flags["exclude-tag"],
         continueOnError: flags["continue-on-error"],
         latest: flags.latest,
       });
-    } catch {
+    } catch (err) {
+      this.log(err instanceof Error ? err.message : String(err));
       this.exit(1);
     }
   }

@@ -37,6 +37,7 @@ export interface IdentityDeps {
 
 interface ResetResponse {
   user_id: string;
+  email?: string;
   username?: string;
   password: string;
   expires_at: string;
@@ -172,11 +173,12 @@ export async function runAuthResetAdmin(
     const loginUrl = `https://identity.${config.internalBaseDomain}/login`;
 
     // FR-016-B5: print to stdout once — never to a log.
+    list.note(`User ID:       ${resp.user_id}`);
     list.note(`Username:      ${resp.username ?? "admin"}`);
+    list.note(`Email:         ${resp.email ?? resp.username ?? "admin"}`);
     list.note(`Temp password: ${resp.password}`);
     list.note(`Expires at:    ${formatExpiresAt(resp.expires_at)}`);
     list.note(`Log in at:     ${loginUrl}`);
-    list.success("Admin password reset.");
   } catch (err) {
     list.error(
       `auth reset-admin failed: ${err instanceof Error ? err.message : String(err)}`,

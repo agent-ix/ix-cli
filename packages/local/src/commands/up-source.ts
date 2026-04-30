@@ -5,7 +5,7 @@ import { execa } from "execa";
 import pc from "picocolors";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { IxConfig } from "../config.js";
-import { resolveNamespaceByName } from "../discovery.js";
+import { IX_APPS_NAMESPACE } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
 import { applySecretContract, loadSecretContract } from "../local-secrets.js";
@@ -37,6 +37,8 @@ export interface UpFilterOptions {
   includeTag?: string;
   excludeTag?: string;
   continueOnError?: boolean;
+  /** Deploy-time namespace override; wins over chart annotation. */
+  namespaceOverride?: string;
 }
 
 function readYamlFile(filePath: string): unknown {
@@ -106,6 +108,15 @@ function parseChartTags(chartPath: string): string[] {
   ];
 }
 
+function parseChartNamespace(chartPath: string): string {
+  const chartYamlPath = path.join(chartPath, "Chart.yaml");
+  if (!fs.existsSync(chartYamlPath)) return IX_APPS_NAMESPACE;
+  const parsed = readYamlFile(chartYamlPath) as ChartFile | null;
+  const raw = parsed?.annotations?.["org.agent-ix.namespace"];
+  if (typeof raw !== "string" || raw.trim() === "") return IX_APPS_NAMESPACE;
+  return raw.trim();
+}
+
 function matchesTagFilters(tags: string[], opts: UpFilterOptions): boolean {
   if (opts.includeTag && !tags.includes(opts.includeTag)) return false;
   if (opts.excludeTag && tags.includes(opts.excludeTag)) return false;
@@ -139,7 +150,7 @@ function resolveServiceInstall(name: string, devDir: string): LocalInstall {
     repoDir,
     dependencyUpdate: shouldDependencyUpdate(chartPath),
     tags: parseChartTags(chartPath),
-    namespace: resolveNamespaceByName(name),
+    namespace: parseChartNamespace(chartPath),
   };
 }
 
@@ -304,7 +315,11 @@ export async function runSourceModeUp(
     const plans = services.map((service) =>
       resolveLocalInstalls(service, devDir, tmpDir, opts),
     );
-    const installs = plans.flatMap((plan) => plan.installs);
+    const rawInstalls = plans.flatMap((plan) => plan.installs);
+    const override = opts.namespaceOverride?.trim();
+    const installs = override
+      ? rawInstalls.map((i) => ({ ...i, namespace: override }))
+      : rawInstalls;
     if (installs.length === 0) {
       throw new Error("No local installs matched the requested tag filters.");
     }
@@ -328,7 +343,11 @@ export async function runSourceModeUp(
         ...secretContracts.map((contract) => ({
           title: `Apply repo secrets: ${pc.cyan(path.basename(contract.repoDir))}`,
           task: async (_ctx: unknown, task: { output: string }) => {
-            await applySecretContract(contract, (line) => {
+            const matched = installs.find(
+              (i) => i.repoDir === contract.repoDir,
+            );
+            const namespace = matched?.namespace ?? IX_APPS_NAMESPACE;
+            await applySecretContract(contract, namespace, (line) => {
               task.output = line;
             });
           },
@@ -440,9 +459,6 @@ export async function runSourceModeUp(
       );
     } else {
       for (const url of urls) list.note(url);
-      list.success(
-        `Deployed via Helm: ${installs.map((i) => i.name).join(", ")}`,
-      );
     }
   } catch (err) {
     list.error(
