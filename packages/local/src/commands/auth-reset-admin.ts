@@ -57,7 +57,10 @@ function formatExpiresAt(iso: string): string {
 
 const IDENTITY_DEPLOYMENT = "identity";
 
-function buildResetArgv(opts: { user?: string }): string[] {
+function buildResetArgv(
+  opts: { user?: string },
+  newEmail: string,
+): string[] {
   const argv = [
     "python",
     "-m",
@@ -65,6 +68,8 @@ function buildResetArgv(opts: { user?: string }): string[] {
     "reset-admin",
     "--output",
     "json",
+    "--new-email",
+    newEmail,
   ];
   if (opts.user) {
     // identity FR-020 §2.3: --email / --username selector for ambiguous case.
@@ -104,7 +109,8 @@ export async function runAuthResetAdmin(
   deps?: IdentityDeps,
 ): Promise<void> {
   const _exec = deps?.kubectlExecJson ?? kubectlExecJson;
-  const argv = buildResetArgv(opts);
+  const newEmail = `admin@${config.internalBaseDomain}`;
+  const argv = buildResetArgv(opts, newEmail);
 
   const list = startListing("ix local auth reset-admin");
   list.commit();
