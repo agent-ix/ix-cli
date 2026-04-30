@@ -41,6 +41,7 @@ interface SecretData {
   data?: {
     expires_at?: string;
     login_url?: string;
+    password?: string;
   };
 }
 
@@ -66,6 +67,7 @@ const IDENTITY_CLI_INIT = [
 async function getExistingBootstrapSecret(): Promise<{
   expiresAt: string;
   loginUrl: string;
+  password: string;
 } | null> {
   try {
     const { stdout } = await execa("kubectl", [
@@ -86,7 +88,10 @@ async function getExistingBootstrapSecret(): Promise<{
     const loginUrl = data.login_url
       ? Buffer.from(data.login_url, "base64").toString("utf-8")
       : "";
-    return { expiresAt, loginUrl };
+    const password = data.password
+      ? Buffer.from(data.password, "base64").toString("utf-8")
+      : "";
+    return { expiresAt, loginUrl, password };
   } catch {
     return null;
   }
@@ -183,8 +188,10 @@ export async function runAuthInit(
       const bootstrapped = alreadyBootstrapped as {
         expiresAt: string;
         loginUrl: string;
+        password: string;
       };
-      list.note(`Expires at: ${formatExpiry(bootstrapped.expiresAt)}`);
+      list.note("Username:      admin");
+      list.note(`Temp password: ${bootstrapped.password}     (expires ${formatExpiry(bootstrapped.expiresAt)})`);
       list.note(`Log in at:  ${bootstrapped.loginUrl}`);
       process.exit(0);
       return;
