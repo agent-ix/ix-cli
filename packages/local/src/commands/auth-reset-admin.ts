@@ -21,14 +21,18 @@ import {
 } from "./auth-identity.js";
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
-const IDENTITY_CLI_INIT = [
-  "python",
-  "-m",
-  "identity.cli",
-  "init-admin",
-  "--output",
-  "json",
-];
+function buildInitArgv(email: string): string[] {
+  return [
+    "python",
+    "-m",
+    "identity.cli",
+    "init-admin",
+    "--email",
+    email,
+    "--output",
+    "json",
+  ];
+}
 
 type ExecFn = typeof kubectlExecJson;
 export interface IdentityDeps {
@@ -134,11 +138,12 @@ export async function runAuthResetAdmin(
             if (err instanceof KubectlExecError) {
               if (err.exitCode === 4) {
                 // No admin exists yet — create one via init-admin
-                task.output = `kubectl exec -n ${IX_AUTH_NAMESPACE} deployment/${IDENTITY_DEPLOYMENT} -- ${IDENTITY_CLI_INIT.join(" ")}`;
+                const initArgv = buildInitArgv(newEmail);
+                task.output = `kubectl exec -n ${IX_AUTH_NAMESPACE} deployment/${IDENTITY_DEPLOYMENT} -- ${initArgv.join(" ")}`;
                 resetResp = await _exec<ResetResponse>(
                   IX_AUTH_NAMESPACE,
                   IDENTITY_DEPLOYMENT,
-                  IDENTITY_CLI_INIT,
+                  initArgv,
                 );
                 task.output = "Admin account created";
                 return;

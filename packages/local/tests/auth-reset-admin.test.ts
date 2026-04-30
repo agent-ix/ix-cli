@@ -67,6 +67,8 @@ describe("runAuthResetAdmin — happy path", () => {
     expect(mockExec).toHaveBeenCalledTimes(1);
     const [, , argv] = mockExec.mock.calls[0] as [unknown, unknown, string[]];
     expect(argv).toContain("reset-admin");
+    expect(argv).toContain("--new-email");
+    expect(argv).toContain("admin@dev.ix");
     expect(mockWriteSecret).toHaveBeenCalledWith(
       expect.objectContaining({ password: "new-pass" }),
     );
@@ -108,6 +110,8 @@ describe("runAuthResetAdmin — no admin exists (exit 4)", () => {
     expect(mockExec).toHaveBeenCalledTimes(2);
     const [, , fallbackArgv] = mockExec.mock.calls[1] as [unknown, unknown, string[]];
     expect(fallbackArgv).toContain("init-admin");
+    expect(fallbackArgv).toContain("--email");
+    expect(fallbackArgv).toContain("admin@dev.ix");
     expect(mockWriteSecret).toHaveBeenCalledWith(
       expect.objectContaining({ password: "init-pass" }),
     );
