@@ -35,6 +35,10 @@ export default class LocalUp extends Command {
       description:
         "Re-resolve child chart pins to latest published tags (app mode).",
     }),
+    refresh: Flags.boolean({
+      description:
+        "Force `helm dependency update` to re-pull subchart deps from OCI even if a vendored copy exists (source mode). Helm-only; does not touch container images. Opt-in.",
+    }),
   };
 
   async run(): Promise<void> {
@@ -49,6 +53,7 @@ export default class LocalUp extends Command {
         excludeTag: flags["exclude-tag"],
         continueOnError: flags["continue-on-error"],
         latest: flags.latest,
+        refresh: flags.refresh,
       });
     } catch (err) {
       this.log(err instanceof Error ? err.message : String(err));

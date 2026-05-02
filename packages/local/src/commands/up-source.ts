@@ -39,6 +39,11 @@ export interface UpFilterOptions {
   continueOnError?: boolean;
   /** Deploy-time namespace override; wins over chart annotation. */
   namespaceOverride?: string;
+  /**
+   * FR-030: when true, force `helm dependency update` for every install
+   * regardless of whether subcharts are already vendored locally.
+   */
+  refresh?: boolean;
 }
 
 function readYamlFile(filePath: string): unknown {
@@ -317,9 +322,13 @@ export async function runSourceModeUp(
     );
     const rawInstalls = plans.flatMap((plan) => plan.installs);
     const override = opts.namespaceOverride?.trim();
-    const installs = override
+    const namespaced = override
       ? rawInstalls.map((i) => ({ ...i, namespace: override }))
       : rawInstalls;
+    // FR-030: --refresh forces dependency update on every install.
+    const installs = opts.refresh
+      ? namespaced.map((i) => ({ ...i, dependencyUpdate: true }))
+      : namespaced;
     if (installs.length === 0) {
       throw new Error("No local installs matched the requested tag filters.");
     }

@@ -221,3 +221,25 @@ describe("FR-004-AC-1: cluster runner functions are exported", () => {
     expect(src).toMatch(/loadClusterConfig/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// FR-030: --refresh flag plumbed from CLI through runUp into UpFilterOptions
+// TC-090 through TC-092
+// ---------------------------------------------------------------------------
+describe("FR-030: --refresh flag is wired end-to-end", () => {
+  it("TC-090: runUp options accept refresh boolean", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/refresh\?:\s*boolean/);
+    expect(src).toMatch(/refresh:\s*opts\.refresh/);
+  });
+
+  it("TC-091: UpFilterOptions declares refresh", () => {
+    const src = readSrc("commands/up-source.ts");
+    expect(src).toMatch(/refresh\?:\s*boolean/);
+  });
+
+  it("TC-092: runSourceModeUp forces dependencyUpdate=true when refresh is set", () => {
+    const src = readSrc("commands/up-source.ts");
+    expect(src).toMatch(/opts\.refresh[\s\S]*?dependencyUpdate:\s*true/);
+  });
+});

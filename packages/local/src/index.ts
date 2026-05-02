@@ -164,10 +164,12 @@ export async function runUp(
   opts: {
     fromSource?: boolean;
     tag?: string;
+    namespace?: string;
     includeTag?: string;
     excludeTag?: string;
     continueOnError?: boolean;
     latest?: boolean;
+    refresh?: boolean;
   } = {},
 ): Promise<void> {
   const services = servicesArgs.length > 0 ? servicesArgs : ["all"];
@@ -182,6 +184,8 @@ export async function runUp(
       includeTag: opts.includeTag,
       excludeTag: opts.excludeTag,
       continueOnError: opts.continueOnError,
+      namespaceOverride: opts.namespace,
+      refresh: opts.refresh,
     });
     return;
   }
@@ -200,6 +204,8 @@ export async function runUp(
       deployable.role === "app"
         ? async () => {
             const { defaultExpandApp } = await import("./commands/up-image.js");
+            const { resolveDeployableNamespace } =
+              await import("./discovery.js");
             const installs = await defaultExpandApp(deployable, config);
             return installs
               .filter((install) => {
@@ -208,11 +214,13 @@ export async function runUp(
                 return deployableMatchesTags(child, opts);
               })
               .map((install) => {
-                if (!opts.latest) return install;
                 const child = registry.find((d) => d.name === install.name);
-                return child
-                  ? { ...install, chartVersion: child.version }
-                  : install;
+                const next = { ...install };
+                if (child) {
+                  next.namespace = resolveDeployableNamespace(child);
+                  if (opts.latest) next.chartVersion = child.version;
+                }
+                return next;
               });
           }
         : undefined;
@@ -226,7 +234,10 @@ export async function runUp(
       config,
       opts.tag ?? null,
       filteredExpander,
-      { continueOnError: opts.continueOnError },
+      {
+        continueOnError: opts.continueOnError,
+        namespaceOverride: opts.namespace,
+      },
       DEV_DIR,
     );
   }

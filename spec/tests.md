@@ -242,6 +242,9 @@ Tests fall into four types:
 | TC-076 | resolveAllElements: refresh=true skips cache read | Unit | P1 | FR-010-AC-3 | ✅ Complete |
 | TC-077 | runTapList: root tap entry contains "(root)", others do not | Unit | P1 | FR-012-AC-6 | ✅ Complete |
 | TC-078 | runElementsList: empty result directs user to add a tap | Unit | P1 | FR-010-AC-4 | ✅ Complete |
+| TC-090 | runUp options accept refresh boolean and pass it to source mode | Static | P1 | FR-030-AC-1, FR-030-AC-2 | ✅ Complete |
+| TC-091 | UpFilterOptions declares refresh field | Static | P1 | FR-030-AC-2 | ✅ Complete |
+| TC-092 | runSourceModeUp forces dependencyUpdate=true when refresh is set | Static | P1 | FR-030-AC-3 | ✅ Complete |
 
 ---
 
