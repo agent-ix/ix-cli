@@ -175,18 +175,12 @@ export async function runAuthResetAdmin(
     if (!resetResp) throw new Error("No reset response");
     const resp = resetResp as ResetResponse;
 
-    // The login_url returned by identity is built from its public_base_url
-    // (defaults to localhost:8000); override with the cluster ingress host
-    // derived from the configured internal base domain.
-    const loginUrl = `https://identity.${config.internalBaseDomain}/login`;
-
     // FR-016-B5: print to stdout once — never to a log.
     list.note(`User ID:       ${resp.user_id}`);
     list.note(`Username:      ${resp.username ?? "admin"}`);
     list.note(`Email:         ${resp.email ?? resp.username ?? "admin"}`);
     list.note(`Temp password: ${resp.password}`);
     list.note(`Expires at:    ${formatExpiresAt(resp.expires_at)}`);
-    list.note(`Log in at:     ${loginUrl}`);
   } catch (err) {
     list.error(
       `auth reset-admin failed: ${err instanceof Error ? err.message : String(err)}`,
