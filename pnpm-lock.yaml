@@ -129,13 +129,13 @@ importers:
 packages:
 
   '@agent-ix/ix-cli-core@0.1.1':
-    resolution: {integrity: sha512-WvCwm2CreK07Ta1ZW1ng20TponOAJtH1c5SOxvUO/oTRW6HUbDp4/xBEsFWimzLcxn4B/xFmL6AgQ1Jymx0aGg==, tarball: http://npm.ix/@agent-ix/ix-cli-core/-/30267bb529d4f8af3aef5a0d3fb8ecc6278e6fbb}
+    resolution: {integrity: sha512-WvCwm2CreK07Ta1ZW1ng20TponOAJtH1c5SOxvUO/oTRW6HUbDp4/xBEsFWimzLcxn4B/xFmL6AgQ1Jymx0aGg==}
 
   '@agent-ix/ix-ui-cli@0.3.4':
-    resolution: {integrity: sha512-LD4YqV7lsqW+c4zNCLypLwZQWkzOMPfjdAf8EFwJ6KwEre3aY7y4TGuziI51cr0L9uSw9jnxE8evWuIBylwNDw==, tarball: http://npm.ix/@agent-ix/ix-ui-cli/-/85b6ba5137c82b36be51314af273885849cb2f62}
+    resolution: {integrity: sha512-LD4YqV7lsqW+c4zNCLypLwZQWkzOMPfjdAf8EFwJ6KwEre3aY7y4TGuziI51cr0L9uSw9jnxE8evWuIBylwNDw==}
 
   '@agent-ix/ix-ui-semantic@0.3.4':
-    resolution: {integrity: sha512-FLqu8CSOFWs0a3bxMDCaUDJJ0vH9EDMm6Bgk5po4bsGPiY1YwDHbyICptUyOVVbWvLYtyeCo+o1ax1Q2EssiBA==, tarball: http://npm.ix/@agent-ix/ix-ui-semantic/-/be5f534f7dee6dcff810cabec8c76f78edd7c13d}
+    resolution: {integrity: sha512-FLqu8CSOFWs0a3bxMDCaUDJJ0vH9EDMm6Bgk5po4bsGPiY1YwDHbyICptUyOVVbWvLYtyeCo+o1ax1Q2EssiBA==}
 
   '@clack/core@1.3.0':
     resolution: {integrity: sha512-xJPHpAmEQUBrXSLx0gF+q5K/IyihXpsHZcha+jB+tyahsKRK3Dxo4D0coZDewHo12NhiuzC3dTtMPbm53GEAAA==}
