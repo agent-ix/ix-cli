@@ -286,3 +286,27 @@ describe("FR-031: umbrella install + settling indicator", () => {
     expect(src).toMatch(/pushRelease/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// FR-032: ensureGhcrCredsInNamespace runs before helm install in image mode
+// so the kubelet can pull images from ghcr.io without manual setup.
+// TC-098 through TC-099
+// ---------------------------------------------------------------------------
+describe("FR-032: ghcr-creds auto-applied to install namespaces", () => {
+  it("TC-098: local-secrets exports ensureGhcrCredsInNamespace producing dockerconfigjson Secret", () => {
+    const src = readSrc("local-secrets.ts");
+    expect(src).toMatch(/export async function ensureGhcrCredsInNamespace/);
+    expect(src).toMatch(/kubernetes\.io\/dockerconfigjson/);
+    expect(src).toMatch(/ghcr\.io/);
+  });
+
+  it("TC-099: runImageModeUp calls ensureGhcrCredsInNamespace for every install namespace before helm install", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/ensureGhcrCredsInNamespace/);
+    // The call sits between ghcrToken resolution and the role-branch dispatch
+    // so it covers both single-service and umbrella install paths.
+    expect(src).toMatch(
+      /resolveGhcrToken[\s\S]*?ensureGhcrCredsInNamespace[\s\S]*?role !== "app"/,
+    );
+  });
+});

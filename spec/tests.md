@@ -250,6 +250,8 @@ Tests fall into four types:
 | TC-095 | Rollout status appends settling marker when ready but not reconciled | Static | P1 | FR-031-AC-8 | ✅ Complete |
 | TC-096 | runDown uninstalls the umbrella release first for role=app | Static | P1 | FR-031-AC-11 | ✅ Complete |
 | TC-097 | runDown deduplicates releases via a seen set | Static | P1 | FR-031-AC-11 | ✅ Complete |
+| TC-098 | local-secrets exports ensureGhcrCredsInNamespace producing dockerconfigjson | Static | P1 | FR-032-AC-1, FR-032-AC-2 | ✅ Complete |
+| TC-099 | runImageModeUp calls ensureGhcrCredsInNamespace before helm install for every install ns | Static | P1 | FR-032-AC-3 | ✅ Complete |
 
 ---
 

@@ -378,3 +378,43 @@ export async function applySecretContract(
     await subprocess;
   }
 }
+
+/**
+ * FR-032: Ensure `ghcr-creds` (kubernetes.io/dockerconfigjson) exists in the
+ * target namespace so the kubelet can pull images from ghcr.io. Idempotent
+ * via `kubectl apply` — safe to call before every install.
+ *
+ * Sources the GHCR token via the same `resolveGhcrToken` chain used for
+ * `helm registry login`. Username defaults to `_token` (the GHCR PAT
+ * convention; the username field is not validated by ghcr.io for PATs).
+ */
+export async function ensureGhcrCredsInNamespace(
+  namespace: string,
+  token: string,
+  username: string = "_token",
+): Promise<void> {
+  const auth = Buffer.from(`${username}:${token}`).toString("base64");
+  const dockerconfig = JSON.stringify({
+    auths: {
+      "ghcr.io": {
+        username,
+        password: token,
+        email: "ix@ix.local",
+        auth,
+      },
+    },
+  });
+  const dockerconfigB64 = Buffer.from(dockerconfig).toString("base64");
+  const manifest = [
+    "apiVersion: v1",
+    "kind: Secret",
+    "metadata:",
+    "  name: ghcr-creds",
+    `  namespace: ${namespace}`,
+    "type: kubernetes.io/dockerconfigjson",
+    "data:",
+    `  .dockerconfigjson: ${dockerconfigB64}`,
+    "",
+  ].join("\n");
+  await execa("kubectl", ["apply", "-f", "-"], { input: manifest });
+}

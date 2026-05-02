@@ -26,6 +26,7 @@ import { waitForRollout, diagnosePodFailure } from "../rollout.js";
 import {
   loadSecretContract,
   applySecretContract,
+  ensureGhcrCredsInNamespace,
   findSecretContractDir,
   type SecretContract,
 } from "../local-secrets.js";
@@ -254,6 +255,15 @@ export async function runImageModeUp(
   // Resolve credentials before entering Listr / PhaseTable — interactive
   // prompts need direct terminal access.
   const ghcrToken = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+
+  // FR-032: ensure ghcr-creds exists in every install namespace BEFORE helm
+  // install runs, so the kubelet can pull images. Image-mode pods reference
+  // images on ghcr.io; without this secret pulls fail when images aren't
+  // already cached on the kind node.
+  const installNamespaces = new Set(installs.map((i) => i.namespace));
+  for (const ns of installNamespaces) {
+    await ensureGhcrCredsInNamespace(ns, ghcrToken);
+  }
 
   if (deployable.role !== "app") {
     // Single-service: Listr2 path (FR-022-CON-1, FR-021-CON-1)
