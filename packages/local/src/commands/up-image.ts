@@ -464,7 +464,7 @@ export async function runImageModeUp(
               install.namespace,
               config.rolloutTimeoutSeconds,
               rolloutSink,
-              `app.kubernetes.io/part-of=${install.name}`,
+              `app.kubernetes.io/instance=${install.name}`,
               (status) => display.setPodStatus(install.name, status),
             );
             display.transition(install.name, "ready", "done");
@@ -488,7 +488,7 @@ export async function runImageModeUp(
                 .pop() ?? String(err);
             let displayMsg = `ready: ${rawMsg}`;
             const diagnosis = await diagnosePodFailure(
-              `app.kubernetes.io/part-of=${install.name}`,
+              `app.kubernetes.io/instance=${install.name}`,
               install.namespace,
             );
             if (diagnosis) displayMsg = `ready: ${diagnosis}`;
@@ -573,7 +573,7 @@ async function runSingleServiceListr(
               install.namespace,
               config.rolloutTimeoutSeconds,
               task as Parameters<typeof waitForRollout>[3],
-              `app.kubernetes.io/part-of=${install.name}`,
+              `app.kubernetes.io/instance=${install.name}`,
             );
           } catch (err) {
             if (!opts.continueOnError) throw err;
