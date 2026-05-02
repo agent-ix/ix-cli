@@ -61,10 +61,7 @@ function formatExpiresAt(iso: string): string {
 
 const IDENTITY_DEPLOYMENT = "identity";
 
-function buildResetArgv(
-  opts: { user?: string },
-  newEmail: string,
-): string[] {
+function buildResetArgv(opts: { user?: string }, newEmail: string): string[] {
   const argv = [
     "python",
     "-m",
