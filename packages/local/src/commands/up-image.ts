@@ -166,8 +166,15 @@ function buildHelmInstallArgs(
   return args;
 }
 
-function buildHelmLocalInstallArgs(
-  name: string,
+/**
+ * FR-031: Build helm args for installing an umbrella chart as a single
+ * Helm release. The umbrella's Chart.yaml deps describe the subcharts;
+ * Helm itself topologically installs them. We deliberately omit --wait
+ * and --atomic so per-subchart rollout watchers (running in parallel)
+ * can stream live status to the PhaseTable.
+ */
+function buildUmbrellaInstallArgs(
+  releaseName: string,
   tgzPath: string,
   namespace: string,
   config: IxConfig,
@@ -176,7 +183,7 @@ function buildHelmLocalInstallArgs(
   const args = [
     "upgrade",
     "--install",
-    name,
+    releaseName,
     tgzPath,
     "--namespace",
     namespace,
@@ -188,7 +195,7 @@ function buildHelmLocalInstallArgs(
     `global.internalBaseDomain=${config.internalBaseDomain}`,
   ];
   if (imageTagOverride) {
-    args.push("--set-string", `ix-service.image.tag=${imageTagOverride}`);
+    args.push("--set-string", `global.imageTag=${imageTagOverride}`);
   }
   if (config.enableExternalHost && config.externalBaseDomain) {
     args.push(
@@ -332,71 +339,113 @@ export async function runImageModeUp(
   }
 
   try {
+    // FR-031: install the umbrella as a single Helm release.
+    // Pull + install happen once for the whole app; per-subchart rollout
+    // watchers run in parallel and drive each row's `ready` phase.
+
+    // --- secrets phase (per-subchart, parallel) ---
     await Promise.all(
       installs.map(async (install) => {
-        let currentPhase: Phase = "secrets";
-        try {
-          // --- secrets phase (FR-022: no secrets file → instant done) ---
-          const contract = contractsByName.get(install.name);
-          if (contract) {
-            display.transition(install.name, "secrets", "running");
+        const contract = contractsByName.get(install.name);
+        if (contract) {
+          display.transition(install.name, "secrets", "running");
+          try {
             await applySecretContract(contract, install.namespace, () => {});
+            display.transition(install.name, "secrets", "done");
+          } catch (err) {
+            display.transition(install.name, "secrets", "failed");
+            const msg = err instanceof Error ? err.message : String(err);
+            display.setError(install.name, `secrets: ${msg}`);
+            failures.push(`${install.name}: secrets: ${msg}`);
           }
+        } else {
           display.transition(install.name, "secrets", "done");
+        }
+      }),
+    );
 
-          // --- pull phase (dockerPull pool) ---
-          currentPhase = "pull";
-          const serviceDir = path.join(tmpDir, install.name);
-          fs.mkdirSync(serviceDir, { recursive: true });
-          display.transition(install.name, "pull", "queued");
-          await pools.dockerPull.run(async () => {
-            display.transition(install.name, "pull", "running");
-            await execa(
-              "helm",
-              [
-                "pull",
-                install.chartRef,
-                "--version",
-                install.chartVersion,
-                "--destination",
-                serviceDir,
-              ],
-              { all: true },
-            );
-            display.transition(install.name, "pull", "done");
-          });
+    // --- pull phase (single umbrella pull, fan out to all rows) ---
+    const umbrellaRef = `oci://${config.helmChartRegistry}/${deployable.chartRepository}/${deployable.name}`;
+    const umbrellaDir = path.join(tmpDir, deployable.name);
+    fs.mkdirSync(umbrellaDir, { recursive: true });
+    installs.forEach((i) => display.transition(i.name, "pull", "running"));
+    let umbrellaTgzPath: string;
+    try {
+      await execa(
+        "helm",
+        [
+          "pull",
+          umbrellaRef,
+          "--version",
+          deployable.version,
+          "--destination",
+          umbrellaDir,
+        ],
+        { all: true },
+      );
+      const tgzFiles = fs
+        .readdirSync(umbrellaDir)
+        .filter((f) => f.endsWith(".tgz"));
+      if (tgzFiles.length !== 1) {
+        throw new Error(
+          `Expected 1 .tgz after pulling umbrella '${deployable.name}', found ${tgzFiles.length}`,
+        );
+      }
+      umbrellaTgzPath = path.join(umbrellaDir, tgzFiles[0]);
+      installs.forEach((i) => display.transition(i.name, "pull", "done"));
+    } catch (err) {
+      installs.forEach((i) => display.transition(i.name, "pull", "failed"));
+      const msg = err instanceof Error ? err.message : String(err);
+      const failureMsg = `pull (umbrella): ${msg}`;
+      installs.forEach((i) => {
+        display.setError(i.name, failureMsg);
+        failures.push(`${i.name}: ${failureMsg}`);
+      });
+      return; // umbrella pull failure is fatal — finally{} freezes display
+    }
 
-          const tgzFiles = fs
-            .readdirSync(serviceDir)
-            .filter((f) => f.endsWith(".tgz"));
-          if (tgzFiles.length !== 1) {
-            throw new Error(
-              `Expected 1 .tgz after pull for ${install.name}, found ${tgzFiles.length}`,
-            );
-          }
-          const tgzPath = path.join(serviceDir, tgzFiles[0]);
+    // --- install phase (single umbrella `helm upgrade --install`) ---
+    // No --wait/--atomic: we want per-subchart rollout watchers below to
+    // stream live status into the table instead of one opaque spinner.
+    const umbrellaNamespace = installs[0].namespace;
+    installs.forEach((i) => display.transition(i.name, "install", "running"));
+    try {
+      const args = buildUmbrellaInstallArgs(
+        deployable.name,
+        umbrellaTgzPath,
+        umbrellaNamespace,
+        config,
+        tagOverride,
+      );
+      await execa("helm", args, { all: true });
+      installs.forEach((i) => display.transition(i.name, "install", "done"));
+    } catch (err) {
+      installs.forEach((i) => display.transition(i.name, "install", "failed"));
+      const execaErr = err as {
+        stderr?: string;
+        all?: string;
+        message?: string;
+      };
+      const rawMsg =
+        (execaErr.all ?? execaErr.stderr ?? execaErr.message ?? String(err))
+          .trim()
+          .split("\n")
+          .filter(Boolean)
+          .pop() ?? String(err);
+      const failureMsg = `install (umbrella): ${rawMsg}`;
+      installs.forEach((i) => {
+        display.setError(i.name, failureMsg);
+        failures.push(`${i.name}: ${failureMsg}`);
+      });
+      return;
+    }
 
-          // --- install phase (helmInstall pool) ---
-          currentPhase = "install";
-          display.transition(install.name, "install", "queued");
-          await pools.helmInstall.run(async () => {
-            display.transition(install.name, "install", "running");
-            const args = buildHelmLocalInstallArgs(
-              install.name,
-              tgzPath,
-              install.namespace,
-              config,
-              tagOverride,
-            );
-            await execa("helm", args, { all: true });
-            display.transition(install.name, "install", "done");
-          });
-
-          // --- ready phase (kubectlWatch pool) ---
-          currentPhase = "ready";
-          display.transition(install.name, "ready", "queued");
-          await pools.kubectlWatch.run(async () => {
-            display.transition(install.name, "ready", "running");
+    // --- ready phase (per-subchart rollout watchers, parallel) ---
+    await Promise.all(
+      installs.map((install) =>
+        pools.kubectlWatch.run(async () => {
+          display.transition(install.name, "ready", "running");
+          try {
             const rolloutSink = {
               output: "",
             } as unknown as ListrTaskWrapper<unknown, never, never>;
@@ -409,35 +458,35 @@ export async function runImageModeUp(
               (status) => display.setPodStatus(install.name, status),
             );
             display.transition(install.name, "ready", "done");
-          });
-        } catch (err) {
-          display.transition(install.name, currentPhase, "failed");
-          // Use kubectl stderr/stdout when available (strips the execa command prefix).
-          const execaErr = err as {
-            stderr?: string;
-            all?: string;
-            message?: string;
-          };
-          const rawMsg =
-            (execaErr.all ?? execaErr.stderr ?? execaErr.message ?? String(err))
-              .trim()
-              .split("\n")
-              .filter(Boolean)
-              .pop() ?? String(err);
-
-          let displayMsg = `${currentPhase}: ${rawMsg}`;
-          if (currentPhase === "ready") {
+          } catch (err) {
+            display.transition(install.name, "ready", "failed");
+            const execaErr = err as {
+              stderr?: string;
+              all?: string;
+              message?: string;
+            };
+            const rawMsg =
+              (
+                execaErr.all ??
+                execaErr.stderr ??
+                execaErr.message ??
+                String(err)
+              )
+                .trim()
+                .split("\n")
+                .filter(Boolean)
+                .pop() ?? String(err);
+            let displayMsg = `ready: ${rawMsg}`;
             const diagnosis = await diagnosePodFailure(
               `app.kubernetes.io/part-of=${install.name}`,
               install.namespace,
             );
-            if (diagnosis) displayMsg = `${currentPhase}: ${diagnosis}`;
+            if (diagnosis) displayMsg = `ready: ${diagnosis}`;
+            display.setError(install.name, displayMsg);
+            failures.push(`${install.name}: ${displayMsg}`);
           }
-
-          display.setError(install.name, displayMsg);
-          failures.push(`${install.name}: ${displayMsg}`);
-        }
-      }),
+        }),
+      ),
     );
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });

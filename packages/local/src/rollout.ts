@@ -176,6 +176,12 @@ async function detectTerminalFailure(
  * Reads ready/desired replica counts directly from the workload resource.
  * Works for both Deployments and StatefulSets — both expose
  * .status.readyReplicas and .spec.replicas.
+ *
+ * FR-031: when pods are at ready=desired but the controller has not yet
+ * reconciled (observedGeneration < metadata.generation, or available <
+ * replicas), append a settling marker "·" so the operator sees that the
+ * rollout is not actually complete yet — explains the "1/1 but clock keeps
+ * ticking" puzzle.
  */
 async function getDeploymentStatus(
   deployments: string[],
@@ -183,6 +189,7 @@ async function getDeploymentStatus(
 ): Promise<string> {
   let readySum = 0;
   let totalSum = 0;
+  let settling = false;
   for (const dep of deployments) {
     try {
       const { stdout } = await execa(
@@ -193,18 +200,27 @@ async function getDeploymentStatus(
           "-n",
           namespace,
           "-o",
-          "jsonpath={.status.readyReplicas}/{.spec.replicas}",
+          "jsonpath={.status.readyReplicas}/{.spec.replicas}/{.status.observedGeneration}/{.metadata.generation}/{.status.availableReplicas}",
         ],
         { all: true },
       );
-      const [r, t] = stdout.split("/");
-      readySum += parseInt(r) || 0;
-      totalSum += parseInt(t) || 1;
+      const [r, t, observed, generation, available] = stdout.split("/");
+      const ready = parseInt(r) || 0;
+      const total = parseInt(t) || 1;
+      readySum += ready;
+      totalSum += total;
+      const obs = parseInt(observed) || 0;
+      const gen = parseInt(generation) || 0;
+      const avail = parseInt(available) || 0;
+      if (ready === total && (obs < gen || avail < total)) {
+        settling = true;
+      }
     } catch {
       // ignore — deployment may not exist yet
     }
   }
-  return `${readySum}/${totalSum}`;
+  const base = `${readySum}/${totalSum}`;
+  return settling ? `${base}·` : base;
 }
 
 /**
@@ -287,18 +303,20 @@ export async function waitForRollout(
       }
     });
 
-    // Poll for terminal pod states every 5 s so we abort immediately instead
+    // Poll for terminal pod states every 1 s so we abort immediately instead
     // of waiting for the full --timeout when pods are stuck in e.g. CrashLoopBackOff.
     let earlyFailure: string | null = null;
     const pollSelector = labelSelector ?? `app=${svc}`;
-    const poller = setInterval(() => {
+    const checkOnce = () => {
       void detectTerminalFailure(pollSelector, namespace).then((reason) => {
         if (reason && !earlyFailure) {
           earlyFailure = reason;
           subprocess.kill();
         }
       });
-    }, 5000);
+    };
+    checkOnce();
+    const poller = setInterval(checkOnce, 1000);
 
     try {
       await subprocess; // FR-010-AC-3: throws on non-zero exit

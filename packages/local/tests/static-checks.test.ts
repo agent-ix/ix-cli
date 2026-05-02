@@ -243,3 +243,32 @@ describe("FR-030: --refresh flag is wired end-to-end", () => {
     expect(src).toMatch(/opts\.refresh[\s\S]*?dependencyUpdate:\s*true/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// FR-031: Umbrella install — single helm upgrade per app, parallel rollout
+// watchers per subchart drive PhaseTable rows. Settling marker on rollout
+// status when pods are Ready but the Deployment hasn't reconciled.
+// TC-093 through TC-095
+// ---------------------------------------------------------------------------
+describe("FR-031: umbrella install + settling indicator", () => {
+  it("TC-093: up-image.ts builds umbrella install args (single helm release per app)", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/buildUmbrellaInstallArgs/);
+    // Per-subchart helm install helper is gone — replaced by the umbrella path.
+    expect(src).not.toMatch(/buildHelmLocalInstallArgs/);
+  });
+
+  it("TC-094: umbrella path issues `helm pull` against the app OCI ref, not per-subchart", () => {
+    const src = readSrc("commands/up-image.ts");
+    // Only one helm pull call inside runImageModeUp's app branch — it pulls
+    // the umbrella, not each child.
+    expect(src).toMatch(/helm[\s\S]{0,50}"pull"[\s\S]{0,200}umbrellaRef/);
+  });
+
+  it("TC-095: rollout status appends settling marker when ready but not reconciled", () => {
+    const src = readSrc("rollout.ts");
+    expect(src).toMatch(/settling/);
+    // Suffix marker `·` is appended to the count when settling.
+    expect(src).toMatch(/`\$\{base\}·`/);
+  });
+});
