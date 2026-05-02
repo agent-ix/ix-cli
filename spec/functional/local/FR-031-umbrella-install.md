@@ -73,3 +73,10 @@ controller hasn't acknowledged it yet.
   unified release history for the whole umbrella.
 - **FR-031-AC-10**: A `helm list` shows exactly one row per app instead of
   one per subchart.
+- **FR-031-AC-11**: `runDown` (`ix local halt <app>`) for `role=app`
+  uninstalls the umbrella release first, then any leftover per-subchart
+  releases (transitional cleanup). Both pushed via a deduping `pushRelease`
+  helper so the same release isn't queued twice.
+- **FR-031-AC-12**: Per-subchart uninstall during halt uses
+  `--ignore-not-found` so missing legacy releases are a no-op, not an
+  error — supports users mid-migration with mixed release state.

@@ -248,6 +248,8 @@ Tests fall into four types:
 | TC-093 | up-image.ts builds umbrella install args; per-subchart helper removed | Static | P1 | FR-031-AC-1, FR-031-AC-2 | ✅ Complete |
 | TC-094 | Umbrella path issues `helm pull` against the app OCI ref, not per-subchart | Static | P1 | FR-031-AC-2 | ✅ Complete |
 | TC-095 | Rollout status appends settling marker when ready but not reconciled | Static | P1 | FR-031-AC-8 | ✅ Complete |
+| TC-096 | runDown uninstalls the umbrella release first for role=app | Static | P1 | FR-031-AC-11 | ✅ Complete |
+| TC-097 | runDown deduplicates releases via a seen set | Static | P1 | FR-031-AC-11 | ✅ Complete |
 
 ---
 

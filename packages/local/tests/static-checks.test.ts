@@ -271,4 +271,18 @@ describe("FR-031: umbrella install + settling indicator", () => {
     // Suffix marker `·` is appended to the count when settling.
     expect(src).toMatch(/`\$\{base\}·`/);
   });
+
+  it("TC-096: runDown uninstalls the umbrella release first for role=app", () => {
+    const src = readSrc("index.ts");
+    // Umbrella release name added BEFORE expanding subcharts.
+    expect(src).toMatch(
+      /role === "app"[\s\S]*?pushRelease\(deployable\.name[\s\S]*?defaultExpandApp/,
+    );
+  });
+
+  it("TC-097: runDown deduplicates releases via a seen set", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/seen\s*=\s*new Set/);
+    expect(src).toMatch(/pushRelease/);
+  });
 });

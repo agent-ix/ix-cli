@@ -263,18 +263,32 @@ export async function runDown(
   const config = loadConfig();
   const registry = await loadRegistryForCommand(config);
   const releases: { name: string; namespace: string }[] = [];
+  const seen = new Set<string>();
+  const pushRelease = (name: string, namespace: string) => {
+    const key = `${namespace}/${name}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    releases.push({ name, namespace });
+  };
   for (const svc of services) {
     const deployable = findDeployable(registry, svc);
     if (deployable.role === "app") {
+      // FR-031: app-role deployables install as a single umbrella Helm
+      // release named after the deployable. Uninstall that release first;
+      // Helm cleans up all subchart resources as part of it.
+      const umbrellaNs = resolveDeployableNamespace(deployable);
+      pushRelease(deployable.name, umbrellaNs);
+      // Transitional cleanup: prior versions of ix-cli installed each
+      // subchart as its own Helm release. Include those names too so
+      // users mid-migration aren't left with orphan releases. The down
+      // task is gated by --ignore-not-found, so missing releases no-op.
       const { defaultExpandApp } = await import("./commands/up-image.js");
       const installs = await defaultExpandApp(deployable, config);
-      for (const install of installs)
-        releases.push({ name: install.name, namespace: install.namespace });
+      for (const install of installs) {
+        pushRelease(install.name, install.namespace);
+      }
     } else {
-      releases.push({
-        name: deployable.name,
-        namespace: resolveDeployableNamespace(deployable),
-      });
+      pushRelease(deployable.name, resolveDeployableNamespace(deployable));
     }
   }
 
