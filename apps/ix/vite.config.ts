@@ -18,6 +18,7 @@ export default defineConfig({
         "commands/local/auth/reset-admin":
           "src/commands/local/auth/reset-admin.ts",
         "commands/local/auth/invite": "src/commands/local/auth/invite.ts",
+        "commands/local/auth/uninvite": "src/commands/local/auth/uninvite.ts",
         "commands/local/auth/reset-user":
           "src/commands/local/auth/reset-user.ts",
         "commands/local/auth/config/email/enable":

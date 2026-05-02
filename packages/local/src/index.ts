@@ -31,6 +31,7 @@ export { resolveGhcrToken } from "./credentials.js";
 export { runAuthInit } from "./commands/auth-init.js";
 export { runAuthResetAdmin } from "./commands/auth-reset-admin.js";
 export { runAuthInvite } from "./commands/auth-invite.js";
+export { runAuthUninvite } from "./commands/auth-uninvite.js";
 export { runAuthResetUser } from "./commands/auth-reset-user.js";
 export {
   runAuthConfigEmailEnable,

@@ -78,7 +78,8 @@ relationships:
 | `ix init` | FR-007 | Cluster initialization |
 | `ix init admin` | FR-015 | Admin bootstrap seed |
 | `ix auth reset-admin` | FR-016 | Reset admin password |
-| `ix auth invite` | FR-017 | Invite user |
+| `ix auth invite` | FR-017 | Invite user (creates new, or reissues fresh token for unclaimed) |
+| `ix auth uninvite` | FR-017 | Revoke outstanding invite tokens for a pending user |
 | `ix auth reset-user` | FR-018 | Reset user password |
 | `ix auth config` | FR-020 | Email/social provider config |
 | Service dir validation | FR-004 | Enforced on all service commands |

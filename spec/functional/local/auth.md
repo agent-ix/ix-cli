@@ -46,6 +46,7 @@ If anything in this file disagrees with the auth or identity specs, the auth/ide
 | `ix local init` | auth/FR-008, identity/FR-017 | `kubectl exec` only — no networked endpoint |
 | `ix local auth reset-admin` | auth/FR-008, identity/FR-020 §2.3 | `kubectl exec` only — no networked endpoint |
 | `ix local auth invite <email>` | auth/FR-008, identity/FR-018 | `kubectl create --raw …/services/proxy/internal/users/invite` (kubeconfig-gated API server proxy) |
+| `ix local auth uninvite <email>` | auth/FR-008, identity/FR-018 §5a | `kubectl create --raw …/services/proxy/internal/users/uninvite` (kubeconfig-gated API server proxy) |
 | `ix local auth reset-user <email>` | auth/FR-009, identity/FR-020 §2.2 | `kubectl create --raw …/services/proxy/internal/users/reset` (kubeconfig-gated API server proxy) |
 | `ix local auth config …` | identity/FR-024 | `kubectl apply` on `ConfigMap/Secret` + rollout |
 
@@ -93,7 +94,17 @@ Cross-namespace traffic note: app services in `apps` reach `auth-service` and `i
 - Trigger: operator runs `ix local auth invite alice@example.com [--username] [--display-name] [--groups] [--ttl]`.
 - Step 1 (pre-flight): `kubectl get --raw /api/v1/namespaces/auth/services/http:identity:80/proxy/config/public` to read `registration.mode`. Refuse if `closed`.
 - Step 2: `kubectl create --raw /api/v1/namespaces/auth/services/http:identity:80/proxy/internal/users/invite -f -` with body `{email, username?, display_name?, groups?, ttl_hours?}`.
-- Step 3: parse response, print `invite_url` to stdout.
+- Step 3: parse response. On HTTP 201 the user was created; on HTTP 200 an existing **unclaimed** invite was reissued with a fresh token (identity supersedes the prior one). Either way, print `invite_url` to stdout.
+- Identity returns 409 only when the target email belongs to a **claimed** account (`password_hash` set). The CLI surfaces that as: "Account already claimed; use `ix local auth reset-user`."
+- Default username is the full email address (not the local-part) — this prevents collisions when two distinct emails share a local-part.
+
+### `ix local auth uninvite <email>` (FR-017a)
+
+- Trigger: operator runs `ix local auth uninvite alice@example.com`.
+- Step 1: `kubectl create --raw /api/v1/namespaces/auth/services/http:identity:80/proxy/internal/users/uninvite -f -` with body `{email}`.
+- Step 2: parse response. On HTTP 200 print `revoked` count.
+- Identity returns 404 when no user matches; 409 `account_claimed` when the user has already set a password (use `reset-user` for those).
+- The user row is **not deleted** — only outstanding invite tokens are superseded and `temp_credential_*` fields are cleared. Re-running `invite` for the same email after `uninvite` is allowed and goes through the reissue path.
 
 ### `ix local auth reset-user <email>` (FR-018)
 
