@@ -14,7 +14,6 @@
  * in the K8s Secret — never in files, env vars, or logs.
  */
 
-import { execa } from "execa";
 import type { IxConfig } from "../config.js";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
 import {
@@ -37,17 +36,11 @@ interface SeedResponse {
   login_url: string;
 }
 
-interface SecretData {
-  data?: {
-    expires_at?: string;
-    login_url?: string;
-    password?: string;
-  };
-}
-
 function formatExpiry(iso: string): string {
   const d = new Date(iso);
-  return isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return isNaN(d.getTime())
+    ? iso
+    : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
 const IDENTITY_DEPLOYMENT = "identity";
@@ -60,58 +53,6 @@ const IDENTITY_CLI_INIT = [
   "json",
 ];
 
-/**
- * Check whether the admin-bootstrap Secret already exists in `system`.
- * Returns the decoded data if found, or null if absent.
- */
-async function getExistingBootstrapSecret(): Promise<{
-  expiresAt: string;
-  loginUrl: string;
-  password: string;
-} | null> {
-  try {
-    const { stdout } = await execa("kubectl", [
-      "get",
-      "secret/admin-bootstrap",
-      "-n",
-      IX_SYSTEM_NAMESPACE,
-      "-o",
-      "json",
-      "--ignore-not-found",
-    ]);
-    if (!stdout.trim()) return null;
-    const obj = JSON.parse(stdout) as SecretData;
-    const data = obj.data ?? {};
-    const expiresAt = data.expires_at
-      ? Buffer.from(data.expires_at, "base64").toString("utf-8")
-      : "";
-    const loginUrl = data.login_url
-      ? Buffer.from(data.login_url, "base64").toString("utf-8")
-      : "";
-    const password = data.password
-      ? Buffer.from(data.password, "base64").toString("utf-8")
-      : "";
-    return { expiresAt, loginUrl, password };
-  } catch {
-    return null;
-  }
-}
-
-function diagnoseExecError(err: KubectlExecError): string {
-  // identity FR-029 §5: stable exit code contract.
-  if (err.exitCode === 2) {
-    // admin_exists
-    return "An admin already exists. To recover a lost password use: ix local auth reset-admin";
-  }
-  if (err.exitCode === 3) {
-    return `identity database unreachable: ${err.stderr.trim() || err.message}`;
-  }
-  // Generic surface — bubble up the in-pod CLI's error envelope verbatim so the
-  // operator can see what happened.
-  const detail = err.stderr.trim() || err.message;
-  return `identity init-admin failed (exit ${err.exitCode}): ${detail}`;
-}
-
 export async function runAuthInit(
   _config: IxConfig,
   deps?: IdentityDeps,
@@ -122,28 +63,12 @@ export async function runAuthInit(
   list.commit();
 
   let seedResp: SeedResponse | null = null;
-  let alreadyBootstrapped: { expiresAt: string; loginUrl: string } | null =
-    null;
+  let adminExists = false;
 
-  const tasks = makeListr(
+  const seedTask = makeListr(
     [
       {
-        title: "Checking for existing admin bootstrap Secret",
-        task: async (_ctx, task) => {
-          const existing = await getExistingBootstrapSecret();
-          if (existing) {
-            // FR-015-AC-2: idempotent re-run before first rotation — record and skip remainder
-            task.output = `Admin bootstrap Secret already exists (expires ${existing.expiresAt})`;
-            alreadyBootstrapped = existing;
-            return;
-          }
-          task.output = "No existing bootstrap Secret found";
-        },
-      },
-
-      {
         title: "Seeding admin account (kubectl exec → identity.cli init-admin)",
-        skip: () => alreadyBootstrapped !== null,
         task: async (_ctx, task) => {
           task.output = `kubectl exec -n ${IX_AUTH_NAMESPACE} deployment/${IDENTITY_DEPLOYMENT} -- ${IDENTITY_CLI_INIT.join(" ")}`;
           try {
@@ -154,17 +79,49 @@ export async function runAuthInit(
             );
           } catch (err) {
             if (err instanceof KubectlExecError) {
-              throw new Error(diagnoseExecError(err));
+              if (err.exitCode === 2) {
+                adminExists = true;
+                task.output = "Admin user already exists";
+                return;
+              }
+              if (err.exitCode === 3) {
+                throw new Error(
+                  `identity database unreachable: ${err.stderr.trim() || err.message}`,
+                );
+              }
+              throw new Error(
+                `identity init-admin failed (exit ${err.exitCode}): ${err.stderr.trim() || err.message}`,
+              );
             }
             throw err;
           }
           task.output = "Admin account created";
         },
       },
+    ],
+    { concurrent: false },
+  );
 
+  try {
+    await seedTask.run();
+  } catch (err) {
+    list.error(
+      `init failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    throw err;
+  }
+
+  if (adminExists) {
+    list.note(
+      "Admin already exists. Use `ix local auth reset-admin` to reset the password.",
+    );
+    return;
+  }
+
+  const writeTask = makeListr(
+    [
       {
         title: `Writing admin-bootstrap Secret to ${IX_SYSTEM_NAMESPACE}`,
-        skip: () => alreadyBootstrapped !== null,
         task: async (_ctx, task) => {
           if (!seedResp) throw new Error("No seed response available");
           await writeAdminBootstrapSecret({
@@ -181,36 +138,22 @@ export async function runAuthInit(
   );
 
   try {
-    await tasks.run();
-
-    // FR-015-AC-2: idempotent re-run — secret already exists
-    if (alreadyBootstrapped) {
-      const bootstrapped = alreadyBootstrapped as {
-        expiresAt: string;
-        loginUrl: string;
-        password: string;
-      };
-      list.note("Username:      admin");
-      list.note(`Temp password: ${bootstrapped.password}     (expires ${formatExpiry(bootstrapped.expiresAt)})`);
-      list.note(`Log in at:  ${bootstrapped.loginUrl}`);
-      process.exit(0);
-      return;
-    }
-
-    if (!seedResp) throw new Error("No seed response");
-    const resp = seedResp as SeedResponse;
-
-    // FR-015-B6: print to stdout once — never to a log (NFR-004-AC-2)
-    list.note("Username:      admin");
-    list.note(
-      `Temp password: ${resp.password}     (expires ${formatExpiry(resp.expires_at)})`,
-    );
-    list.note(`Log in at:     ${resp.login_url}`);
-    list.success("Admin account created.");
+    await writeTask.run();
   } catch (err) {
     list.error(
       `init failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
   }
+
+  if (!seedResp) throw new Error("No seed response");
+  const resp = seedResp as SeedResponse;
+
+  // FR-015-B6: print to stdout once — never to a log (NFR-004-AC-2)
+  list.note("Username:      admin");
+  list.note(
+    `Temp password: ${resp.password}     (expires ${formatExpiry(resp.expires_at)})`,
+  );
+  list.note(`Log in at:     ${resp.login_url}`);
+  list.success("Admin account created.");
 }
