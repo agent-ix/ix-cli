@@ -37,7 +37,6 @@ type UiBag = typeof ui & {
 };
 const mockNote = (ui as unknown as UiBag).__note;
 const mockSuccess = (ui as unknown as UiBag).__success;
-const mockError = (ui as unknown as UiBag).__error;
 const mockWriteSecret = vi.mocked(writeAdminBootstrapSecret);
 
 const mockConfig = { internalBaseDomain: "dev.ix" } as never;
@@ -71,7 +70,9 @@ describe("runAuthInit — happy path", () => {
     });
     expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("admin"));
     expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("tmp-pass"));
-    expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("https://identity.dev.ix/login"));
+    expect(mockNote).toHaveBeenCalledWith(
+      expect.stringContaining("https://identity.dev.ix/login"),
+    );
     expect(mockSuccess).toHaveBeenCalledWith("Admin account created.");
   });
 });

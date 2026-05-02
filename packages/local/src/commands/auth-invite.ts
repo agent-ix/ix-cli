@@ -38,6 +38,7 @@ interface InviteResponse {
   invite_url: string;
   expires_at: string;
   email_sent: boolean;
+  email_send_reason?: string | null;
 }
 
 interface ErrorResponse {
@@ -147,10 +148,16 @@ export async function runAuthInvite(
     if (!inviteResp) throw new Error("No invite response");
     const resp = inviteResp as InviteResponse;
 
+    const emailLine = resp.email_sent
+      ? "yes"
+      : resp.email_send_reason
+        ? `no (reason: ${resp.email_send_reason})`
+        : "no";
+
     list.note(`User:        ${resp.email}`);
     list.note(`Expires:     ${resp.expires_at}`);
     list.note(`Invite URL:  ${resp.invite_url}`);
-    list.note(`Email sent:  ${resp.email_sent}`);
+    list.note(`Email sent:  ${emailLine}`);
     if (!resp.email_sent) {
       list.note("Share the URL above with the user; it is single-use.");
     }

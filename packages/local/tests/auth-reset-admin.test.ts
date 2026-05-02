@@ -36,7 +36,6 @@ type UiBag = typeof ui & {
   __error: ReturnType<typeof vi.fn>;
 };
 const mockNote = (ui as unknown as UiBag).__note;
-const mockSuccess = (ui as unknown as UiBag).__success;
 const mockWriteSecret = vi.mocked(writeAdminBootstrapSecret);
 
 const mockConfig = { internalBaseDomain: "dev.ix" } as never;
@@ -73,7 +72,9 @@ describe("runAuthResetAdmin — happy path", () => {
       expect.objectContaining({ password: "new-pass" }),
     );
     expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("new-pass"));
-    expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("admin@dev.ix"));
+    expect(mockNote).toHaveBeenCalledWith(
+      expect.stringContaining("admin@dev.ix"),
+    );
     expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("u1"));
   });
 
@@ -108,7 +109,11 @@ describe("runAuthResetAdmin — no admin exists (exit 4)", () => {
     await runAuthResetAdmin(mockConfig, {}, { kubectlExecJson: mockExec });
 
     expect(mockExec).toHaveBeenCalledTimes(2);
-    const [, , fallbackArgv] = mockExec.mock.calls[1] as [unknown, unknown, string[]];
+    const [, , fallbackArgv] = mockExec.mock.calls[1] as [
+      unknown,
+      unknown,
+      string[],
+    ];
     expect(fallbackArgv).toContain("init-admin");
     expect(fallbackArgv).toContain("--email");
     expect(fallbackArgv).toContain("admin@dev.ix");
