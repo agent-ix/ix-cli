@@ -38,26 +38,17 @@ export interface Deployable {
   namespace?: string | null;
 }
 
-import { IX_NAMESPACE_BY_CHART, IX_APPS_NAMESPACE } from "./config.js";
+import { IX_APPS_NAMESPACE } from "./config.js";
 
 /**
  * Resolve the deploy namespace for a Deployable.
  *
- * Precedence: chart-declared annotation → name-based fallback → `apps` default.
- * See `ix-cli/spec/functional/local/auth.md` for the four-tier contract.
+ * Source of truth: the chart's `org.agent-ix.namespace` annotation.
+ * If unset, defaults to the generic `apps` namespace. Callers MAY override
+ * via the `--namespace` flag on `ix up`, which takes precedence over both.
  */
 export function resolveDeployableNamespace(d: Deployable): string {
-  if (d.namespace) return d.namespace;
-  return IX_NAMESPACE_BY_CHART[d.name] ?? IX_APPS_NAMESPACE;
-}
-
-/**
- * Resolve the deploy namespace by chart name only — used by source-mode where
- * we don't have an OCI manifest's annotations available. Falls back to the
- * same name table, then `apps`.
- */
-export function resolveNamespaceByName(name: string): string {
-  return IX_NAMESPACE_BY_CHART[name] ?? IX_APPS_NAMESPACE;
+  return d.namespace?.trim() || IX_APPS_NAMESPACE;
 }
 
 export function parseDeployableTags(raw: string | null | undefined): string[] {

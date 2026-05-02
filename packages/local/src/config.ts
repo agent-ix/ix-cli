@@ -26,30 +26,6 @@ export const IX_AUTH_NAMESPACE = "auth";
 export const IX_PLATFORM_NAMESPACE = "platform";
 export const IX_APPS_NAMESPACE = "apps";
 
-/**
- * Name-based namespace fallback for charts that don't yet declare
- * `org.agent-ix.namespace`. Entries here are the canonical placement of each
- * known chart in the four-tier model. Chart authors can override by setting
- * the OCI annotation on their chart manifest.
- *
- * Charts not in this map fall back to `IX_APPS_NAMESPACE`.
- */
-export const IX_NAMESPACE_BY_CHART: Record<string, string> = {
-  // auth tier
-  identity: IX_AUTH_NAMESPACE,
-  "auth-service": IX_AUTH_NAMESPACE,
-  "permission-service": IX_AUTH_NAMESPACE,
-
-  // platform tier (shared infrastructure)
-  "npm-proxy": IX_PLATFORM_NAMESPACE,
-  "pypi-proxy": IX_PLATFORM_NAMESPACE,
-  postgres: IX_PLATFORM_NAMESPACE,
-  redis: IX_PLATFORM_NAMESPACE,
-  rabbitmq: IX_PLATFORM_NAMESPACE,
-  vault: IX_PLATFORM_NAMESPACE,
-  "k8s-gateway": IX_PLATFORM_NAMESPACE,
-};
-
 /** FR-009 — cluster bring-up defaults read from ~/.ix/config.yaml cluster: key */
 export interface ClusterConfig {
   defaultTags: string[];
