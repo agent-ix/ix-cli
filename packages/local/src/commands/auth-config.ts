@@ -627,7 +627,10 @@ export async function runAuthConfigRegistrationSet(
     getSecretData(),
   ]);
 
-  cmData["registration.mode"] = mode;
+  // identity reads IDENTITY_REGISTRATION_MODE from env (configmap is envFrom);
+  // dotted keys never reach the service. Drop legacy key if present.
+  delete cmData["registration.mode"];
+  cmData["IDENTITY_REGISTRATION_MODE"] = mode;
 
   const tasks = makeMutationListr(cmData, secretData, rolloutTimeoutSeconds);
 
@@ -650,7 +653,9 @@ export async function runAuthConfigRegistrationShow(
 
   const cmData = await getConfigMap();
 
-  list.success(
-    `registration.mode: ${cmData["registration.mode"] ?? "(not set)"}`,
-  );
+  const current =
+    cmData["IDENTITY_REGISTRATION_MODE"] ??
+    cmData["registration.mode"] ??
+    "(not set)";
+  list.success(`registration.mode: ${current}`);
 }
