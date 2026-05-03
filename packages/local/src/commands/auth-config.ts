@@ -196,6 +196,9 @@ function makeMutationListr(
 // auth config email
 // ---------------------------------------------------------------------------
 
+/** Env var name under which the SMTP password is stored in the Secret. */
+const EMAIL_SMTP_PASSWORD_VAR = "IDENTITY_EMAIL_SMTP_PASSWORD";
+
 export async function runAuthConfigEmailEnable(
   _config: IxConfig,
   opts: {
@@ -218,15 +221,28 @@ export async function runAuthConfigEmailEnable(
     getSecretData(),
   ]);
 
-  cmData["email.enabled"] = "true";
-  cmData["email.smtp_host"] = opts.smtpHost;
-  cmData["email.smtp_port"] = String(opts.smtpPort);
-  cmData["email.smtp_user"] = opts.smtpUser;
-  cmData["email.from"] = opts.from;
-  cmData["email.starttls"] = opts.noStarttls ? "false" : "true";
+  // Remove legacy dotted keys (silently dropped by envFrom)
+  for (const k of [
+    "email.enabled",
+    "email.smtp_host",
+    "email.smtp_port",
+    "email.smtp_user",
+    "email.from",
+    "email.starttls",
+  ])
+    delete cmData[k];
+  delete secretData["email.smtp_password"];
 
-  // Secret field for SMTP password (FR-020-CON-1)
-  secretData["email.smtp_password"] = smtpPassword;
+  cmData["IDENTITY_EMAIL_ENABLED"] = "true";
+  cmData["IDENTITY_EMAIL_SMTP_HOST"] = opts.smtpHost;
+  cmData["IDENTITY_EMAIL_SMTP_PORT"] = String(opts.smtpPort);
+  cmData["IDENTITY_EMAIL_SMTP_USERNAME"] = opts.smtpUser;
+  cmData["IDENTITY_EMAIL_FROM_ADDRESS"] = opts.from;
+  cmData["IDENTITY_EMAIL_SMTP_STARTTLS"] = opts.noStarttls ? "false" : "true";
+  // Tell identity which env var holds the SMTP password (FR-020-CON-1)
+  cmData["IDENTITY_EMAIL_SMTP_PASSWORD_REF"] = EMAIL_SMTP_PASSWORD_VAR;
+
+  secretData[EMAIL_SMTP_PASSWORD_VAR] = smtpPassword;
 
   const tasks = makeMutationListr(cmData, secretData, rolloutTimeoutSeconds);
 
@@ -255,7 +271,8 @@ export async function runAuthConfigEmailDisable(
     getSecretData(),
   ]);
 
-  cmData["email.enabled"] = "false";
+  delete cmData["email.enabled"];
+  cmData["IDENTITY_EMAIL_ENABLED"] = "false";
 
   const tasks = makeMutationListr(cmData, secretData, rolloutTimeoutSeconds);
 
@@ -278,12 +295,12 @@ export async function runAuthConfigEmailShow(_config: IxConfig): Promise<void> {
 
   // FR-020-AC-3: NEVER print the password
   const lines = [
-    `enabled:   ${cmData["email.enabled"] ?? "false"}`,
-    `smtp_host: ${cmData["email.smtp_host"] ?? "(not set)"}`,
-    `smtp_port: ${cmData["email.smtp_port"] ?? "(not set)"}`,
-    `smtp_user: ${cmData["email.smtp_user"] ?? "(not set)"}`,
-    `from:      ${cmData["email.from"] ?? "(not set)"}`,
-    `starttls:  ${cmData["email.starttls"] ?? "(not set)"}`,
+    `enabled:   ${cmData["IDENTITY_EMAIL_ENABLED"] ?? cmData["email.enabled"] ?? "false"}`,
+    `smtp_host: ${cmData["IDENTITY_EMAIL_SMTP_HOST"] ?? cmData["email.smtp_host"] ?? "(not set)"}`,
+    `smtp_port: ${cmData["IDENTITY_EMAIL_SMTP_PORT"] ?? cmData["email.smtp_port"] ?? "(not set)"}`,
+    `smtp_user: ${cmData["IDENTITY_EMAIL_SMTP_USERNAME"] ?? cmData["email.smtp_user"] ?? "(not set)"}`,
+    `from:      ${cmData["IDENTITY_EMAIL_FROM_ADDRESS"] ?? cmData["email.from"] ?? "(not set)"}`,
+    `starttls:  ${cmData["IDENTITY_EMAIL_SMTP_STARTTLS"] ?? cmData["email.starttls"] ?? "(not set)"}`,
     `password:  ***`,
   ];
 
@@ -367,14 +384,17 @@ export async function runAuthConfigPasswordResetSet(
   ]);
 
   // FR-020-AC-6: email mode requires email to be enabled first
-  if (mode === "email" && cmData["email.enabled"] !== "true") {
+  const emailEnabled =
+    cmData["IDENTITY_EMAIL_ENABLED"] ?? cmData["email.enabled"];
+  if (mode === "email" && emailEnabled !== "true") {
     const msg =
       "password-reset=email requires email to be enabled first. Run: ix local auth config email enable ...";
     list.error(msg);
     throw new Error(msg);
   }
 
-  cmData["password_reset.mode"] = mode;
+  delete cmData["password_reset.mode"];
+  cmData["IDENTITY_PASSWORD_RESET_MODE"] = mode;
 
   const tasks = makeMutationListr(cmData, secretData, rolloutTimeoutSeconds);
 
@@ -399,9 +419,11 @@ export async function runAuthConfigPasswordResetShow(
 
   const cmData = await getConfigMap();
 
-  list.success(
-    `password-reset.mode: ${cmData["password_reset.mode"] ?? "(not set)"}`,
-  );
+  const current =
+    cmData["IDENTITY_PASSWORD_RESET_MODE"] ??
+    cmData["password_reset.mode"] ??
+    "(not set)";
+  list.success(`password-reset.mode: ${current}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -410,6 +432,46 @@ export async function runAuthConfigPasswordResetShow(
 
 const VALID_SOCIAL_TYPES = ["oidc", "oauth2"] as const;
 const VALID_AUTO_LINK = ["email_match", "never"] as const;
+
+/** Secret key name for a provider's client secret (valid env var identifier). */
+function socialSecretKey(id: string): string {
+  return `IDENTITY_SOCIAL_${id.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_CLIENT_SECRET`;
+}
+
+/** Read and parse IDENTITY_SOCIAL_PROVIDERS_JSON from the configmap. Falls
+ *  back to scanning legacy dotted keys so old data is still readable. */
+function readProviders(
+  cmData: Record<string, string>,
+): Record<string, unknown>[] {
+  const raw = cmData["IDENTITY_SOCIAL_PROVIDERS_JSON"];
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed as Record<string, unknown>[];
+    } catch {
+      // fall through to legacy path
+    }
+  }
+  // Legacy dotted-key scan
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const [k, v] of Object.entries(cmData)) {
+    const m = k.match(/^social\.([^.]+)\.(.+)$/);
+    if (!m || m[1] === "enabled") continue;
+    const pid = m[1];
+    const field = m[2];
+    if (!byId.has(pid)) byId.set(pid, { id: pid });
+    byId.get(pid)![field] = v;
+  }
+  return Array.from(byId.values());
+}
+
+/** Remove all legacy dotted social keys from a configmap data object. */
+function purgeLegacySocialKeys(cmData: Record<string, string>): void {
+  for (const k of Object.keys(cmData)) {
+    if (/^social\.[^.]+\./.test(k)) delete cmData[k];
+  }
+  delete cmData["social.enabled"];
+}
 
 export async function runAuthConfigSocialAdd(
   _config: IxConfig,
@@ -442,7 +504,6 @@ export async function runAuthConfigSocialAdd(
     throw new Error(msg);
   }
 
-  // Validate auto-link if provided
   if (
     opts.autoLink &&
     !VALID_AUTO_LINK.includes(opts.autoLink as (typeof VALID_AUTO_LINK)[number])
@@ -459,24 +520,34 @@ export async function runAuthConfigSocialAdd(
     getSecretData(),
   ]);
 
-  const prefix = `social.${id}`;
-  cmData[`${prefix}.display_name`] = opts.displayName;
-  cmData[`${prefix}.type`] = opts.type;
-  cmData[`${prefix}.client_id`] = opts.clientId;
-  cmData[`${prefix}.client_secret_ref`] = `${prefix}.client_secret`;
+  const secretKey = socialSecretKey(id);
+  const provider: Record<string, unknown> = {
+    id,
+    display_name: opts.displayName,
+    type: opts.type,
+    client_id: opts.clientId,
+    client_secret_ref: secretKey,
+  };
+  if (opts.issuer) provider["issuer"] = opts.issuer;
+  if (opts.authorizeUrl) provider["authorize_url"] = opts.authorizeUrl;
+  if (opts.tokenUrl) provider["token_url"] = opts.tokenUrl;
+  if (opts.userinfoUrl) provider["userinfo_url"] = opts.userinfoUrl;
+  if (opts.scopes)
+    provider["scopes"] = opts.scopes.split(",").map((s) => s.trim());
+  if (opts.autoLink) provider["auto_link"] = opts.autoLink;
 
-  if (opts.issuer) cmData[`${prefix}.issuer`] = opts.issuer;
-  if (opts.authorizeUrl) cmData[`${prefix}.authorize_url`] = opts.authorizeUrl;
-  if (opts.tokenUrl) cmData[`${prefix}.token_url`] = opts.tokenUrl;
-  if (opts.userinfoUrl) cmData[`${prefix}.userinfo_url`] = opts.userinfoUrl;
-  if (opts.scopes) cmData[`${prefix}.scopes`] = opts.scopes;
-  if (opts.autoLink) cmData[`${prefix}.auto_link`] = opts.autoLink;
+  const providers = readProviders(cmData).filter((p) => p["id"] !== id);
+  providers.push(provider);
 
-  // Secret for client_secret (FR-020-CON-1)
-  secretData[`${prefix}.client_secret`] = clientSecret;
+  purgeLegacySocialKeys(cmData);
+  // Remove legacy secret key if renamed
+  delete secretData[`social.${id}.client_secret`];
 
+  cmData["IDENTITY_SOCIAL_PROVIDERS_JSON"] = JSON.stringify(providers);
   // FR-020-AC-7: auto-set social.enabled = true when provider list non-empty
-  cmData["social.enabled"] = "true";
+  cmData["IDENTITY_SOCIAL_ENABLED"] = "true";
+
+  secretData[secretKey] = clientSecret;
 
   const tasks = makeMutationListr(cmData, secretData, rolloutTimeoutSeconds);
 
@@ -506,20 +577,20 @@ export async function runAuthConfigSocialRemove(
     getSecretData(),
   ]);
 
-  const prefix = `social.${id}`;
-  // Remove all keys for this provider
-  for (const key of Object.keys(cmData)) {
-    if (key.startsWith(`${prefix}.`)) delete cmData[key];
-  }
-  for (const key of Object.keys(secretData)) {
-    if (key.startsWith(`${prefix}.`)) delete secretData[key];
-  }
+  const providers = readProviders(cmData).filter((p) => p["id"] !== id);
 
-  // FR-020-AC-7: disable social if no providers remain
-  const hasProviders = Object.keys(cmData).some(
-    (k) => k.startsWith("social.") && k !== "social.enabled",
-  );
-  cmData["social.enabled"] = hasProviders ? "true" : "false";
+  purgeLegacySocialKeys(cmData);
+  delete secretData[`social.${id}.client_secret`];
+  delete secretData[socialSecretKey(id)];
+
+  if (providers.length > 0) {
+    cmData["IDENTITY_SOCIAL_PROVIDERS_JSON"] = JSON.stringify(providers);
+    cmData["IDENTITY_SOCIAL_ENABLED"] = "true";
+  } else {
+    delete cmData["IDENTITY_SOCIAL_PROVIDERS_JSON"];
+    // FR-020-AC-7: disable social if no providers remain
+    cmData["IDENTITY_SOCIAL_ENABLED"] = "false";
+  }
 
   const tasks = makeMutationListr(cmData, secretData, rolloutTimeoutSeconds);
 
@@ -541,26 +612,21 @@ export async function runAuthConfigSocialList(
   list.commit();
 
   const cmData = await getConfigMap();
+  const providers = readProviders(cmData);
 
-  // Collect unique provider IDs from keys like social.<id>.display_name
-  const providerIds = new Set<string>();
-  for (const key of Object.keys(cmData)) {
-    const m = key.match(/^social\.([^.]+)\./);
-    if (m && m[1] !== "enabled") providerIds.add(m[1]);
-  }
-
-  if (providerIds.size === 0) {
+  if (providers.length === 0) {
     list.success("No social providers configured.");
     return;
   }
 
-  for (const id of providerIds) {
-    const displayName = cmData[`social.${id}.display_name`] ?? id;
-    const type = cmData[`social.${id}.type`] ?? "unknown";
+  for (const p of providers) {
+    const id = String(p["id"] ?? "?");
+    const displayName = String(p["display_name"] ?? id);
+    const type = String(p["type"] ?? "unknown");
     list.item(id, `${type} — ${displayName}`);
   }
 
-  list.success(`${providerIds.size} social provider(s) configured.`);
+  list.success(`${providers.length} social provider(s) configured.`);
 }
 
 export async function runAuthConfigSocialShow(
@@ -571,26 +637,24 @@ export async function runAuthConfigSocialShow(
   list.commit();
 
   const cmData = await getConfigMap();
+  const providers = readProviders(cmData);
+  const provider = providers.find((p) => p["id"] === id);
 
-  const prefix = `social.${id}`;
-  const fields = Object.entries(cmData)
-    .filter(([k]) => k.startsWith(`${prefix}.`))
-    .map(([k, v]) => {
-      const shortKey = k.slice(prefix.length + 1);
-      // FR-020-AC-3: NEVER print client_secret
-      if (shortKey === "client_secret" || shortKey === "client_secret_ref") {
-        return `  ${shortKey}: ***`;
-      }
-      return `  ${shortKey}: ${v}`;
-    });
-
-  if (fields.length === 0) {
+  if (!provider) {
     list.warn(`No social provider with id '${id}' found.`);
     return;
   }
 
   list.note(`Social provider '${id}':`);
-  for (const f of fields) list.note(f);
+  for (const [k, v] of Object.entries(provider)) {
+    if (k === "id") continue;
+    // FR-020-AC-3: NEVER print client_secret_ref value
+    if (k === "client_secret_ref") {
+      list.note(`  ${k}: ***`);
+    } else {
+      list.note(`  ${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`);
+    }
+  }
   list.success(`Provider ${id}`);
 }
 
