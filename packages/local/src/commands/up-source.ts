@@ -7,10 +7,27 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { IxConfig } from "../config.js";
 import { IX_APPS_NAMESPACE, buildGlobalSetArgs } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
-import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
+import {
+  buildHelmSetArgs,
+  resolveCatalog,
+  resolveProfile,
+} from "../host-mounts.js";
 import { applySecretContract, loadSecretContract } from "../local-secrets.js";
 import { waitForRollout } from "../rollout.js";
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
+
+/**
+ * Resolve the values overlay file for an app chart, profile-aware.
+ * Lookup order: values-${IX_PROFILE}.yaml → values-local.yaml → values.yaml
+ */
+export function resolveProfileValuesPath(chartPath: string): string {
+  const profile = resolveProfile();
+  const profileFile = path.join(chartPath, `values-${profile}.yaml`);
+  if (fs.existsSync(profileFile)) return profileFile;
+  const localFile = path.join(chartPath, "values-local.yaml");
+  if (fs.existsSync(localFile)) return localFile;
+  return path.join(chartPath, "values.yaml");
+}
 
 interface LocalInstall {
   name: string;
@@ -139,11 +156,31 @@ function makefileHasTargets(repoDir: string, targets: string[]): boolean {
   );
 }
 
-function resolveServiceInstall(name: string, devDir: string): LocalInstall {
-  const repoDir = path.join(devDir, name);
-  const chartPath = path.join(repoDir, "helm");
-  ensureDirExists(repoDir, "Directory not found");
-  ensureDirExists(chartPath, "Local Helm chart not found");
+function resolveServiceInstall(
+  name: string,
+  devDir: string,
+  embeddedIn?: string,
+): LocalInstall {
+  const standaloneDir = path.join(devDir, name);
+  let repoDir: string;
+  let chartPath: string;
+
+  if (fs.existsSync(standaloneDir)) {
+    repoDir = standaloneDir;
+    chartPath = path.join(repoDir, "helm");
+    ensureDirExists(chartPath, "Local Helm chart not found");
+  } else if (embeddedIn) {
+    chartPath = path.join(embeddedIn, "helm", name);
+    repoDir = chartPath;
+    if (!fs.existsSync(chartPath)) {
+      throw new Error(`Directory not found: ${standaloneDir}`);
+    }
+  } else {
+    ensureDirExists(standaloneDir, "Directory not found");
+    chartPath = path.join(standaloneDir, "helm");
+    repoDir = standaloneDir;
+  }
+
   const valuesPath = path.join(chartPath, "values.yaml");
   if (!fs.existsSync(valuesPath)) {
     throw new Error(`Local Helm values not found: ${valuesPath}`);
@@ -171,18 +208,17 @@ function buildAppChildOverrideFile(
   tmpDir: string,
   appValuesPath: string,
   childName: string,
-): string {
+): string | null {
   const parsed = (readYamlFile(appValuesPath) as Record<string, unknown>) ?? {};
   const child = parsed[childName];
-  if (!child || typeof child !== "object") {
-    throw new Error(
-      `App values file '${appValuesPath}' does not define overrides for '${childName}'`,
-    );
-  }
+  const hasChild = child != null && typeof child === "object";
+  const hasGlobal = parsed.global !== undefined;
+
+  if (!hasChild && !hasGlobal) return null;
 
   const generated = {
-    ...(parsed.global !== undefined ? { global: parsed.global } : {}),
-    ...(child as Record<string, unknown>),
+    ...(hasGlobal ? { global: parsed.global } : {}),
+    ...(hasChild ? (child as Record<string, unknown>) : {}),
   };
   const filePath = path.join(tmpDir, `${childName}.values.yaml`);
   fs.writeFileSync(filePath, stringifyYaml(generated), "utf-8");
@@ -205,9 +241,7 @@ function resolveAppInstalls(
     throw new Error(`App chart metadata not found: ${chartYamlPath}`);
   }
 
-  const appValuesPath = fs.existsSync(path.join(chartPath, "values-local.yaml"))
-    ? path.join(chartPath, "values-local.yaml")
-    : path.join(chartPath, "values.yaml");
+  const appValuesPath = resolveProfileValuesPath(chartPath);
   if (!fs.existsSync(appValuesPath)) {
     throw new Error(`App values file not found: ${appValuesPath}`);
   }
@@ -216,7 +250,7 @@ function resolveAppInstalls(
     appRepoDir: repoDir,
     installs: parseLocalAppDependencies(chartYamlPath)
       .map((depName) => {
-        const serviceInstall = resolveServiceInstall(depName, devDir);
+        const serviceInstall = resolveServiceInstall(depName, devDir, repoDir);
         if (!matchesTagFilters(serviceInstall.tags, opts)) return null;
         const overrideFile = buildAppChildOverrideFile(
           tmpDir,
@@ -225,7 +259,9 @@ function resolveAppInstalls(
         );
         return {
           ...serviceInstall,
-          valuesFiles: [...serviceInstall.valuesFiles, overrideFile],
+          valuesFiles: overrideFile
+            ? [...serviceInstall.valuesFiles, overrideFile]
+            : serviceInstall.valuesFiles,
         };
       })
       .filter((install): install is LocalInstall => install !== null),

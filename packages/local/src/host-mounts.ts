@@ -140,6 +140,30 @@ export const HOST_MOUNT_CATALOG: HostMountCatalogEntry[] = [
       },
     },
   },
+  {
+    name: "paperclipData",
+    containerPath: "/paperclip",
+    localEnvOverride: "IX_PAPERCLIP_DATA_DIR",
+    sources: {
+      local: {
+        type: "hostPath",
+        path: () => path.join(os.homedir(), ".ix", "paperclip", "data"),
+        hostPathType: "DirectoryOrCreate",
+      },
+    },
+  },
+  {
+    name: "paperclipDb",
+    containerPath: "/var/lib/postgresql/data",
+    localEnvOverride: "IX_PAPERCLIP_DB_DIR",
+    sources: {
+      local: {
+        type: "hostPath",
+        path: () => path.join(os.homedir(), ".ix", "paperclip", "db"),
+        hostPathType: "DirectoryOrCreate",
+      },
+    },
+  },
 ];
 
 /** Read the active profile from env. Defaults to `local`. */
