@@ -1,0 +1,69 @@
+---
+id: FR-010
+title: "ConfigService API in @agent-ix/ix-cli-core"
+artifact_type: FR
+object: api
+relationships:
+  - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-005"
+    type: "implements"
+    cardinality: "1:1"
+  - target: "ix://agent-ix/ix-cli/spec/functional/core/FR-011"
+    type: "requires"
+    cardinality: "1:1"
+  - target: "ix://agent-ix/ix-cli/spec/functional/core/FR-013"
+    type: "requires"
+    cardinality: "1:1"
+---
+
+## Behavior
+
+`@agent-ix/ix-cli-core` SHALL export a `ConfigService` whose only public entry point is:
+
+```typescript
+ConfigService.forPlugin<T>(pluginId: string, schema: ZodSchema<T>): PluginConfig<T>
+```
+
+`PluginConfig<T>` exposes:
+
+```typescript
+interface PluginConfig<T> {
+  get(): T;                          // returns merged-with-defaults, validated value
+  set(partial: Partial<T>): void;    // merges, validates, atomically writes
+  reset(): void;                     // deletes the plugin's file (returns to defaults)
+  filePath(): string;                // for ix config edit
+}
+```
+
+**File layout.** Each plugin's persisted config lives in its own file under `~/.config/ix/`:
+
+- For third-party and first-party plugins: `~/.config/ix/config.d/<pluginId>.yaml`.
+- For the reserved `core` plugin (owned by `apps/ix`): `~/.config/ix/config.yaml`.
+
+The placement difference is the only special case in `ConfigService`; isolation, atomic writes, and schema validation behave identically for both paths. `forPlugin('core', schema)` resolves to the `config.yaml` path; all other ids resolve to `config.d/<id>.yaml`.
+
+**Atomic writes.** `set()` writes to a sibling temp file (`<pluginId>.yaml.tmp.<pid>`) with mode `0o600`, fsyncs, then renames over the target. The temp file is unlinked on any failure path.
+
+**Schema enforcement.** Schemas SHALL be Zod `.strict()` (per FR-013); writes that introduce unknown keys SHALL throw `ConfigSchemaError`. Reads of an existing-but-invalid file SHALL throw `ConfigParseError`; the loader callsite (FR-011) decides whether to fall back to defaults.
+
+**No cross-plugin reads.** The API SHALL NOT expose a method that reads another plugin's file; a plugin holding `PluginConfig<T>` for its own id has no path to `pluginId`s belonging to other plugins.
+
+**Versioning.** Each plugin file MAY carry a top-level `version:` field. v1 schemas omit it; future migrations MAY use it.
+
+**Filesystem failure modes.**
+
+- *Read-only target directory*: when `~/.config/ix/` (or its parent) is not writable, `set()` SHALL throw `ConfigWriteError` wrapping the underlying `EACCES`/`EROFS`/`ENOSPC` and naming the target path. The pre-existing file content is unaffected; the temp file is unlinked. The error message SHALL include actionable remediation (`chmod`, free disk, etc.).
+- *Windows cross-drive rename*: `fs.rename()` is not atomic across drives on Windows. To preserve atomicity, the temp file SHALL be created in the **same directory** as the target (sibling, not in `os.tmpdir()`). This guarantees temp+rename stays on the same volume regardless of platform. Implementations MUST NOT use `os.tmpdir()` for governed-file temp paths.
+- *Symlinked target*: refused on read per NFR-004-AC-4; on write, the symlink is detected before any operation and refused with `ConfigSymlinkRefusedError` naming both the symlink path and its target.
+- *Concurrent crash mid-rename*: POSIX `rename(2)` is atomic; either the old or new content is observable, never a partial. The temp file MAY be left orphaned; `ConfigService` SHALL prune `<file>.tmp.*` siblings older than 30s on next operation against the same plugin file.
+
+## Acceptance
+
+- **FR-010-AC-1**: `ConfigService.forPlugin('local', LocalSchema).get()` reads only `~/.config/ix/config.d/local.yaml`; `forPlugin('core', CoreSchema).get()` reads only `~/.config/ix/config.yaml`. Reading any other plugin's file requires a separate `forPlugin(...)` call with that plugin id (subject to the soft-isolation contract documented in spec.md §10 — runtime cross-plugin reads are not API-blocked but are flagged by static check).
+- **FR-010-AC-2**: `set({...})` produces an atomic on-disk write — the target file is replaced via temp + rename; an interrupted write leaves the previous content intact and removes the temp file.
+- **FR-010-AC-3**: All files written by `set()` have mode `0o600` regardless of umask.
+- **FR-010-AC-4**: Calling `set({ unknownKey: 1 })` against a `.strict()` schema throws `ConfigSchemaError` and does not modify the file.
+- **FR-010-AC-5**: `reset()` deletes the file; a subsequent `get()` returns the schema defaults and re-creates the file only on the next `set()`.
+- **FR-010-AC-6**: `filePath()` returns the absolute path of the plugin's config file (used by `ix config edit`).
+- **FR-010-AC-7** *(read-only filesystem)*: When the target directory is unwritable (`EACCES`/`EROFS`/`ENOSPC`), `set()` throws `ConfigWriteError` naming the path and underlying errno; the existing file content (if any) is unchanged; no orphan temp file remains.
+- **FR-010-AC-8** *(temp file is a sibling)*: Temp files are created in the same directory as the target file (`<target>.tmp.<pid>.<rand>`). A test that mocks `os.tmpdir()` to a different volume confirms that no write path uses it for governed-file temp.
+- **FR-010-AC-9** *(orphan temp pruning)*: `ConfigService` prunes `<target>.tmp.*` siblings older than 30 seconds on the next `set()` for the same plugin id. Younger orphans are left alone (another writer may be mid-flight).

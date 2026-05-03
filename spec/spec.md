@@ -159,31 +159,66 @@ All functional requirements SHALL:
 
 ## 8. Auth and Configuration Model
 
-### 8.1 Credential Storage
+### 8.1 Storage Layout (XDG-compliant)
 
-Auth credentials are stored at `~/.config/ix/credentials.json` (mode `0o600`).
-
-The credential contract is owned by `core` and shared with agent-cli-daemon. Format:
-```json
-{
-  "access_token": "...",
-  "refresh_token": "...",
-  "expires_at": "<ISO8601>"
-}
+```
+~/.config/ix/
+├── config.yaml              # core-only CLI settings (id "core")
+├── secrets.key              # X25519 age identity (mode 0600; only when keyring unavailable)
+├── config.d/
+│   ├── local.yaml           # @agent-ix/ix-cli-local config
+│   ├── elements.yaml        # @agent-ix/ix-cli-elements config
+│   ├── spec.yaml            # @agent-ix/ix-cli-spec config
+│   └── <plugin-id>.yaml     # any third-party plugin
+└── secrets.d/
+    ├── local.age            # per-plugin age-encrypted blob (mode 0600)
+    ├── elements.age
+    └── <plugin-id>.age
 ```
 
-### 8.2 Auth Flows
+Each persisted file owned by ix-cli is mode `0o600`, written atomically (temp + rename), and refused on read if its mode is wider. Per-plugin file isolation guarantees that a malformed or buggy plugin's config cannot corrupt unrelated plugins (FR-011).
 
-| Flow | Provider | Trigger |
-|------|----------|---------|
-| GitHub OAuth device flow | GitHub | `ix login --github` |
-| IX service token | IX auth-service | `ix login` (default) |
+**Cluster-targeting state out of scope for `core`.** Cluster context (which cluster, kubeconfig context, kind cluster name, internal/external base domains) lives in the `local` plugin's schema for v1, NOT in `core`. The promotion of cluster targeting to `core` is gated on hosted Agent IX clusters landing and is tracked in [agent-ix/ix-cli#2](https://github.com/agent-ix/ix-cli/issues/2). FR-020 enumerates the v1 contents of `core`'s `configSchema` and `secretsSchema`.
 
-Both flows are implemented in `packages/core/auth/`.
+### 8.2 Configuration Service
 
-### 8.3 Configuration
+Configuration is owned by the `ConfigService` in `@agent-ix/ix-cli-core`:
 
-User configuration is stored at `~/.ix/config.yaml`. The schema is owned by `packages/core/config/`.
+- Plugins access only their own file via `ConfigService.forPlugin(id, schema)` — the API does not expose cross-plugin reads.
+- Schemas are Zod `.strict()`; unknown keys are rejected at write time.
+- Layered resolution: env (`IX_*` per plugin's declared bindings) → plugin's `config.d/<id>.yaml` → schema defaults (FR-012).
+- The reserved id `core` is the only plugin allowed to read or write `~/.config/ix/config.yaml`.
+- A parse or validation error on one plugin's file SHALL NOT block other plugins; the offending plugin falls back to schema defaults and the error is surfaced via `ix config doctor` (FR-011, FR-018).
+
+### 8.3 Secrets Service
+
+Secrets (GHCR PAT, IX auth refresh token, future plugin secrets) are owned by `SecretsService` in `@agent-ix/ix-cli-core`:
+
+- **Default backend: OS keyring** via `@napi-rs/keyring` — `service = "ix-cli"`, `account = "<plugin-id>.<secret-name>"` (FR-015).
+- **Fallback backend: per-plugin age-encrypted blobs** at `secrets.d/<plugin-id>.age` with X25519 identity at `secrets.key` (FR-016). Used only when the keyring capability probe fails.
+- Resolution order for `get()`: env (`IX_*` per plugin's declared `envVar`) → active backend → optional masked TTY prompt (FR-014).
+- **No secret value is ever persisted in plaintext on disk** (NFR-003).
+- Backend pluggability: future Vault / 1Password / Bitwarden adapters register via a typed `SecretsBackend` interface without changes to consumers (NFR-006).
+
+### 8.4 Auth Flows
+
+| Flow | Provider | Trigger | Token Storage |
+|---|---|---|---|
+| GitHub OAuth device flow | GitHub | `ix login --github` | SecretsService secret `core.github-token` |
+| IX service token | IX auth-service | `ix login` (default) | SecretsService secrets `core.auth-access-token`, `core.auth-refresh-token`; `core.auth-expires-at` is a config value |
+
+Both flows are implemented in `packages/core/src/auth/`.
+
+### 8.5 Legacy Migration
+
+A one-shot migration (FR-017) runs at most once per environment on the next `ix` invocation following an upgrade across the cutover version:
+
+| Legacy path | Destination |
+|---|---|
+| `~/.ix/config.yaml` (top-level `cluster:`, `concurrency:`) | `~/.config/ix/config.d/local.yaml` |
+| `~/.config/ix-local/credentials.json` (`{ ghcr_token }`) | secret id `local.ghcr-token` via SecretsService |
+
+After migration, `~/.ix/config.yaml` is renamed to `~/.ix/config.yaml.migrated` and `credentials.json` is unlinked. The hot path SHALL NOT touch legacy paths after migration completes.
 
 ---
 
@@ -228,13 +263,36 @@ Third-party packages MAY extend ix-cli by satisfying the `IxPlugin` interface ex
 
 ```ts
 interface IxPlugin {
-  name: string
+  id: string                              // unique plugin id; namespaces config + secrets
   commands: CommandTree
   requires?: ('github' | 'ix-api')[]
+  configSchema?: ZodObject<any>           // MUST be Zod .strict() — see FR-013
+  secretsSchema?: SecretDeclaration[]
+}
+
+interface SecretDeclaration {
+  name: string                            // local name; full id is "<pluginId>.<name>"
+  description: string                     // shown by `ix secrets list` and prompts
+  required?: boolean                      // when true, login flow will prompt
+  envVar?: string                         // optional env binding (e.g. "IX_GHCR_TOKEN")
 }
 ```
 
-`requires` declares auth dependencies — `core` resolves tokens before the command runs.
+- `requires` declares auth dependencies — `core` resolves tokens before the command runs.
+- `configSchema`, when present, namespaces and validates the plugin's persistent config under `~/.config/ix/config.d/<id>.yaml` via `ConfigService` (FR-010, FR-013). The schema MUST be `.strict()` so unknown keys are rejected at write time.
+- `secretsSchema`, when present, declares the secrets the plugin may read/write under ids `<id>.<name>` via `SecretsService` (FR-013, FR-014). Each entry is shown in `ix secrets list` with its description.
+- The id `core` is reserved for `apps/ix` itself; third-party plugins MUST NOT use it (FR-013-AC-4).
+
+### 10.1 Trust Model
+
+ix-cli plugins run **in-process** with full Node.js privileges (`node:fs`, `node:child_process`, env vars, `process.binding`). The plugin contract MUST NOT be read as adversarial isolation:
+
+- Per-plugin file isolation in `config.d/` and `secrets.d/` defends against **accidental corruption** from buggy plugins, not against deliberate exfiltration. A malicious plugin can read another plugin's config file directly via `node:fs`; nothing in this spec prevents that.
+- The `ConfigService.forPlugin(id, schema)` API takes `id` as a string. Cross-plugin reads are not API-blocked at runtime; the contract that "each plugin reads its own id" is enforced by **static-check lint only** (FR-012-AC-5).
+- This posture matches every other in-process plugin CLI (gh, kubectl, aws-cli, oclif, helm, VS Code extensions). The only major dev CLI that achieves real plugin isolation is Terraform, via subprocess + gRPC.
+- Adversarial isolation (subprocess-per-plugin RPC) is tracked as future work in [agent-ix/ix-cli#1](https://github.com/agent-ix/ix-cli/issues/1).
+
+**Operator guidance.** Install only plugins you trust. Treat `ix` plugins with the same care as `gh` extensions or `kubectl-*` binaries on your `PATH`.
 
 ---
 
