@@ -568,11 +568,14 @@ async function runSingleServiceListr(
               if (line) task.output = line;
             });
             await subprocess;
+            const nullSink = {
+              output: "",
+            } as unknown as ListrTaskWrapper<unknown, never, never>;
             await waitForRollout(
               install.name,
               install.namespace,
               config.rolloutTimeoutSeconds,
-              task as Parameters<typeof waitForRollout>[3],
+              nullSink,
               `app.kubernetes.io/instance=${install.name}`,
             );
           } catch (err) {
@@ -597,8 +600,6 @@ async function runSingleServiceListr(
         `Deployed ${deployable.name} with failures: ${failures.join("; ")}`,
       );
     } else {
-      const url = `https://${deployable.name}.${config.internalBaseDomain}`;
-      list.note(`→  ${url}`);
       list.success(`${deployable.name} deployed.`);
     }
   } catch (err) {
