@@ -42,8 +42,6 @@ Filesystem permissions (`0o600`) alone are not adequate protection: backups, syn
 - **NFR-003-AC-1**: A static scan across `packages/core/src/`, `packages/local/src/`, `packages/elements/src/`, and `apps/ix/src/` SHALL find zero call sites where the result of `SecretsService.get(...)`, or any variable directly bound to it, flows into any of the following persistence channels outside `packages/core/src/secrets/backends/`: `fs.writeFile`, `fs.writeFileSync`, `fs.appendFile`, `fs.appendFileSync`, `fs.createWriteStream`, `fsPromises.writeFile`, `fsPromises.appendFile`, `fsPromises.open(..., 'w'|'a')`, `child_process.spawn(..., { input })`, `child_process.spawnSync(..., { input })`, `child_process.exec(..., { input })`, `process.stdout.write`, `process.stderr.write`, `console.*`. The check is implemented as a typed dataflow grep (variable name + immediate sink) seeded by `SecretsService.get` call sites.
 - **NFR-003-AC-2**: A round-trip test SHALL `set` a secret, then read every byte of `~/.config/ix/secrets.d/<plugin>.age` and `~/.config/ix/secrets.key`; the plaintext value of the secret SHALL NOT appear as a substring of either file.
 - **NFR-003-AC-3**: An integration test SHALL verify that after `ix secrets set local.ghcr-token`, the only on-disk artifact is either an OS keychain entry (no plaintext file produced) or an age blob whose decryption requires `secrets.key`.
-- **NFR-003-AC-4**: After legacy migration (FR-017) completes, `~/.config/ix-local/credentials.json` SHALL not exist; subsequent `ix` runs SHALL not recreate it.
-- **NFR-003-AC-5**: A static scan SHALL find zero new code paths that read or write `~/.config/ix-local/credentials.json` outside `packages/core/src/migration/`.
 
 ## Verification
 

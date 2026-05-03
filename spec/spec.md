@@ -209,16 +209,9 @@ Secrets (GHCR PAT, IX auth refresh token, future plugin secrets) are owned by `S
 
 Both flows are implemented in `packages/core/src/auth/`.
 
-### 8.5 Legacy Migration
+### 8.5 No Legacy Compatibility
 
-A one-shot migration (FR-017) runs at most once per environment on the next `ix` invocation following an upgrade across the cutover version:
-
-| Legacy path | Destination |
-|---|---|
-| `~/.ix/config.yaml` (top-level `cluster:`, `concurrency:`) | `~/.config/ix/config.d/local.yaml` |
-| `~/.config/ix-local/credentials.json` (`{ ghcr_token }`) | secret id `local.ghcr-token` via SecretsService |
-
-After migration, `~/.ix/config.yaml` is renamed to `~/.ix/config.yaml.migrated` and `credentials.json` is unlinked. The hot path SHALL NOT touch legacy paths after migration completes.
+ix-cli is pre-release and has no installed user base whose state needs preserving across the v0.3.0 cutover. The new ConfigService / SecretsService stores are the only system of record; there is no migration shim from earlier `~/.ix/config.yaml` or `~/.config/ix-local/credentials.json` layouts. Operators upgrading from a pre-v0.3.0 build SHALL re-create their config and re-enter their secrets via `ix config set` and `ix secrets set`.
 
 ---
 

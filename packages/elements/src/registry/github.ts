@@ -1,5 +1,3 @@
-import { readCredentials } from "@agent-ix/ix-cli-core";
-
 export interface RepoEntry {
   name: string;
   description: string;
@@ -14,12 +12,20 @@ const ENV_VARS = [
   "CR_PAT",
 ] as const;
 
+/**
+ * Resolve a GitHub API token from the environment. Persistent storage of
+ * the token belongs to `SecretsService` (`core.github-token`); the
+ * recommended async path is `defaultSecretsService().get('core.github-token')`.
+ * This helper stays sync for the existing caller; if the secret needs to
+ * be honored without an env var, the caller should switch to the async
+ * SecretsService API directly.
+ */
 export function getGhToken(): string | undefined {
   for (const key of ENV_VARS) {
     const val = process.env[key]?.trim();
     if (val) return val;
   }
-  return readCredentials().githubToken ?? undefined;
+  return undefined;
 }
 
 function authHeaders(token?: string): Record<string, string> {

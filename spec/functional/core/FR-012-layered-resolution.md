@@ -10,9 +10,6 @@ relationships:
   - target: "ix://agent-ix/ix-cli/spec/functional/core/FR-010"
     type: "requires"
     cardinality: "1:1"
-  - target: "ix://agent-ix/ix-cli/spec/functional/local/FR-009"
-    type: "supersedes"
-    cardinality: "1:1"
 ---
 
 ## Behavior
@@ -29,8 +26,6 @@ Env-variable bindings are conventionally `IX_*` and SHALL be declared by the plu
 
 **Project-local layer (deferred to v2).** A `./.ix/config.d/<pluginId>.yaml` layer between env and user file is explicitly out of scope for v1; the resolution pipeline is structured to admit it later without API change.
 
-**Legacy file fallback.** During the deprecation window, if `~/.config/ix/config.d/<pluginId>.yaml` is absent and `~/.ix/config.yaml` exists, `ConfigService` SHALL one-time-migrate per FR-017 rather than read the legacy file in the hot path.
-
 ## Acceptance
 
 - **FR-012-AC-1**: With `IX_LOG_LEVEL=debug` set and `~/.config/ix/config.yaml` containing `logLevel: info`, `forPlugin('core', S).get().logLevel === 'debug'`.
@@ -38,4 +33,3 @@ Env-variable bindings are conventionally `IX_*` and SHALL be declared by the plu
 - **FR-012-AC-3**: With both env and file absent, `get()` returns the schema-declared default for each key.
 - **FR-012-AC-4**: An invalid env-variable value (e.g. `IX_LOG_LEVEL=loud`) raises `ConfigSchemaError` with the env var name and expected enum.
 - **FR-012-AC-5**: Plugin-source code outside `apps/ix/` and `packages/core/` SHALL contain zero call sites of the form `ConfigService.forPlugin('core', ...)` or `forPlugin('<other-plugin-id>', ...)` (verified by static check). The `ConfigService` API does NOT runtime-reject such calls — see spec.md §10 trust model — but a static lint enforces the soft contract that each plugin only reads its own id.
-- **FR-012-AC-6**: After legacy migration (FR-017) runs once, subsequent reads do not touch `~/.ix/config.yaml`.

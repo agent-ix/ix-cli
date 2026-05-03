@@ -262,7 +262,7 @@ Tests fall into four types:
 | Stakeholder Req | Trace to FR/NFR | Test Cases | Coverage Status |
 |-----------------|-----------------|------------|-----------------|
 | StR-005 | FR-010, FR-011, FR-012, FR-013, FR-018, FR-020 | TC-100–TC-124, TC-150–TC-156, TC-185, TC-187–TC-191 | 🚧 In Progress |
-| StR-006 | FR-014, FR-015, FR-016, FR-017, FR-019, FR-020, NFR-003, NFR-004 | TC-125–TC-149, TC-157–TC-173, TC-184, TC-186 | 🚧 In Progress |
+| StR-006 | FR-014, FR-015, FR-016, FR-019, FR-020, NFR-003, NFR-004 | TC-125–TC-143, TC-157–TC-173, TC-184, TC-186 | 🚧 In Progress |
 
 ### Functional Requirement Coverage
 
@@ -289,7 +289,6 @@ Tests fall into four types:
 | FR-012 | AC-3: defaults applied when env+file absent | TC-115 | 🚧 In Progress (unit) |
 | FR-012 | AC-4: invalid env value → ConfigSchemaError | TC-116 | 🚧 In Progress (unit) |
 | FR-012 | AC-5: static lint — no cross-plugin forPlugin call sites | TC-117 | 🚧 In Progress (static) |
-| FR-012 | AC-6: post-migration hot path doesn't read legacy paths | TC-118 | 🚧 In Progress (static) |
 | FR-013 | AC-1: configSchema enforced on writes | TC-119 | 🚧 In Progress (unit) |
 | FR-013 | AC-2: non-strict schema → logged + skipped, others load | TC-120 | 🚧 In Progress (unit) |
 | FR-013 | AC-3: duplicate id → second logged + skipped, first preserved | TC-121 | 🚧 In Progress (unit) |
@@ -318,12 +317,6 @@ Tests fall into four types:
 | FR-016 | AC-4: every write produces 0o600 post-rename | TC-141 | 🚧 In Progress (unit) |
 | FR-016 | AC-5: wide-perm secrets.key → SecretsIdentityPermissionsError | TC-142 | 🚧 In Progress (unit) |
 | FR-016 | AC-6: zero plaintext leaks across full lifecycle | TC-143 | 🚧 In Progress (unit) |
-| FR-017 | AC-1: full migration cycle (config + creds → new stores) | TC-144 | 🚧 In Progress (integration) |
-| FR-017 | AC-2: idempotent — second run no-op | TC-145 | 🚧 In Progress (unit) |
-| FR-017 | AC-3: malformed legacy aborts; legacy preserved | TC-146 | 🚧 In Progress (unit) |
-| FR-017 | AC-4: no legacy → silent no-op | TC-147 | 🚧 In Progress (unit) |
-| FR-017 | AC-5: post-migration grep for legacy paths | TC-148 | 🚧 In Progress (static) |
-| FR-017 | AC-6: migrated GHCR token never lands in plaintext file | TC-149 | 🚧 In Progress (unit) |
 | FR-018 | AC-1: get omits plugin → defaults to "core" | TC-150 | 🚧 In Progress (unit) |
 | FR-018 | AC-2: set persists; next ix local up observes value | TC-151 | 🚧 In Progress (integration) |
 | FR-018 | AC-3: invalid set surfaces full four-tuple error | TC-152 | 🚧 In Progress (unit) |
@@ -354,8 +347,6 @@ Tests fall into four types:
 | NFR-003-AC-1 | Static grep: no fs.write* of secret values outside backends/ | TC-164 | 🚧 In Progress (static) |
 | NFR-003-AC-2 | Round-trip leak scan: plaintext absent from .age + .key | TC-165 | 🚧 In Progress (unit) |
 | NFR-003-AC-3 | Integration: only-keychain or only-age-blob on disk | TC-166 | 🚧 In Progress (integration) |
-| NFR-003-AC-4 | Integration: legacy credentials.json absent post-migration | TC-167 | 🚧 In Progress (integration) |
-| NFR-003-AC-5 | Static grep: no new readers of credentials.json outside migration/ | TC-168 | 🚧 In Progress (static) |
 | NFR-004-AC-1 | Unit: umask 0022 yields 0o600 | TC-169 | 🚧 In Progress (unit) |
 | NFR-004-AC-2 | Unit: rename failure leaves target intact, temp removed | TC-170 | 🚧 In Progress (unit) |
 | NFR-004-AC-3 | Unit: 0o644 secrets.key → SecretsIdentityPermissionsError | TC-171 | 🚧 In Progress (unit) |
@@ -394,7 +385,6 @@ Tests fall into four types:
 | TC-115 | Env+file absent → schema defaults | Unit | P1 | FR-012-AC-3 | 🚧 In Progress |
 | TC-116 | IX_LOG_LEVEL=loud (invalid enum) → ConfigSchemaError naming env var | Unit | P1 | FR-012-AC-4 | 🚧 In Progress |
 | TC-117 | Non-core plugin attempting to write core file → rejected | Unit | P1 | FR-012-AC-5, FR-013-AC-4 | 🚧 In Progress |
-| TC-118 | Static grep: no readers of ~/.ix/config.yaml outside migration/ | Static | P1 | FR-012-AC-6, FR-017-AC-5 | 🚧 In Progress |
 | TC-119 | Plugin with strict configSchema validates writes | Unit | P1 | FR-013-AC-1 | 🚧 In Progress |
 | TC-120 | Non-strict schema (.passthrough) → PluginRegistrationError | Unit | P1 | FR-013-AC-2 | 🚧 In Progress |
 | TC-121 | Duplicate plugin id → second registration throws | Unit | P1 | FR-013-AC-3 | 🚧 In Progress |
@@ -420,12 +410,6 @@ Tests fall into four types:
 | TC-141 | All age writes observe 0o600 post-rename | Unit | P2 | FR-016-AC-4 | 🚧 In Progress |
 | TC-142 | secrets.key with mode 0o644 → SecretsIdentityPermissionsError | Unit | P1 | FR-016-AC-5, NFR-004-AC-3 | 🚧 In Progress |
 | TC-143 | Full set/get/delete lifecycle: zero plaintext leaks in age files | Unit | P1 | FR-016-AC-6, NFR-003-AC-2 | 🚧 In Progress |
-| TC-144 | Migration: legacy creds + ~/.ix/config.yaml → new stores; legacy removed | Integration | P1 | FR-017-AC-1 | 🚧 In Progress |
-| TC-145 | Migration idempotent: second run no-op; legacy not re-read | Unit | P1 | FR-017-AC-2 | 🚧 In Progress |
-| TC-146 | Malformed legacy aborts migration; legacy files preserved | Unit | P1 | FR-017-AC-3 | 🚧 In Progress |
-| TC-147 | No legacy present → migration silent no-op | Unit | P1 | FR-017-AC-4 | 🚧 In Progress |
-| TC-148 | Static grep: ~/.ix/config.yaml + credentials.json only in migration/ | Static | P1 | FR-017-AC-5, NFR-003-AC-5 | 🚧 In Progress |
-| TC-149 | Migrated GHCR token: zero plaintext on disk after migration | Unit | P1 | FR-017-AC-6 | 🚧 In Progress |
 | TC-150 | ix config get logLevel → reads core plugin config | Unit | P1 | FR-018-AC-1 | 🚧 In Progress |
 | TC-151 | ix config set local cluster.defaultTags → next ix local up observes | Integration | P1 | FR-018-AC-2 | 🚧 In Progress |
 | TC-152 | ix config set local cluster.defaultTags 42 → four-tuple error | Unit | P1 | FR-018-AC-3, NFR-005-AC-1 | 🚧 In Progress |
@@ -443,8 +427,6 @@ Tests fall into four types:
 | TC-164 | Static: no fs.write* of secret values outside backends/ | Static | P1 | NFR-003-AC-1 | 🚧 In Progress |
 | TC-165 | Round-trip leak scan: ciphertext does not contain plaintext | Unit | P1 | NFR-003-AC-2 | 🚧 In Progress |
 | TC-166 | Integration: only keychain entry OR age blob on disk; never both | Integration | P1 | NFR-003-AC-3 | 🚧 In Progress |
-| TC-167 | Integration: legacy credentials.json absent after migration | Integration | P1 | NFR-003-AC-4, FR-017-AC-1 | 🚧 In Progress |
-| TC-168 | Static: no new readers of credentials.json outside migration/ | Static | P1 | NFR-003-AC-5 | 🚧 In Progress |
 | TC-169 | umask 0022 → governed files created mode 0o600 | Unit | P1 | NFR-004-AC-1 | 🚧 In Progress |
 | TC-170 | rename failure: target intact + temp removed | Unit | P1 | NFR-004-AC-2 | 🚧 In Progress |
 | TC-171 | secrets.key with mode 0o644 (fixture) → SecretsIdentityPermissionsError | Unit | P1 | NFR-004-AC-3, FR-016-AC-5 | 🚧 In Progress |

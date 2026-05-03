@@ -29,9 +29,6 @@
       "elements tap": {
         "description": "Manage element tap sources (add, remove, list)."
       },
-      "plugin": {
-        "description": "Manage installed ix CLI plugins."
-      },
       "config": {
         "description": "Read and write per-plugin configuration (get, set, edit, doctor)."
       },

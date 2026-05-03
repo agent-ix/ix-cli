@@ -27,4 +27,3 @@ Must-Have
 - **StR-006-AC-3**: When the keyring is unavailable, secrets are stored per-plugin under `~/.config/ix/secrets.d/<plugin-id>.age`; corruption of one file does not affect secrets stored under a different plugin id.
 - **StR-006-AC-4**: Secret ids are namespaced as `<plugin-id>.<secret-name>`; the API does not permit a plugin to read another plugin's secret without explicitly naming it.
 - **StR-006-AC-5**: The `SecretsService` accepts additional backend adapters (Vault, 1Password, Bitwarden) via a typed interface without changes to consumer code; v1 ships keyring + age-file only.
-- **StR-006-AC-6**: Legacy plaintext `~/.config/ix-local/credentials.json` is migrated into the new store on first run and the legacy file is unlinked.
