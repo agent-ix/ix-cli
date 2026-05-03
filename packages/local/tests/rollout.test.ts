@@ -63,4 +63,57 @@ describe("waitForRollout", () => {
       /No workloads \(deployment\/statefulset\) found for selector 'app=ghost'/,
     );
   });
+
+  // TC-109: FR-031-AC-13 — enriched "0/N·label" status when readyReplicas=0
+  it("enriches onStatus with ·label when readyReplicas is 0", async () => {
+    // 1. get workloads → one deployment
+    mockExeca.mockResolvedValueOnce({
+      stdout: "deployment.apps/auth-service\n",
+    } as never);
+    // 2. initial getDeploymentStatus jsonpath → ready=0, total=1
+    mockExeca.mockResolvedValueOnce({ stdout: "0/1/1/1/0" } as never);
+    // 3. getPodReadyLabel kubectl get pods → ContainerCreating
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({
+        items: [
+          {
+            status: {
+              containerStatuses: [
+                { state: { waiting: { reason: "ContainerCreating" } } },
+              ],
+            },
+          },
+        ],
+      }),
+    } as never);
+    // 4. rollout status subprocess — resolves immediately, no stream output
+    const fakeProc = Promise.resolve({} as never) as unknown as ReturnType<
+      typeof execa
+    > & { all: { on: () => void } };
+    (fakeProc as unknown as { all: { on: (...a: unknown[]) => void } }).all = {
+      on: () => {},
+    };
+    mockExeca.mockReturnValueOnce(fakeProc);
+    // 5. detectTerminalFailure kubectl get pods → no failures
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({ items: [] }),
+    } as never);
+    // 6. final getDeploymentStatus jsonpath → ready=1, total=1
+    mockExeca.mockResolvedValueOnce({ stdout: "1/1/1/1/1" } as never);
+
+    const statuses: string[] = [];
+    await waitForRollout(
+      "auth-service",
+      "default",
+      30,
+      fakeTask,
+      "app=auth-service",
+      (s) => statuses.push(s),
+    );
+
+    // Initial status when ready=0 must carry the ·start label
+    expect(statuses[0]).toBe("0/1·start");
+    // Final status must be the plain ready count with no label
+    expect(statuses[statuses.length - 1]).toMatch(/^1\/1/);
+  });
 });

@@ -45,6 +45,32 @@ Deployment has not finished reconciling — specifically when
 clock keeps ticking" case to the operator: pods are ready, the Deployment
 controller hasn't acknowledged it yet.
 
+### Pod ready label
+
+`waitForRollout` enriches the status string passed to `onStatus` with a
+human-readable label when `readyReplicas === 0`. The label is determined by
+`getPodReadyLabel` which polls pod container states:
+
+| Label | Condition |
+|-------|-----------|
+| `sched` | No pods scheduled yet |
+| `init` | Any init container not ready, or waiting reason `PodInitializing` |
+| `start` | Waiting reason `ContainerCreating` |
+
+The enriched format is `"0/N·label"` (e.g. `"0/1·init"`). The `PhaseTable`
+renders the label in dim text alongside a yellow `0` — never red — because
+`0/N` during normal startup is transient, not a failure.
+
+```
+ ⊚  [ ix local up · auth · ghcr.io ]
+ └──┐
+    ⠦ auth-service        0/1·init       2.1s
+    ⠦ identity            0/1·start      2.4s
+    ⠦ permission-service  1/3            3.0s
+    • vault               1/1            4.2s
+  elapsed 4.2s · 1/4 ready
+```
+
 ## Acceptance
 
 - **FR-031-AC-1**: For `deployable.role === "app"`, exactly one
@@ -80,3 +106,8 @@ controller hasn't acknowledged it yet.
 - **FR-031-AC-12**: Per-subchart uninstall during halt uses
   `--ignore-not-found` so missing legacy releases are a no-op, not an
   error — supports users mid-migration with mixed release state.
+- **FR-031-AC-13**: When `readyReplicas === 0`, `waitForRollout` passes an
+  enriched status string `"0/N·label"` to `onStatus` where `label` is one
+  of `sched`, `init`, or `start` depending on pod container state. When
+  `readyReplicas > 0` or `getPodReadyLabel` returns `null`, the bare
+  `"ready/total"` string is passed unchanged.

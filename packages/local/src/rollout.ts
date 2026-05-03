@@ -118,6 +118,47 @@ export async function diagnosePodFailure(
 }
 
 /**
+ * Maps container waiting reasons to short human-readable labels for the
+ * ready-phase status column (e.g. "0/1·init"). Returns null on any error
+ * so the caller can fall back to the bare count string.
+ */
+async function getPodReadyLabel(
+  labelSelector: string,
+  namespace: string,
+): Promise<string | null> {
+  try {
+    const { stdout } = await execa(
+      "kubectl",
+      ["get", "pods", "-n", namespace, "-l", labelSelector, "-o", "json"],
+      { all: true },
+    );
+    const pods = (JSON.parse(stdout) as { items: unknown[] }).items as Array<{
+      status: {
+        initContainerStatuses?: Array<{ ready: boolean }>;
+        containerStatuses?: Array<{
+          state: { waiting?: { reason?: string } };
+        }>;
+      };
+    }>;
+
+    if (pods.length === 0) return "sched";
+
+    for (const pod of pods) {
+      if ((pod.status.initContainerStatuses ?? []).some((ic) => !ic.ready))
+        return "init";
+      for (const cs of pod.status.containerStatuses ?? []) {
+        const reason = cs.state.waiting?.reason;
+        if (reason === "PodInitializing") return "init";
+        if (reason === "ContainerCreating") return "start";
+      }
+    }
+    return "start";
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Non-transient waiting reasons that indicate a pod will not self-recover.
  * Used by the early-failure poller to abort rollout watches fast.
  */
@@ -272,10 +313,20 @@ export async function waitForRollout(
     );
   }
 
-  // Emit initial ready count before rollout status starts streaming.
-  if (onStatus) {
-    onStatus(await getDeploymentStatus(deployments, namespace));
+  const pollSelector = labelSelector ?? `app=${svc}`;
+
+  async function emitStatus(base: string): Promise<void> {
+    if (!onStatus) return;
+    if (parseInt(base, 10) === 0) {
+      const label = await getPodReadyLabel(pollSelector, namespace);
+      onStatus(label ? `${base}·${label}` : base);
+    } else {
+      onStatus(base);
+    }
   }
+
+  // Emit initial ready count before rollout status starts streaming.
+  await emitStatus(await getDeploymentStatus(deployments, namespace));
 
   for (const deployment of deployments) {
     const subprocess = execa(
@@ -298,7 +349,10 @@ export async function waitForRollout(
         // Parse "N of M" from rollout status output for live updates.
         if (onStatus) {
           const match = line.match(/: (\d+) of (\d+)/);
-          if (match) onStatus(`${match[1]}/${match[2]}`);
+          if (match) {
+            const countStr = `${match[1]}/${match[2]}`;
+            void emitStatus(countStr);
+          }
         }
       }
     });
@@ -306,7 +360,6 @@ export async function waitForRollout(
     // Poll for terminal pod states every 1 s so we abort immediately instead
     // of waiting for the full --timeout when pods are stuck in e.g. CrashLoopBackOff.
     let earlyFailure: string | null = null;
-    const pollSelector = labelSelector ?? `app=${svc}`;
     const checkOnce = () => {
       void detectTerminalFailure(pollSelector, namespace).then((reason) => {
         if (reason && !earlyFailure) {
@@ -331,7 +384,5 @@ export async function waitForRollout(
   }
 
   // Emit final count once rollout is confirmed complete.
-  if (onStatus) {
-    onStatus(await getDeploymentStatus(deployments, namespace));
-  }
+  await emitStatus(await getDeploymentStatus(deployments, namespace));
 }
