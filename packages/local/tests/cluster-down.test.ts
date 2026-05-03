@@ -46,7 +46,6 @@ const config: IxConfig = {
   imageRegistry: "ghcr.io/agent-ix",
   helmChartRegistry: "ghcr.io",
   org: "agent-ix",
-  ghcrToken: null,
   certManagerVersion: "v1.14.5",
   certManagerTimeoutSeconds: 180,
   certWaitTimeoutSeconds: 120,

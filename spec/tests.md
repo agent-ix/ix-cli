@@ -272,6 +272,208 @@ Tests fall into four types:
 
 ---
 
+## packages/core (`@agent-ix/ix-cli-core`) — Shared Config & Secrets
+
+### Stakeholder Requirement Coverage
+
+| Stakeholder Req | Trace to FR/NFR | Test Cases | Coverage Status |
+|-----------------|-----------------|------------|-----------------|
+| StR-005 | FR-010, FR-011, FR-012, FR-013, FR-018, FR-020 | TC-100–TC-124, TC-150–TC-156, TC-185, TC-187–TC-191 | 🚧 In Progress |
+| StR-006 | FR-014, FR-015, FR-016, FR-019, FR-020, NFR-003, NFR-004 | TC-125–TC-143, TC-157–TC-173, TC-184, TC-186 | 🚧 In Progress |
+
+### Functional Requirement Coverage
+
+| Functional Req | Acceptance Criteria | Test Cases | Coverage Status |
+|----------------|---------------------|------------|-----------------|
+| FR-010 | AC-1: forPlugin scopes reads to its own file | TC-100 | 🚧 In Progress (unit) |
+| FR-010 | AC-2: atomic temp+rename write | TC-101 | 🚧 In Progress (unit) |
+| FR-010 | AC-3: file mode 0o600 regardless of umask | TC-102 | 🚧 In Progress (unit) |
+| FR-010 | AC-4: unknown key in strict schema → ConfigSchemaError | TC-103 | 🚧 In Progress (unit) |
+| FR-010 | AC-5: reset() deletes file; defaults thereafter | TC-104 | 🚧 In Progress (unit) |
+| FR-010 | AC-6: filePath() returns absolute path | TC-105 | 🚧 In Progress (unit) |
+| FR-010 | AC-7: read-only target → ConfigWriteError; existing content intact | TC-192 | 🚧 In Progress (unit) |
+| FR-010 | AC-8: temp file is sibling of target (not in os.tmpdir) | TC-193 | 🚧 In Progress (unit) |
+| FR-010 | AC-9: orphan temp pruning on next set() (>30s old) | TC-194 | 🚧 In Progress (unit) |
+| FR-011 | AC-1: malformed file in one plugin doesn't block another | TC-106 | 🚧 In Progress (unit) |
+| FR-011 | AC-2: defaulted load → first set() rewrites file valid | TC-107 | 🚧 In Progress (unit) |
+| FR-011 | AC-3: doctor() returns scoped errors, doesn't throw | TC-108 | 🚧 In Progress (unit) |
+| FR-011 | AC-4: same-plugin concurrent writes serialized via lock | TC-109 | 🚧 In Progress (unit) |
+| FR-011 | AC-5: different-plugin concurrent writes don't contend | TC-110 | 🚧 In Progress (unit) |
+| FR-011 | AC-6: stale lock from non-running pid is reaped | TC-111 | 🚧 In Progress (unit) |
+| FR-011 | AC-7: lock timeout → ConfigLockTimeoutError | TC-112 | 🚧 In Progress (unit) |
+| FR-012 | AC-1: env var beats file value | TC-113 | 🚧 In Progress (unit) |
+| FR-012 | AC-2: file value beats default | TC-114 | 🚧 In Progress (unit) |
+| FR-012 | AC-3: defaults applied when env+file absent | TC-115 | 🚧 In Progress (unit) |
+| FR-012 | AC-4: invalid env value → ConfigSchemaError | TC-116 | 🚧 In Progress (unit) |
+| FR-012 | AC-5: static lint — no cross-plugin forPlugin call sites | TC-117 | 🚧 In Progress (static) |
+| FR-013 | AC-1: configSchema enforced on writes | TC-119 | 🚧 In Progress (unit) |
+| FR-013 | AC-2: non-strict schema → logged + skipped, others load | TC-120 | 🚧 In Progress (unit) |
+| FR-013 | AC-3: duplicate id → second logged + skipped, first preserved | TC-121 | 🚧 In Progress (unit) |
+| FR-013 | AC-4: third-party using "core" → logged + skipped, core preserved | TC-122 | 🚧 In Progress (unit) |
+| FR-013 | AC-5: doctor surfaces failed plugin id, reason, source | TC-123 | 🚧 In Progress (unit) |
+| FR-013 | AC-6: secretsSchema envVar honored ahead of backend | TC-124 | 🚧 In Progress (unit) |
+| FR-013 | AC-7: invalid plugin id (regex violation) → log+skip with reason invalid-plugin-id | TC-195 | 🚧 In Progress (unit) |
+| FR-014 | AC-1: env beats backend in get() | TC-125 | 🚧 In Progress (unit) |
+| FR-014 | AC-2: backend value returned when env unset | TC-126 | 🚧 In Progress (unit) |
+| FR-014 | AC-3: prompt path persists collected value | TC-127 | 🚧 In Progress (unit) |
+| FR-014 | AC-4: no-prompt + non-TTY → null | TC-128 | 🚧 In Progress (unit) |
+| FR-014 | AC-5: set then delete → which() == "unset" | TC-129 | 🚧 In Progress (unit) |
+| FR-014 | AC-6: set on env-bound + env set → SecretBackendImmutableError | TC-130 | 🚧 In Progress (unit) |
+| FR-014 | AC-7: zero secret values in any logged output | TC-131 | 🚧 In Progress (static) |
+| FR-014 | AC-8: malformed SecretId → InvalidSecretIdError | TC-186 | 🚧 In Progress (unit) |
+| FR-015 | AC-1: macOS Keychain round-trip | TC-132 | 🚧 In Progress (integration, GH Actions macos-latest) |
+| FR-015 | AC-2: Linux libsecret round-trip | TC-133 | 🚧 In Progress (integration, GH Actions ubuntu-latest + gnome-keyring) |
+| FR-015 | AC-3: dbus unset → backend becomes age-file | TC-134 | 🚧 In Progress (integration) |
+| FR-015 | AC-4: list() filters to service "ix-cli" only | TC-135 | 🚧 In Progress (unit, mocked) |
+| FR-015 | AC-5: denied prompt → KeyringAccessError with remediation | TC-136 | 🚧 In Progress (unit, mocked) |
+| FR-015 | AC-6: probe runs at most once per process | TC-137 | 🚧 In Progress (unit) |
+| FR-016 | AC-1: secrets.d/<id>.age + secrets.key created mode 0600 | TC-138 | 🚧 In Progress (unit) |
+| FR-016 | AC-2a: blob bytes do not contain plaintext substring | TC-139 | 🚧 In Progress (unit) |
+| FR-016 | AC-2b: secrets.key is exactly one AGE-SECRET-KEY-1… identity + \n | TC-184 | 🚧 In Progress (unit) |
+| FR-016 | AC-3: AEAD-tag corruption isolates failure to one plugin | TC-140 | 🚧 In Progress (unit) |
+| FR-016 | AC-4: every write produces 0o600 post-rename | TC-141 | 🚧 In Progress (unit) |
+| FR-016 | AC-5: wide-perm secrets.key → SecretsIdentityPermissionsError | TC-142 | 🚧 In Progress (unit) |
+| FR-016 | AC-6: zero plaintext leaks across full lifecycle | TC-143 | 🚧 In Progress (unit) |
+| FR-018 | AC-1: get omits plugin → defaults to "core" | TC-150 | 🚧 In Progress (unit) |
+| FR-018 | AC-2: set persists; next ix local up observes value | TC-151 | 🚧 In Progress (integration) |
+| FR-018 | AC-3: invalid set surfaces full four-tuple error | TC-152 | 🚧 In Progress (unit) |
+| FR-018 | AC-4: edit re-prompts on validation failure | TC-153 | 🚧 In Progress (unit) |
+| FR-018 | AC-5: doctor with mixed valid/invalid files exits non-zero | TC-154 | 🚧 In Progress (unit) |
+| FR-018 | AC-6: unknown plugin → UnknownPluginError + list of ids | TC-155 | 🚧 In Progress (unit) |
+| FR-018 | AC-7: concurrent set serialized via per-file lock | TC-156 | 🚧 In Progress (unit) |
+| FR-018 | AC-8: non-JSON for array key → ConfigSetParseError | TC-185 | 🚧 In Progress (unit) |
+| FR-019 | AC-1: list never renders secret values | TC-157 | 🚧 In Progress (static + unit) |
+| FR-019 | AC-2: set prints "stored <id> in <backend>" only | TC-158 | 🚧 In Progress (unit) |
+| FR-019 | AC-3: which transitions: env / keyring / unset | TC-159 | 🚧 In Progress (unit) |
+| FR-019 | AC-4: rm clears persisted value; warns if env set | TC-160 | 🚧 In Progress (unit) |
+| FR-019 | AC-5: unknown id → UnknownSecretError | TC-161 | 🚧 In Progress (unit) |
+| FR-019 | AC-6: zero secret values across lifecycle stdout/stderr | TC-162 | 🚧 In Progress (unit) |
+| FR-019 | AC-7: keyring denial → remediation surfaced; not echoed | TC-163 | 🚧 In Progress (unit) |
+| FR-020 | AC-1: empty env+file → full default object | TC-187 | 🚧 In Progress (unit) |
+| FR-020 | AC-2: every leaf env binding takes precedence over file | TC-188 | 🚧 In Progress (unit) |
+| FR-020 | AC-3: secretsBackend=auto switches by probe outcome | TC-189 | 🚧 In Progress (unit) |
+| FR-020 | AC-4: secretsBackend=keyring + probe fail → KeyringUnavailableError | TC-183 | 🚧 In Progress (unit) |
+| FR-020 | AC-5: unknown key (e.g. cluster.context) on core → strict reject | TC-190 | 🚧 In Progress (unit) |
+| FR-020 | AC-6: every declared SecretId registered + envVar honored | TC-191 | 🚧 In Progress (unit) |
+| FR-020 | AC-7: auth.expiresAt has no env binding (no IX_AUTH_EXPIRES_AT effect) | TC-191 | 🚧 In Progress (unit) |
+
+### Non-Functional Requirement Coverage
+
+| Non-Functional Req | Verification Method | Test Cases | Status |
+|--------------------|---------------------|------------|--------|
+| NFR-003-AC-1 | Static grep: no fs.write* of secret values outside backends/ | TC-164 | 🚧 In Progress (static) |
+| NFR-003-AC-2 | Round-trip leak scan: plaintext absent from .age + .key | TC-165 | 🚧 In Progress (unit) |
+| NFR-003-AC-3 | Integration: only-keychain or only-age-blob on disk | TC-166 | 🚧 In Progress (integration) |
+| NFR-004-AC-1 | Unit: umask 0022 yields 0o600 | TC-169 | 🚧 In Progress (unit) |
+| NFR-004-AC-2 | Unit: rename failure leaves target intact, temp removed | TC-170 | 🚧 In Progress (unit) |
+| NFR-004-AC-3 | Unit: 0o644 secrets.key → SecretsIdentityPermissionsError | TC-171 | 🚧 In Progress (unit) |
+| NFR-004-AC-4 | Unit: symlink to outside path rejected | TC-172 | 🚧 In Progress (unit) |
+| NFR-004-AC-5 | Static grep: only atomicWrite helper writes governed files | TC-173 | 🚧 In Progress (static) |
+| NFR-005-AC-1 | Unit: error contains plugin / keyPath / expectedType / filePath | TC-174 | 🚧 In Progress (unit) |
+| NFR-005-AC-2 | Unit: declared-secret value rendered as `<redacted>` | TC-175 | 🚧 In Progress (unit) |
+| NFR-005-AC-3 | Snapshot: doctor output stable order | TC-176 | 🚧 In Progress (unit) |
+| NFR-005-AC-4 | Static grep: no console.error for schema errors | TC-177 | 🚧 In Progress (static) |
+| NFR-005-AC-5 | Static grep: only formatSchemaError renders user strings | TC-178 | 🚧 In Progress (static) |
+| NFR-006-AC-1 | Unit: MemoryBackend registered + full lifecycle | TC-179 | 🚧 In Progress (unit) |
+| NFR-006-AC-2 | Unit: consumers unchanged across keyring↔age-file | TC-180 | 🚧 In Progress (unit) |
+| NFR-006-AC-3 | Static grep: no consumer imports backends/* | TC-181 | 🚧 In Progress (static) |
+| NFR-006-AC-4 | Unit: duplicate-id registration throws | TC-182 | 🚧 In Progress (unit) |
+| NFR-006-AC-5 | Unit: pinned keyring with failed probe → KeyringUnavailableError | TC-183 | 🚧 In Progress (unit) |
+
+### Test Case Summary — packages/core
+
+| Test ID | Title | Type | Priority | Traces To | Status |
+|---------|-------|------|----------|-----------|--------|
+| TC-100 | ConfigService.forPlugin('a') reads only config.d/a.yaml | Unit | P1 | FR-010-AC-1 | 🚧 In Progress |
+| TC-101 | set() uses temp+rename; interrupted write leaves prior content | Unit | P1 | FR-010-AC-2 | 🚧 In Progress |
+| TC-102 | set() forces 0o600 under umask 0022 | Unit | P1 | FR-010-AC-3, NFR-004-AC-1 | 🚧 In Progress |
+| TC-103 | strict schema rejects unknownKey on set() | Unit | P1 | FR-010-AC-4, FR-013-AC-1 | 🚧 In Progress |
+| TC-104 | reset() deletes file; subsequent get() returns defaults | Unit | P1 | FR-010-AC-5 | 🚧 In Progress |
+| TC-105 | filePath() returns absolute path under XDG_CONFIG_HOME | Unit | P2 | FR-010-AC-6 | 🚧 In Progress |
+| TC-106 | Malformed config.d/local.yaml: elements load succeeds | Unit | P1 | FR-011-AC-1, StR-005 | 🚧 In Progress |
+| TC-107 | Defaulted load + first set rewrites valid YAML | Unit | P1 | FR-011-AC-2 | 🚧 In Progress |
+| TC-108 | doctor() aggregates errors per plugin without throwing | Unit | P1 | FR-011-AC-3, FR-018-AC-5 | 🚧 In Progress |
+| TC-109 | Concurrent set on same plugin serialized via lockfile | Unit | P1 | FR-011-AC-4, FR-018-AC-7 | 🚧 In Progress |
+| TC-110 | Concurrent set on different plugins both succeed | Unit | P1 | FR-011-AC-5 | 🚧 In Progress |
+| TC-111 | Stale lockfile (pid not running) reaped on next acquisition | Unit | P1 | FR-011-AC-6 | 🚧 In Progress |
+| TC-112 | Lock timeout → ConfigLockTimeoutError names plugin and lockfile | Unit | P1 | FR-011-AC-7 | 🚧 In Progress |
+| TC-113 | IX_LOG_LEVEL=debug + file=info → resolved=debug | Unit | P1 | FR-012-AC-1 | 🚧 In Progress |
+| TC-114 | Env unset + file=info → resolved=info | Unit | P1 | FR-012-AC-2 | 🚧 In Progress |
+| TC-115 | Env+file absent → schema defaults | Unit | P1 | FR-012-AC-3 | 🚧 In Progress |
+| TC-116 | IX_LOG_LEVEL=loud (invalid enum) → ConfigSchemaError naming env var | Unit | P1 | FR-012-AC-4 | 🚧 In Progress |
+| TC-117 | Non-core plugin attempting to write core file → rejected | Unit | P1 | FR-012-AC-5, FR-013-AC-4 | 🚧 In Progress |
+| TC-119 | Plugin with strict configSchema validates writes | Unit | P1 | FR-013-AC-1 | 🚧 In Progress |
+| TC-120 | Non-strict schema (.passthrough) → PluginRegistrationError | Unit | P1 | FR-013-AC-2 | 🚧 In Progress |
+| TC-121 | Duplicate plugin id → second registration throws | Unit | P1 | FR-013-AC-3 | 🚧 In Progress |
+| TC-122 | Third-party plugin using id "core" → rejected | Unit | P1 | FR-013-AC-4 | 🚧 In Progress |
+| TC-123 | Plugin registration failure: other plugins still load; doctor reports | Unit | P1 | FR-013-AC-5 | 🚧 In Progress |
+| TC-124 | secretsSchema envVar honored ahead of any backend | Unit | P1 | FR-013-AC-6, FR-014-AC-1 | 🚧 In Progress |
+| TC-125 | get(): IX_GHCR_TOKEN beats backend value | Unit | P1 | FR-014-AC-1 | 🚧 In Progress |
+| TC-126 | get(): backend value returned when env unset | Unit | P1 | FR-014-AC-2 | 🚧 In Progress |
+| TC-127 | get({prompt:true}) on TTY: masked input persisted to backend | Unit | P1 | FR-014-AC-3 | 🚧 In Progress |
+| TC-128 | get() without prompt and unset → null (no prompt) | Unit | P1 | FR-014-AC-4 | 🚧 In Progress |
+| TC-129 | set then delete → which() === "unset" | Unit | P1 | FR-014-AC-5 | 🚧 In Progress |
+| TC-130 | set() on env-bound secret with env set → SecretBackendImmutableError | Unit | P1 | FR-014-AC-6 | 🚧 In Progress |
+| TC-131 | Static + log scan: zero secret values across SecretsService output | Static | P1 | FR-014-AC-7, NFR-005-AC-2 | 🚧 In Progress |
+| TC-132 | macOS Keychain set/get round-trip | Integration | P1 | FR-015-AC-1 | ❌ Missing |
+| TC-133 | Linux libsecret set/get round-trip | Integration | P1 | FR-015-AC-2 | ❌ Missing |
+| TC-134 | DBUS_SESSION_BUS_ADDRESS unset → active backend = age-file | Integration | P1 | FR-015-AC-3, FR-016-AC-1 | 🚧 In Progress |
+| TC-135 | list() filters to service="ix-cli"; foreign entries ignored | Unit | P1 | FR-015-AC-4 | 🚧 In Progress |
+| TC-136 | Denied keyring prompt → KeyringAccessError with remediation | Unit | P1 | FR-015-AC-5 | 🚧 In Progress |
+| TC-137 | Capability probe cached: runs once per process | Unit | P2 | FR-015-AC-6 | 🚧 In Progress |
+| TC-138 | secrets.d/<id>.age + secrets.key created with mode 0o600 | Unit | P1 | FR-016-AC-1, NFR-004-AC-1 | 🚧 In Progress |
+| TC-139 | age blob bytes do not contain plaintext value | Unit | P1 | FR-016-AC-2, NFR-003-AC-2 | 🚧 In Progress |
+| TC-140 | Truncated secrets.d/local.age → local.* fails; elements.* still works | Unit | P1 | FR-016-AC-3 | 🚧 In Progress |
+| TC-141 | All age writes observe 0o600 post-rename | Unit | P2 | FR-016-AC-4 | 🚧 In Progress |
+| TC-142 | secrets.key with mode 0o644 → SecretsIdentityPermissionsError | Unit | P1 | FR-016-AC-5, NFR-004-AC-3 | 🚧 In Progress |
+| TC-143 | Full set/get/delete lifecycle: zero plaintext leaks in age files | Unit | P1 | FR-016-AC-6, NFR-003-AC-2 | 🚧 In Progress |
+| TC-150 | ix config get logLevel → reads core plugin config | Unit | P1 | FR-018-AC-1 | 🚧 In Progress |
+| TC-151 | ix config set local cluster.defaultTags → next ix local up observes | Integration | P1 | FR-018-AC-2 | 🚧 In Progress |
+| TC-152 | ix config set local cluster.defaultTags 42 → four-tuple error | Unit | P1 | FR-018-AC-3, NFR-005-AC-1 | 🚧 In Progress |
+| TC-153 | ix config edit: bad save → re-edit/discard prompt | Unit | P1 | FR-018-AC-4 | 🚧 In Progress |
+| TC-154 | ix config doctor: mixed valid/invalid → non-zero exit | Unit | P1 | FR-018-AC-5 | 🚧 In Progress |
+| TC-155 | ix config get unknown-plugin foo → UnknownPluginError lists ids | Unit | P1 | FR-018-AC-6 | 🚧 In Progress |
+| TC-156 | Concurrent ix config set local … both succeed serialized | Unit | P1 | FR-018-AC-7, FR-011-AC-4 | 🚧 In Progress |
+| TC-157 | ix secrets list: value column never populated | Static + Unit | P1 | FR-019-AC-1, FR-014-AC-7 | 🚧 In Progress |
+| TC-158 | ix secrets set local.ghcr-token: prints "stored ... in <backend>" only | Unit | P1 | FR-019-AC-2 | 🚧 In Progress |
+| TC-159 | ix secrets which transitions: keyring → unset → env | Unit | P1 | FR-019-AC-3 | 🚧 In Progress |
+| TC-160 | ix secrets rm: clears persisted; warns when env still satisfies | Unit | P1 | FR-019-AC-4 | 🚧 In Progress |
+| TC-161 | ix secrets which unknown.foo → UnknownSecretError lists registered | Unit | P1 | FR-019-AC-5 | 🚧 In Progress |
+| TC-162 | Lifecycle output scan: zero secret values in stdout/stderr | Unit | P1 | FR-019-AC-6, NFR-003-AC-2 | 🚧 In Progress |
+| TC-163 | Keyring denial during set: remediation surfaced; value not echoed | Unit | P1 | FR-019-AC-7, FR-015-AC-5 | 🚧 In Progress |
+| TC-164 | Static: no fs.write* of secret values outside backends/ | Static | P1 | NFR-003-AC-1 | 🚧 In Progress |
+| TC-165 | Round-trip leak scan: ciphertext does not contain plaintext | Unit | P1 | NFR-003-AC-2 | 🚧 In Progress |
+| TC-166 | Integration: only keychain entry OR age blob on disk; never both | Integration | P1 | NFR-003-AC-3 | 🚧 In Progress |
+| TC-169 | umask 0022 → governed files created mode 0o600 | Unit | P1 | NFR-004-AC-1 | 🚧 In Progress |
+| TC-170 | rename failure: target intact + temp removed | Unit | P1 | NFR-004-AC-2 | 🚧 In Progress |
+| TC-171 | secrets.key with mode 0o644 (fixture) → SecretsIdentityPermissionsError | Unit | P1 | NFR-004-AC-3, FR-016-AC-5 | 🚧 In Progress |
+| TC-172 | Symlinked governed file rejected on access | Unit | P1 | NFR-004-AC-4 | 🚧 In Progress |
+| TC-173 | Static: only atomicWrite helper writes governed files | Static | P1 | NFR-004-AC-5 | 🚧 In Progress |
+| TC-174 | Schema error contains plugin/keyPath/expectedType/filePath | Unit | P1 | NFR-005-AC-1, FR-018-AC-3 | 🚧 In Progress |
+| TC-175 | Declared-secret value redacted in error output | Unit | P1 | NFR-005-AC-2 | 🚧 In Progress |
+| TC-176 | doctor output stable byte-order across runs | Unit | P2 | NFR-005-AC-3 | 🚧 In Progress |
+| TC-177 | Static: zero console.error for schema errors | Static | P1 | NFR-005-AC-4 | 🚧 In Progress |
+| TC-178 | Static: only formatSchemaError builds user-facing strings | Static | P1 | NFR-005-AC-5 | 🚧 In Progress |
+| TC-179 | MemoryBackend registered: full lifecycle exercises SecretsService unchanged | Unit | P1 | NFR-006-AC-1 | 🚧 In Progress |
+| TC-180 | Consumers compile/pass under both keyring and age-file backends | Unit | P1 | NFR-006-AC-2 | 🚧 In Progress |
+| TC-181 | Static: zero imports of backends/* outside core/secrets/ | Static | P1 | NFR-006-AC-3 | 🚧 In Progress |
+| TC-182 | registerSecretsBackend: duplicate id throws on second registration | Unit | P2 | NFR-006-AC-4 | 🚧 In Progress |
+| TC-183 | core.secretsBackend=keyring + probe fail → KeyringUnavailableError everywhere | Unit | P1 | NFR-006-AC-5, FR-020-AC-4 | 🚧 In Progress |
+| TC-184 | secrets.key is exactly one AGE-SECRET-KEY-1… identity + single \n | Unit | P1 | FR-016-AC-2b | 🚧 In Progress |
+| TC-185 | ix config set local cluster.defaultTags 'a,b' (non-JSON) → ConfigSetParseError | Unit | P1 | FR-018-AC-8 | 🚧 In Progress |
+| TC-186 | get/set/delete with malformed SecretId throws InvalidSecretIdError | Unit | P1 | FR-014-AC-8 | 🚧 In Progress |
+| TC-187 | forPlugin('core', CoreConfigSchema).get() with empty env+file → full default object | Unit | P1 | FR-020-AC-1 | 🚧 In Progress |
+| TC-188 | Each declared env binding (IX_LOG_LEVEL, IX_THEME, …) overrides file value | Unit | P1 | FR-020-AC-2 | 🚧 In Progress |
+| TC-189 | secretsBackend=auto: keyring on probe-success; age-file on probe-fail | Unit | P1 | FR-020-AC-3 | 🚧 In Progress |
+| TC-190 | Setting cluster.context on core file → strict reject (belongs to local) | Unit | P1 | FR-020-AC-5 | 🚧 In Progress |
+| TC-191 | Each core SecretId registered with envVar precedence; auth.expiresAt has no env effect | Unit | P1 | FR-020-AC-6, FR-020-AC-7 | 🚧 In Progress |
+| TC-192 | Read-only ~/.config/ix/ → set() throws ConfigWriteError; prior content intact; no orphan temp | Unit | P1 | FR-010-AC-7 | 🚧 In Progress |
+| TC-193 | Mocked os.tmpdir() to a different volume — no governed-file write touches it | Unit | P1 | FR-010-AC-8 | 🚧 In Progress |
+| TC-194 | Pre-existing <target>.tmp.* sibling >30s old is pruned on next set(); younger orphans left | Unit | P1 | FR-010-AC-9 | 🚧 In Progress |
+| TC-195 | Plugin id "../foo" or "" or "Foo" → log+skip with reason "invalid-plugin-id"; doctor reports | Unit | P1 | FR-013-AC-7 | 🚧 In Progress |
+
+---
+
 ## Edge Cases
 
 - **`all` + named services**: `executeLocals` must throw on mixed invocation (FR-M6). Covered by TC-001 (export) — behavior tested implicitly via unit inspection of `index.ts`.

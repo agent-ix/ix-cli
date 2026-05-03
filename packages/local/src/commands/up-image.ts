@@ -218,7 +218,7 @@ export async function runImageModeUp(
   let installs: ChildInstall[];
   let serviceList: Listing | null = null;
   let preflightList: Listing | null = null;
-  const ghcrToken = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+  const ghcrToken = await resolveGhcrToken(false);
 
   if (deployable.role === "app") {
     preflightList = startListing(headerText);

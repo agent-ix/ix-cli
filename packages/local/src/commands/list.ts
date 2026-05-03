@@ -35,7 +35,7 @@ export async function runList(
 ): Promise<void> {
   const list = startListing("ix local list");
 
-  const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+  const token = await resolveGhcrToken(false);
 
   const deployables = await loadRegistry({
     org: config.org,

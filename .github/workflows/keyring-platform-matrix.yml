@@ -1,0 +1,86 @@
+name: Keyring Platform Matrix
+
+# FR-015 verification matrix. Exercises the real `@napi-rs/keyring`
+# round-trip on macOS Keychain and Linux libsecret. Mocked tests run
+# in standard CI; this workflow proves the wiring against actual OS
+# credential stores.
+#
+# The real-keyring smoke test in tests/keyring-backend.test.ts is
+# gated on the IX_TEST_KEYRING env var so it's a no-op locally and
+# only runs in this matrix.
+
+on:
+  push:
+    branches: [main]
+    tags: ["*.*.*"]
+  pull_request:
+    paths:
+      - "packages/core/src/secrets/**"
+      - "packages/core/tests/keyring-backend.test.ts"
+      - "packages/core/package.json"
+      - ".github/workflows/keyring-platform-matrix.yml"
+  workflow_dispatch:
+
+jobs:
+  keyring:
+    name: keyring (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── Linux: install + start gnome-keyring's Secret Service ────────
+      # macos-latest has Keychain natively; no setup needed.
+      - name: Install gnome-keyring (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnome-keyring libsecret-1-0 dbus-x11
+
+      - name: Start gnome-keyring (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          # Spawn a dbus session and unlock a fresh keyring with an
+          # empty password. The keyring daemon dies with the shell, so
+          # everything below this step must run in the same step.
+          eval "$(dbus-launch --sh-syntax)"
+          echo "DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_PID=$DBUS_SESSION_BUS_PID" >> "$GITHUB_ENV"
+
+          # Initialize a new login keyring with empty password.
+          (echo -n "" | gnome-keyring-daemon --unlock --components=secrets) &
+          # Start the actual daemon in the background.
+          eval "$(echo -n "" | gnome-keyring-daemon --start --daemonize --components=secrets)"
+          # Export GNOME_KEYRING_CONTROL + SSH_AUTH_SOCK for the test step.
+          echo "GNOME_KEYRING_CONTROL=$GNOME_KEYRING_CONTROL" >> "$GITHUB_ENV"
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+
+      - name: Build packages/core
+        run: pnpm --filter @agent-ix/ix-cli-core build
+
+      - name: Run keyring tests with real-keyring smoke enabled
+        env:
+          IX_TEST_KEYRING: "1"
+        run: pnpm --filter @agent-ix/ix-cli-core test -- tests/keyring-backend.test.ts
+
+      - name: Run full test suite (verify no regression)
+        env:
+          IX_TEST_KEYRING: "1"
+        run: pnpm --filter @agent-ix/ix-cli-core test

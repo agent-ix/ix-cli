@@ -29,8 +29,11 @@
       "elements tap": {
         "description": "Manage element tap sources (add, remove, list)."
       },
-      "plugin": {
-        "description": "Manage installed ix CLI plugins."
+      "config": {
+        "description": "Read and write per-plugin configuration (get, set, edit, doctor)."
+      },
+      "secrets": {
+        "description": "Manage plugin secrets in the OS keyring or age-encrypted fallback (list, set, rm, which)."
       }
     }
   },
@@ -43,12 +46,13 @@
     "clean": "rm -rf dist coverage"
   },
   "dependencies": {
-    "@agent-ix/ix-cli-core": ">=0.1.1-0",
+    "@agent-ix/ix-cli-core": "workspace:*",
     "@agent-ix/ix-cli-elements": "workspace:*",
     "@agent-ix/ix-cli-local": "workspace:*",
     "@agent-ix/ix-ui-cli": ">=0.3.6-0",
     "@oclif/core": ">=4.10.6",
-    "picocolors": ">=1.1.1"
+    "picocolors": ">=1.1.1",
+    "zod": ">=4.0.0"
   },
   "devDependencies": {
     "vite": ">=6.3.4",

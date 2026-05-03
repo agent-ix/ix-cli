@@ -11,6 +11,15 @@ import { runSourceModeUp } from "./commands/up-source.js";
 import { loadRegistry, findDeployable } from "./registry.js";
 import { resolveGhcrToken } from "./credentials.js";
 
+// Schema + plugin metadata (consumed by apps/ix init hook).
+export {
+  LocalConfigSchema,
+  LocalEnvBindings,
+  LocalSecretsSchema,
+  LOCAL_PLUGIN_ID,
+  type LocalConfig,
+} from "./schema.js";
+
 // Re-export everything needed by apps/ix command files.
 export {
   loadConfig,
@@ -376,7 +385,7 @@ export async function runRefresh(
   const list = startListing("ix local refresh");
   list.commit();
   try {
-    const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+    const token = await resolveGhcrToken(false);
     const reg = await loadRegistry({
       org: config.org,
       githubToken: token,
@@ -390,7 +399,7 @@ export async function runRefresh(
 }
 
 async function loadRegistryForCommand(config: import("./config.js").IxConfig) {
-  const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+  const token = await resolveGhcrToken(false);
   const list = startListing(`ix local · resolving registry · ${config.org}`);
   try {
     return await loadRegistry({ org: config.org, githubToken: token });

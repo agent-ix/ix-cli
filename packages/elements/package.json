@@ -24,7 +24,7 @@
     "url": "git+https://github.com/agent-ix/ix-cli.git"
   },
   "dependencies": {
-    "@agent-ix/ix-cli-core": ">=0.1.1-0",
+    "@agent-ix/ix-cli-core": "workspace:*",
     "@agent-ix/ix-ui-cli": ">=0.3.6-0",
     "@clack/prompts": ">=1.1.0",
     "execa": ">=9.6.1",
