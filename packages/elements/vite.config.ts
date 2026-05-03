@@ -15,6 +15,7 @@ export default defineConfig({
       external: [
         /^node:/,
         "@agent-ix/ix-ui-cli",
+        "@agent-ix/ix-cli-core",
         "@clack/prompts",
         "execa",
         "picocolors",
