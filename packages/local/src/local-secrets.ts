@@ -38,6 +38,7 @@ interface SecretsFile {
 export interface ResolvedSecretKey {
   secretKey: string;
   value: string;
+  generated?: boolean;
 }
 
 export interface ResolvedRegistry {
@@ -156,6 +157,7 @@ async function resolveSecretKey(
     return {
       secretKey: raw.secretKey,
       value: generateSecretValue(generator),
+      generated: true,
     };
   }
 
@@ -292,6 +294,10 @@ function b64(s: string): string {
   return Buffer.from(s, "utf-8").toString("base64");
 }
 
+function decodeB64(s: string): string {
+  return Buffer.from(s, "base64").toString("utf-8");
+}
+
 function buildOpaqueManifest(secret: {
   name: string;
   namespace: string;
@@ -360,6 +366,58 @@ function isEmpty(secret: ResolvedSecret): boolean {
   return secret.keys.length === 0;
 }
 
+async function readExistingSecretData(
+  name: string,
+  namespace: string,
+): Promise<Record<string, string> | null> {
+  try {
+    const { stdout } = await execa("kubectl", [
+      "get",
+      "secret",
+      name,
+      "-n",
+      namespace,
+      "-o",
+      "json",
+    ]);
+    const parsed = JSON.parse(stdout) as { data?: Record<string, string> };
+    return parsed.data ?? {};
+  } catch (err) {
+    const e = err as { stderr?: string; all?: string; message?: string };
+    const msg = e.all ?? e.stderr ?? e.message ?? String(err);
+    if (/notfound|not found/i.test(msg)) return null;
+    throw err;
+  }
+}
+
+async function preserveGeneratedValues(
+  secret: Extract<ResolvedSecret, { type: "opaque" }>,
+  namespace: string,
+): Promise<Extract<ResolvedSecret, { type: "opaque" }>> {
+  if (!secret.keys.some((key) => key.generated)) {
+    return { ...secret, namespace };
+  }
+  const existingData = await readExistingSecretData(secret.name, namespace);
+  if (!existingData) return { ...secret, namespace };
+  return {
+    ...secret,
+    namespace,
+    keys: secret.keys.map((key) => {
+      if (!key.generated) return key;
+      const existing = existingData[key.secretKey];
+      return existing ? { ...key, value: decodeB64(existing) } : key;
+    }),
+  };
+}
+
+async function prepareSecretForApply(
+  secret: ResolvedSecret,
+  namespace: string,
+): Promise<ResolvedSecret> {
+  if (secret.type === "dockerconfigjson") return { ...secret, namespace };
+  return preserveGeneratedValues(secret, namespace);
+}
+
 export async function applySecretContract(
   contract: SecretContract,
   namespace: string,
@@ -367,7 +425,9 @@ export async function applySecretContract(
 ): Promise<void> {
   for (const secret of contract.secrets) {
     if (isEmpty(secret)) continue;
-    const manifest = buildSecretManifest({ ...secret, namespace });
+    const manifest = buildSecretManifest(
+      await prepareSecretForApply(secret, namespace),
+    );
     const subprocess = execa("kubectl", ["apply", "-f", "-"], {
       input: manifest,
       all: true,

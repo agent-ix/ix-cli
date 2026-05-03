@@ -188,6 +188,24 @@ function buildUmbrellaInstallArgs(
   return args;
 }
 
+async function authenticateHelmRegistry(
+  config: IxConfig,
+  ghcrToken: string,
+): Promise<void> {
+  await execa(
+    "helm",
+    [
+      "registry",
+      "login",
+      config.helmChartRegistry,
+      "-u",
+      "_token",
+      "--password-stdin",
+    ],
+    { input: ghcrToken, all: true },
+  );
+}
+
 export async function runImageModeUp(
   deployable: Deployable,
   config: IxConfig,
@@ -200,9 +218,11 @@ export async function runImageModeUp(
   let installs: ChildInstall[];
   let serviceList: Listing | null = null;
   let preflightList: Listing | null = null;
+  const ghcrToken = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
 
   if (deployable.role === "app") {
     preflightList = startListing(headerText);
+    await authenticateHelmRegistry(config, ghcrToken);
     const deps = await expandApp(deployable, config);
     if (deps.length === 0) {
       preflightList.stop();
@@ -229,10 +249,6 @@ export async function runImageModeUp(
     serviceList.commit();
   }
 
-  // Resolve credentials before entering Listr / PhaseTable — interactive
-  // prompts need direct terminal access.
-  const ghcrToken = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
-
   // FR-032: ensure ghcr-creds exists in every install namespace BEFORE helm
   // install runs, so the kubelet can pull images. Image-mode pods reference
   // images on ghcr.io; without this secret pulls fail when images aren't
@@ -250,6 +266,7 @@ export async function runImageModeUp(
     const contracts: SecretContract[] = [];
     let svcTgzPath = installs[0].chartRef;
     try {
+      await authenticateHelmRegistry(config, ghcrToken);
       await execa(
         "helm",
         [
@@ -286,6 +303,7 @@ export async function runImageModeUp(
       ghcrToken,
       contracts,
       opts,
+      true,
       svcTmpDir,
     );
     return;
@@ -315,20 +333,6 @@ export async function runImageModeUp(
     },
   );
 
-  // Pre-flight: helm registry login before display.start() so a login failure
-  // never leaves the TTY ticker running.
-  await execa(
-    "helm",
-    [
-      "registry",
-      "login",
-      config.helmChartRegistry,
-      "-u",
-      "_token",
-      "--password-stdin",
-    ],
-    { input: ghcrToken, all: true },
-  );
   preflightList!.stop();
   display.start();
 
@@ -559,34 +563,39 @@ async function runSingleServiceListr(
   ghcrToken: string,
   contracts: SecretContract[],
   opts: UpImageOptions,
+  skipHelmAuth = false,
   tmpDir?: string,
 ): Promise<void> {
   const failures: string[] = [];
 
   const tasks = makeListr(
     [
-      {
-        title: `Authenticate Helm registry`,
-        task: async (_ctx, task) => {
-          const subprocess = execa(
-            "helm",
-            [
-              "registry",
-              "login",
-              config.helmChartRegistry,
-              "-u",
-              "_token",
-              "--password-stdin",
-            ],
-            { input: ghcrToken, all: true },
-          );
-          subprocess.all?.on("data", (chunk) => {
-            const line = chunk.toString().trim();
-            if (line) task.output = line;
-          });
-          await subprocess;
-        },
-      },
+      ...(skipHelmAuth
+        ? []
+        : [
+            {
+              title: `Authenticate Helm registry`,
+              task: async (_ctx: unknown, task: { output: string }) => {
+                const subprocess = execa(
+                  "helm",
+                  [
+                    "registry",
+                    "login",
+                    config.helmChartRegistry,
+                    "-u",
+                    "_token",
+                    "--password-stdin",
+                  ],
+                  { input: ghcrToken, all: true },
+                );
+                subprocess.all?.on("data", (chunk: unknown) => {
+                  const line = String(chunk).trim();
+                  if (line) task.output = line;
+                });
+                await subprocess;
+              },
+            },
+          ]),
 
       ...contracts.map((contract) => {
         const chartName = path.basename(contract.repoDir);

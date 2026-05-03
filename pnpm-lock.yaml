@@ -94,6 +94,9 @@ importers:
 
   packages/local:
     dependencies:
+      '@agent-ix/ix-cli-core':
+        specifier: '>=0.1.1-0'
+        version: 0.1.2
       '@agent-ix/ix-ui-cli':
         specifier: '>=0.3.6-0'
         version: 0.3.6

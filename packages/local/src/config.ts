@@ -3,12 +3,20 @@
  * Validated configuration model for all commands that render or apply manifests.
  */
 
-import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { parse as parseYaml } from "yaml";
+import { loadIxCliConfig } from "@agent-ix/ix-cli-core";
 
 const IX_CONFIG_PATH = path.join(os.homedir(), ".ix", "config.yaml");
+
+interface LocalIxCliConfig {
+  defaultOrg?: string;
+  cluster?: {
+    defaultTags?: string[];
+    extraApps?: string[];
+    skipApps?: string[];
+  };
+}
 
 /**
  * Kubernetes namespace contract.
@@ -40,59 +48,45 @@ const CLUSTER_DEFAULTS: ClusterConfig = {
 };
 
 export function loadClusterConfig(): ClusterConfig {
-  if (!fs.existsSync(IX_CONFIG_PATH)) return { ...CLUSTER_DEFAULTS };
-
-  let raw: string;
   try {
-    raw = fs.readFileSync(IX_CONFIG_PATH, "utf8");
+    const cluster = (loadIxCliConfig() as LocalIxCliConfig).cluster;
+    if (cluster === undefined || cluster === null)
+      return { ...CLUSTER_DEFAULTS };
+    if (typeof cluster !== "object" || Array.isArray(cluster)) {
+      throw new ConfigValidationError(
+        `${IX_CONFIG_PATH}: 'cluster' must be an object`,
+      );
+    }
+    const c = cluster as Record<string, unknown>;
+
+    function resolveStringArray(key: string, fallback: string[]): string[] {
+      const val = c[key];
+      if (val === undefined || val === null) return fallback;
+      if (
+        !Array.isArray(val) ||
+        !val.every((v: unknown) => typeof v === "string")
+      ) {
+        throw new ConfigValidationError(
+          `${IX_CONFIG_PATH}: cluster.${key} must be an array of strings`,
+        );
+      }
+      return val as string[];
+    }
+
+    return {
+      defaultTags: resolveStringArray(
+        "defaultTags",
+        CLUSTER_DEFAULTS.defaultTags,
+      ),
+      extraApps: resolveStringArray("extraApps", CLUSTER_DEFAULTS.extraApps),
+      skipApps: resolveStringArray("skipApps", CLUSTER_DEFAULTS.skipApps),
+    };
   } catch (err) {
+    if (err instanceof ConfigValidationError) throw err;
     throw new ConfigValidationError(
       `Failed to read ${IX_CONFIG_PATH}: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
-
-  let parsed: unknown;
-  try {
-    parsed = parseYaml(raw);
-  } catch (err) {
-    throw new ConfigValidationError(
-      `Failed to parse ${IX_CONFIG_PATH}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  if (parsed === null || typeof parsed !== "object")
-    return { ...CLUSTER_DEFAULTS };
-
-  const cfg = parsed as Record<string, unknown>;
-  const cluster = cfg["cluster"];
-  if (cluster === undefined || cluster === null) return { ...CLUSTER_DEFAULTS };
-  if (typeof cluster !== "object" || Array.isArray(cluster)) {
-    throw new ConfigValidationError(
-      `${IX_CONFIG_PATH}: 'cluster' must be an object`,
-    );
-  }
-
-  const c = cluster as Record<string, unknown>;
-
-  function resolveStringArray(key: string, fallback: string[]): string[] {
-    const val = c[key];
-    if (val === undefined || val === null) return fallback;
-    if (!Array.isArray(val) || !val.every((v) => typeof v === "string")) {
-      throw new ConfigValidationError(
-        `${IX_CONFIG_PATH}: cluster.${key} must be an array of strings`,
-      );
-    }
-    return val as string[];
-  }
-
-  return {
-    defaultTags: resolveStringArray(
-      "defaultTags",
-      CLUSTER_DEFAULTS.defaultTags,
-    ),
-    extraApps: resolveStringArray("extraApps", CLUSTER_DEFAULTS.extraApps),
-    skipApps: resolveStringArray("skipApps", CLUSTER_DEFAULTS.skipApps),
-  };
 }
 
 export interface IxConfig {
@@ -193,6 +187,7 @@ export function buildGlobalSetArgs(config: IxConfig): string[] {
  * Throws ConfigValidationError on any validation failure (FR-006-AC-6).
  */
 export function loadConfig(): IxConfig {
+  const cliConfig = loadIxCliConfig() as LocalIxCliConfig;
   // FR-006-AC-1: default dev.ix — defined exactly once (CON-1)
   const internalBaseDomain = process.env.IX_INTERNAL_BASE_DOMAIN ?? "dev.ix";
 
@@ -234,7 +229,7 @@ export function loadConfig(): IxConfig {
     imageTag,
     imageRegistry: process.env.IX_IMAGE_REGISTRY ?? "ghcr.io/agent-ix",
     helmChartRegistry: process.env.IX_HELM_CHART_REGISTRY ?? "ghcr.io",
-    org: process.env.IX_ORG ?? "agent-ix",
+    org: process.env.IX_ORG ?? cliConfig.defaultOrg ?? "agent-ix",
     ghcrToken: resolveConfiguredGhcrToken(),
     kindClusterName: process.env.IX_KIND_CLUSTER_NAME ?? "platform",
     certManagerVersion: process.env.IX_CERT_MANAGER_VERSION ?? "v1.14.5",
