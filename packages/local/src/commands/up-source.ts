@@ -5,7 +5,7 @@ import { execa } from "execa";
 import pc from "picocolors";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { IxConfig } from "../config.js";
-import { IX_APPS_NAMESPACE } from "../config.js";
+import { IX_APPS_NAMESPACE, buildGlobalSetArgs } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
 import { applySecretContract, loadSecretContract } from "../local-secrets.js";
@@ -280,23 +280,8 @@ function buildLocalHelmArgs(
     args.push("-f", valuesFile);
   }
 
-  args.push(
-    "--set-string",
-    `global.imageTag=${imageTag}`,
-    "--set-string",
-    `global.imageRegistry=${config.imageRegistry}`,
-    "--set-string",
-    `global.internalBaseDomain=${config.internalBaseDomain}`,
-  );
-
-  if (config.enableExternalHost && config.externalBaseDomain) {
-    args.push(
-      "--set-string",
-      "global.enableExternalHost=true",
-      "--set-string",
-      `global.externalBaseDomain=${config.externalBaseDomain}`,
-    );
-  }
+  args.push("--set-string", `global.imageTag=${imageTag}`);
+  args.push(...buildGlobalSetArgs(config));
   // FR-014: inject host-mount catalog on every install.
   args.push(...buildHelmSetArgs(resolveCatalog()));
 

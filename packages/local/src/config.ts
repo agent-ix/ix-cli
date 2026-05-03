@@ -99,6 +99,14 @@ export interface IxConfig {
   internalBaseDomain: string;
   externalBaseDomain: string | null;
   enableExternalHost: boolean;
+  /**
+   * Operator-supplied canonical public base URL for user-facing links
+   * (invite emails, password reset, email verify). Becomes
+   * `global.publicBaseUrl` to charts that emit URLs in emails (e.g.
+   * identity). Null when unset; charts that need it MUST fail loudly
+   * rather than silently emitting localhost.
+   */
+  publicBaseUrl: string | null;
   imageTag: string;
   imageRegistry: string;
   helmChartRegistry: string;
@@ -152,6 +160,35 @@ function parsePositiveInt(name: string, raw: string, fallback: number): number {
 }
 
 /**
+ * Helm `--set-string global.*` flags shared by every install path
+ * (source single-service, image single-service, image umbrella).
+ *
+ * Image-tag handling is intentionally NOT included here because each
+ * call site sets the tag differently (always vs. only-when-overridden,
+ * and `global.imageTag` vs. `ix-service.image.tag`).
+ */
+export function buildGlobalSetArgs(config: IxConfig): string[] {
+  const args = [
+    "--set-string",
+    `global.imageRegistry=${config.imageRegistry}`,
+    "--set-string",
+    `global.internalBaseDomain=${config.internalBaseDomain}`,
+  ];
+  if (config.enableExternalHost && config.externalBaseDomain) {
+    args.push(
+      "--set-string",
+      "global.enableExternalHost=true",
+      "--set-string",
+      `global.externalBaseDomain=${config.externalBaseDomain}`,
+    );
+  }
+  if (config.publicBaseUrl) {
+    args.push("--set-string", `global.publicBaseUrl=${config.publicBaseUrl}`);
+  }
+  return args;
+}
+
+/**
  * Load and validate environment-based configuration.
  * Throws ConfigValidationError on any validation failure (FR-006-AC-6).
  */
@@ -182,10 +219,18 @@ export function loadConfig(): IxConfig {
   // FR-006-AC-2: default latest
   const imageTag = process.env.IX_IMAGE_TAG ?? "latest";
 
+  const publicBaseUrl = process.env.IX_PUBLIC_BASE_URL?.trim() || null;
+  if (publicBaseUrl && !/^https?:\/\//.test(publicBaseUrl)) {
+    throw new ConfigValidationError(
+      "IX_PUBLIC_BASE_URL must start with http:// or https://",
+    );
+  }
+
   return {
     internalBaseDomain,
     externalBaseDomain,
     enableExternalHost,
+    publicBaseUrl,
     imageTag,
     imageRegistry: process.env.IX_IMAGE_REGISTRY ?? "ghcr.io/agent-ix",
     helmChartRegistry: process.env.IX_HELM_CHART_REGISTRY ?? "ghcr.io",

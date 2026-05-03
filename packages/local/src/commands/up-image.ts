@@ -18,6 +18,7 @@ import type { ListrTaskWrapper } from "listr2";
 import pc from "picocolors";
 import { parse as parseYaml } from "yaml";
 import type { IxConfig } from "../config.js";
+import { buildGlobalSetArgs } from "../config.js";
 import type { Deployable } from "../discovery.js";
 import { resolveDeployableNamespace } from "../discovery.js";
 import { resolveGhcrToken } from "../credentials.js";
@@ -147,21 +148,10 @@ function buildHelmInstallArgs(
     install.namespace,
     "--create-namespace",
     "--take-ownership",
-    "--set-string",
-    `global.imageRegistry=${config.imageRegistry}`,
-    "--set-string",
-    `global.internalBaseDomain=${config.internalBaseDomain}`,
   ];
+  args.push(...buildGlobalSetArgs(config));
   if (imageTagOverride) {
     args.push("--set-string", `ix-service.image.tag=${imageTagOverride}`);
-  }
-  if (config.enableExternalHost && config.externalBaseDomain) {
-    args.push(
-      "--set-string",
-      "global.enableExternalHost=true",
-      "--set-string",
-      `global.externalBaseDomain=${config.externalBaseDomain}`,
-    );
   }
   args.push(...buildHelmSetArgs(resolveCatalog()));
   return args;
@@ -190,21 +180,10 @@ function buildUmbrellaInstallArgs(
     namespace,
     "--create-namespace",
     "--take-ownership",
-    "--set-string",
-    `global.imageRegistry=${config.imageRegistry}`,
-    "--set-string",
-    `global.internalBaseDomain=${config.internalBaseDomain}`,
   ];
+  args.push(...buildGlobalSetArgs(config));
   if (imageTagOverride) {
     args.push("--set-string", `global.imageTag=${imageTagOverride}`);
-  }
-  if (config.enableExternalHost && config.externalBaseDomain) {
-    args.push(
-      "--set-string",
-      "global.enableExternalHost=true",
-      "--set-string",
-      `global.externalBaseDomain=${config.externalBaseDomain}`,
-    );
   }
   args.push(...buildHelmSetArgs(resolveCatalog()));
   return args;
