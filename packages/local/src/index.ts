@@ -316,6 +316,58 @@ export async function runDown(
     { concurrent: false },
   );
   await tasks.run();
+
+  // Delete PVCs in every namespace we just uninstalled from so that Retain-policy
+  // PVs don't get stuck in Released state on the next `ix local up` cycle.
+  const uninstalledNamespaces = [...new Set(releases.map((r) => r.namespace))];
+  const cleanupTasks = makeListr(
+    [
+      ...uninstalledNamespaces.map((ns) => ({
+        title: `Delete PVCs in ${pc.cyan(ns)}`,
+        task: async (_ctx: unknown, task: { output: string }) => {
+          const subprocess = execa(
+            "kubectl",
+            ["delete", "pvc", "--all", "-n", ns, "--ignore-not-found"],
+            { all: true },
+          );
+          subprocess.all?.on("data", (chunk) => {
+            const line = chunk.toString().trim();
+            if (line) task.output = line;
+          });
+          await subprocess;
+        },
+      })),
+      {
+        title: "Patch Released PVs → Available",
+        task: async (_ctx: unknown, task: { output: string }) => {
+          const { stdout } = await execa("kubectl", [
+            "get",
+            "pv",
+            "-o",
+            "jsonpath={range .items[?(@.status.phase=='Released')]}{.metadata.name}{'\\n'}{end}",
+          ]);
+          const pvNames = stdout.split("\n").filter(Boolean);
+          for (const pv of pvNames) {
+            task.output = `Clearing claimRef on ${pv}`;
+            await execa("kubectl", [
+              "patch",
+              "pv",
+              pv,
+              "--type=json",
+              `-p=[{"op":"remove","path":"/spec/claimRef"}]`,
+            ]);
+          }
+          task.output =
+            pvNames.length > 0
+              ? `Cleared ${pvNames.length} PV(s)`
+              : "No Released PVs found";
+        },
+      },
+    ],
+    { concurrent: false },
+  );
+  await cleanupTasks.run();
+
   list.success(`Uninstalled: ${releases.map((r) => r.name).join(", ")}`);
 }
 
