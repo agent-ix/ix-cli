@@ -42,7 +42,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/local
       '@agent-ix/ix-ui-cli':
-        specifier: ^0.3.6
+        specifier: '>=0.3.6-0'
         version: 0.3.6
       '@oclif/core':
         specifier: '>=4.10.6'
@@ -67,7 +67,7 @@ importers:
         specifier: '>=0.1.1-0'
         version: 0.1.2
       '@agent-ix/ix-ui-cli':
-        specifier: ^0.3.6
+        specifier: '>=0.3.6-0'
         version: 0.3.6
       '@clack/prompts':
         specifier: '>=1.1.0'
@@ -95,7 +95,7 @@ importers:
   packages/local:
     dependencies:
       '@agent-ix/ix-ui-cli':
-        specifier: ^0.3.6
+        specifier: '>=0.3.6-0'
         version: 0.3.6
       '@clack/prompts':
         specifier: '>=1.1.0'
@@ -129,7 +129,7 @@ importers:
 packages:
 
   '@agent-ix/ix-cli-core@0.1.2':
-    resolution: {integrity: sha512-stzsJ5wpiPAWPx2rWUvfpO4AtH/6sNvW0srv4ho/RBGY2d84vs/e0ZC4+IZv2eSNT/pM1fpzbjfaJG9sS+hUpQ==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-cli-core/0.1.2/d167b401560204687d89c5a0aca339635276fdf0}
+    resolution: {integrity: sha512-stzsJ5wpiPAWPx2rWUvfpO4AtH/6sNvW0srv4ho/RBGY2d84vs/e0ZC4+IZv2eSNT/pM1fpzbjfaJG9sS+hUpQ==, tarball: https://npm.ix/@agent-ix/ix-cli-core/-/d167b401560204687d89c5a0aca339635276fdf0}
 
   '@agent-ix/ix-ui-cli@0.3.6':
     resolution: {integrity: sha512-TFb7codLuEaKoQzjSB4KCLQclf/i/GrU9jzmj0Chpj5ZdR80g3+tD4+G9ni3jWDpM/VO8OAftFpxj1NOOA4enQ==, tarball: https://npm.ix/@agent-ix/ix-ui-cli/-/02a8e2dde940996ee8e20fde3429569660de8da7}
