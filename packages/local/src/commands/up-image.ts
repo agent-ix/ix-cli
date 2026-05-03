@@ -288,13 +288,17 @@ export async function runImageModeUp(
     }
   }
 
+  const APP_ROW = deployable.name;
   const display = new PhaseTable<Phase>(
-    installs.map((i) => i.name),
+    [APP_ROW, ...installs.map((i) => i.name)],
     {
       phases: UP_PHASES,
       phaseLabels: UP_PHASE_LABELS,
       header: headerText,
       initialLineCount: 0,
+      serviceLabels: {
+        [APP_ROW]: `${deployable.name} ${pc.dim(deployable.version)}`,
+      },
     },
   );
 
@@ -314,6 +318,7 @@ export async function runImageModeUp(
   );
   preflightList!.stop();
   display.start();
+  display.transition(APP_ROW, "secrets", "done");
 
   const failures: string[] = [];
 
@@ -353,10 +358,11 @@ export async function runImageModeUp(
       }),
     );
 
-    // --- pull phase (single umbrella pull, fan out to all rows) ---
+    // --- pull phase (single umbrella pull) ---
     const umbrellaRef = `oci://${config.helmChartRegistry}/${deployable.chartRepository}/${deployable.name}`;
     const umbrellaDir = path.join(tmpDir, deployable.name);
     fs.mkdirSync(umbrellaDir, { recursive: true });
+    display.transition(APP_ROW, "pull", "running");
     installs.forEach((i) => display.transition(i.name, "pull", "running"));
     let umbrellaTgzPath: string;
     try {
@@ -381,15 +387,15 @@ export async function runImageModeUp(
         );
       }
       umbrellaTgzPath = path.join(umbrellaDir, tgzFiles[0]);
+      display.transition(APP_ROW, "pull", "done");
       installs.forEach((i) => display.transition(i.name, "pull", "done"));
     } catch (err) {
+      display.transition(APP_ROW, "pull", "failed");
       installs.forEach((i) => display.transition(i.name, "pull", "failed"));
       const msg = err instanceof Error ? err.message : String(err);
       const failureMsg = `pull (umbrella): ${msg}`;
-      installs.forEach((i) => {
-        display.setError(i.name, failureMsg);
-        failures.push(`${i.name}: ${failureMsg}`);
-      });
+      display.setError(APP_ROW, failureMsg);
+      failures.push(`${APP_ROW}: ${failureMsg}`);
       return; // umbrella pull failure is fatal — finally{} freezes display
     }
 
@@ -397,6 +403,7 @@ export async function runImageModeUp(
     // No --wait/--atomic: we want per-subchart rollout watchers below to
     // stream live status into the table instead of one opaque spinner.
     const umbrellaNamespace = installs[0].namespace;
+    display.transition(APP_ROW, "install", "running");
     installs.forEach((i) => display.transition(i.name, "install", "running"));
     try {
       const args = buildUmbrellaInstallArgs(
@@ -407,8 +414,10 @@ export async function runImageModeUp(
         tagOverride,
       );
       await execa("helm", args, { all: true });
+      display.transition(APP_ROW, "install", "done");
       installs.forEach((i) => display.transition(i.name, "install", "done"));
     } catch (err) {
+      display.transition(APP_ROW, "install", "failed");
       installs.forEach((i) => display.transition(i.name, "install", "failed"));
       const execaErr = err as {
         stderr?: string;
@@ -422,14 +431,14 @@ export async function runImageModeUp(
           .filter(Boolean)
           .pop() ?? String(err);
       const failureMsg = `install (umbrella): ${rawMsg}`;
-      installs.forEach((i) => {
-        display.setError(i.name, failureMsg);
-        failures.push(`${i.name}: ${failureMsg}`);
-      });
+      display.setError(APP_ROW, failureMsg);
+      failures.push(`${APP_ROW}: ${failureMsg}`);
       return;
     }
 
     // --- ready phase (per-subchart rollout watchers, parallel) ---
+    display.transition(APP_ROW, "ready", "running");
+    let anyReadyFailed = false;
     await Promise.all(
       installs.map((install) =>
         pools.kubectlWatch.run(async () => {
@@ -448,6 +457,7 @@ export async function runImageModeUp(
             );
             display.transition(install.name, "ready", "done");
           } catch (err) {
+            anyReadyFailed = true;
             display.transition(install.name, "ready", "failed");
             const execaErr = err as {
               stderr?: string;
@@ -477,6 +487,7 @@ export async function runImageModeUp(
         }),
       ),
     );
+    display.transition(APP_ROW, "ready", anyReadyFailed ? "failed" : "done");
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
     // Always freeze the display — clears the ticker regardless of outcome.
