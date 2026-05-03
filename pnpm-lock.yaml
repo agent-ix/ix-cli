@@ -129,13 +129,13 @@ importers:
 packages:
 
   '@agent-ix/ix-cli-core@0.1.2':
-    resolution: {integrity: sha512-stzsJ5wpiPAWPx2rWUvfpO4AtH/6sNvW0srv4ho/RBGY2d84vs/e0ZC4+IZv2eSNT/pM1fpzbjfaJG9sS+hUpQ==, tarball: https://npm.ix/@agent-ix/ix-cli-core/-/d167b401560204687d89c5a0aca339635276fdf0}
+    resolution: {integrity: sha512-stzsJ5wpiPAWPx2rWUvfpO4AtH/6sNvW0srv4ho/RBGY2d84vs/e0ZC4+IZv2eSNT/pM1fpzbjfaJG9sS+hUpQ==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-cli-core/0.1.2/d167b401560204687d89c5a0aca339635276fdf0}
 
   '@agent-ix/ix-ui-cli@0.3.6':
-    resolution: {integrity: sha512-TFb7codLuEaKoQzjSB4KCLQclf/i/GrU9jzmj0Chpj5ZdR80g3+tD4+G9ni3jWDpM/VO8OAftFpxj1NOOA4enQ==, tarball: https://npm.ix/@agent-ix/ix-ui-cli/-/02a8e2dde940996ee8e20fde3429569660de8da7}
+    resolution: {integrity: sha512-TFb7codLuEaKoQzjSB4KCLQclf/i/GrU9jzmj0Chpj5ZdR80g3+tD4+G9ni3jWDpM/VO8OAftFpxj1NOOA4enQ==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-ui-cli/0.3.6/02a8e2dde940996ee8e20fde3429569660de8da7}
 
   '@agent-ix/ix-ui-semantic@0.3.6':
-    resolution: {integrity: sha512-VX2WO9X/R0YQM47F5+6KNLHYV4AhNlENpymRzh+4g2uFOjQrTjA3mjoOJtiGKSdUVIrqiIilAsNgKHB+UUcSWA==, tarball: https://npm.ix/@agent-ix/ix-ui-semantic/-/9e34c6091accd01c6a883120d88563066337daf0}
+    resolution: {integrity: sha512-VX2WO9X/R0YQM47F5+6KNLHYV4AhNlENpymRzh+4g2uFOjQrTjA3mjoOJtiGKSdUVIrqiIilAsNgKHB+UUcSWA==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-ui-semantic/0.3.6/9e34c6091accd01c6a883120d88563066337daf0}
 
   '@clack/core@1.3.0':
     resolution: {integrity: sha512-xJPHpAmEQUBrXSLx0gF+q5K/IyihXpsHZcha+jB+tyahsKRK3Dxo4D0coZDewHo12NhiuzC3dTtMPbm53GEAAA==}
