@@ -25,10 +25,9 @@ import { resolveGhcrToken } from "../credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
 import { waitForRollout, diagnosePodFailure } from "../rollout.js";
 import {
-  loadSecretContract,
   applySecretContract,
   ensureGhcrCredsInNamespace,
-  findSecretContractDir,
+  loadSecretContractFromTgz,
   type SecretContract,
 } from "../local-secrets.js";
 import {
@@ -41,8 +40,8 @@ import type { Phase } from "../phases.js";
 import { loadConcurrencyConfig, createPools } from "../pool.js";
 
 const UP_PHASES = [
-  "secrets",
   "pull",
+  "secrets",
   "install",
   "ready",
 ] as const satisfies readonly Phase[];
@@ -195,7 +194,6 @@ export async function runImageModeUp(
   tagOverride: string | null,
   expandApp: AppExpander = defaultExpandApp,
   opts: UpImageOptions = {},
-  devDir: string = "",
 ): Promise<void> {
   const headerText = `ix local up · ${deployable.name} · ${config.helmChartRegistry}`;
 
@@ -246,23 +244,49 @@ export async function runImageModeUp(
 
   if (deployable.role !== "app") {
     // Single-service: Listr2 path (FR-022-CON-1, FR-021-CON-1)
+    // FR-033: pull the chart tgz to extract its secret contract, then install
+    // from the local tgz to avoid a second OCI fetch.
+    const svcTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-local-svc-"));
     const contracts: SecretContract[] = [];
-    if (devDir) {
-      const repoDir = findSecretContractDir(deployable.name, devDir);
-      if (repoDir) {
-        const contract = await loadSecretContract(repoDir);
+    let svcTgzPath = installs[0].chartRef;
+    try {
+      await execa(
+        "helm",
+        [
+          "pull",
+          installs[0].chartRef,
+          "--version",
+          installs[0].chartVersion,
+          "--destination",
+          svcTmpDir,
+        ],
+        { all: true },
+      );
+      const tgzFiles = fs
+        .readdirSync(svcTmpDir)
+        .filter((f) => f.endsWith(".tgz"));
+      if (tgzFiles.length === 1) {
+        svcTgzPath = path.join(svcTmpDir, tgzFiles[0]);
+        const contract = await loadSecretContractFromTgz(
+          svcTgzPath,
+          deployable.name,
+        );
         if (contract && contract.secrets.length > 0) contracts.push(contract);
       }
+    } catch (err) {
+      fs.rmSync(svcTmpDir, { recursive: true, force: true });
+      throw err;
     }
     await runSingleServiceListr(
       serviceList!,
-      installs[0],
+      { ...installs[0], chartRef: svcTgzPath },
       deployable,
       config,
       tagOverride,
       ghcrToken,
       contracts,
       opts,
+      svcTmpDir,
     );
     return;
   }
@@ -274,19 +298,8 @@ export async function runImageModeUp(
   const concurrencyConfig = loadConcurrencyConfig();
   const pools = createPools(concurrencyConfig);
 
+  // FR-033: contractsByName is built after the umbrella pull (from tgz).
   const contractsByName = new Map<string, SecretContract>();
-  if (devDir) {
-    const candidateNames = [
-      ...new Set([deployable.name, ...installs.map((i) => i.name)]),
-    ];
-    for (const name of candidateNames) {
-      const repoDir = findSecretContractDir(name, devDir);
-      if (!repoDir) continue;
-      const contract = await loadSecretContract(repoDir);
-      if (contract && contract.secrets.length > 0)
-        contractsByName.set(name, contract);
-    }
-  }
 
   const APP_ROW = deployable.name;
   const display = new PhaseTable<Phase>(
@@ -318,7 +331,6 @@ export async function runImageModeUp(
   );
   preflightList!.stop();
   display.start();
-  display.transition(APP_ROW, "secrets", "done");
 
   const failures: string[] = [];
 
@@ -334,29 +346,8 @@ export async function runImageModeUp(
 
   try {
     // FR-031: install the umbrella as a single Helm release.
-    // Pull + install happen once for the whole app; per-subchart rollout
-    // watchers run in parallel and drive each row's `ready` phase.
-
-    // --- secrets phase (per-subchart, parallel) ---
-    await Promise.all(
-      installs.map(async (install) => {
-        const contract = contractsByName.get(install.name);
-        if (contract) {
-          display.transition(install.name, "secrets", "running");
-          try {
-            await applySecretContract(contract, install.namespace, () => {});
-            display.transition(install.name, "secrets", "done");
-          } catch (err) {
-            display.transition(install.name, "secrets", "failed");
-            const msg = err instanceof Error ? err.message : String(err);
-            display.setError(install.name, `secrets: ${msg}`);
-            failures.push(`${install.name}: secrets: ${msg}`);
-          }
-        } else {
-          display.transition(install.name, "secrets", "done");
-        }
-      }),
-    );
+    // FR-033: phase order is pull → secrets → install → ready.
+    // Pull happens first so the tgz is available for secret contract extraction.
 
     // --- pull phase (single umbrella pull) ---
     const umbrellaRef = `oci://${config.helmChartRegistry}/${deployable.chartRepository}/${deployable.name}`;
@@ -398,6 +389,64 @@ export async function runImageModeUp(
       failures.push(`${APP_ROW}: ${failureMsg}`);
       return; // umbrella pull failure is fatal — finally{} freezes display
     }
+
+    // FR-033: extract secret contracts from subchart tgzs inside the umbrella.
+    const umbrellaExtractDir = path.join(tmpDir, "umbrella-extracted");
+    fs.mkdirSync(umbrellaExtractDir, { recursive: true });
+    try {
+      await execa("tar", ["-xzf", umbrellaTgzPath, "-C", umbrellaExtractDir]);
+      const chartsDir = path.join(
+        umbrellaExtractDir,
+        deployable.name,
+        "charts",
+      );
+      if (fs.existsSync(chartsDir)) {
+        for (const install of installs) {
+          const subchartTgzFiles = fs
+            .readdirSync(chartsDir)
+            .filter(
+              (f) => f.endsWith(".tgz") && f.startsWith(`${install.name}-`),
+            );
+          for (const f of subchartTgzFiles) {
+            const contract = await loadSecretContractFromTgz(
+              path.join(chartsDir, f),
+              install.name,
+            );
+            if (contract && contract.secrets.length > 0)
+              contractsByName.set(install.name, contract);
+          }
+        }
+      }
+    } catch {
+      // Secret contract extraction is best-effort; non-required secrets are
+      // skipped gracefully, required ones fail in the secrets phase below.
+    }
+
+    // --- secrets phase (per-subchart, parallel) ---
+    display.transition(APP_ROW, "secrets", "done");
+    await Promise.all(
+      installs.map(async (install) => {
+        const contract = contractsByName.get(install.name);
+        if (contract) {
+          display.transition(install.name, "secrets", "running");
+          const secretNames = contract.secrets.map((s) => s.name).join(", ");
+          display.setPodStatus(install.name, `creating: ${secretNames}`);
+          try {
+            await applySecretContract(contract, install.namespace, (line) => {
+              display.setPodStatus(install.name, line);
+            });
+            display.transition(install.name, "secrets", "done");
+          } catch (err) {
+            display.transition(install.name, "secrets", "failed");
+            const msg = err instanceof Error ? err.message : String(err);
+            display.setError(install.name, `secrets: ${msg}`);
+            failures.push(`${install.name}: secrets: ${msg}`);
+          }
+        } else {
+          display.transition(install.name, "secrets", "done");
+        }
+      }),
+    );
 
     // --- install phase (single umbrella `helm upgrade --install`) ---
     // No --wait/--atomic: we want per-subchart rollout watchers below to
@@ -510,6 +559,7 @@ async function runSingleServiceListr(
   ghcrToken: string,
   contracts: SecretContract[],
   opts: UpImageOptions,
+  tmpDir?: string,
 ): Promise<void> {
   const failures: string[] = [];
 
@@ -538,14 +588,18 @@ async function runSingleServiceListr(
         },
       },
 
-      ...contracts.map((contract) => ({
-        title: `Apply repo secrets ${pc.cyan(path.basename(contract.repoDir))}`,
-        task: async (_ctx: unknown, task: { output: string }) => {
-          await applySecretContract(contract, install.namespace, (line) => {
-            task.output = line;
-          });
-        },
-      })),
+      ...contracts.map((contract) => {
+        const chartName = path.basename(contract.repoDir);
+        const secretNames = contract.secrets.map((s) => s.name).join(", ");
+        return {
+          title: `Apply secrets [${pc.cyan(secretNames)}] from ${chartName}`,
+          task: async (_ctx: unknown, task: { output: string }) => {
+            await applySecretContract(contract, install.namespace, (line) => {
+              task.output = line;
+            });
+          },
+        };
+      }),
 
       {
         title: `Install ${pc.cyan(install.name)}`,
@@ -597,5 +651,7 @@ async function runSingleServiceListr(
       `Failed to deploy ${deployable.name}: ${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
+  } finally {
+    if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 }

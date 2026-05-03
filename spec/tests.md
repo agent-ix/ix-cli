@@ -83,6 +83,14 @@ Tests fall into four types:
 | auth | ix-cli-auth-CON-3: all `kubectlRaw` calls target `IX_AUTH_NAMESPACE` | TC-088 | ❌ Missing (static) |
 | auth | ix-cli-auth-CON-4: no namespace string literals (covered by TC-085) | TC-085 | ❌ Missing (static) |
 | auth | ix-cli-auth-CON-5: Deployable registry — identity/auth-service/permission-service declare `namespace: IX_AUTH_NAMESPACE`; up-image/up-source honor `deployable.namespace` | TC-089 | ❌ Missing (integration) |
+| FR-033 | AC-1: loadSecretContractFromTgz exported, uses tar, cleans up | TC-100, TC-106, TC-107 | ⚠️ Partial (static; unit missing) |
+| FR-033 | AC-2: findSecretContractDir not called from up-image | TC-101 | ✅ Complete (static) |
+| FR-033 | AC-3: runImageModeUp has no devDir param | TC-102 | ✅ Complete (static) |
+| FR-033 | AC-4: UP_PHASES pull before secrets | TC-103 | ✅ Complete (static) |
+| FR-033 | AC-5: contractsByName built from subchart tgzs after pull | TC-104 | ⚠️ Partial (import check only; unit missing) |
+| FR-033 | AC-6: single-service pulls chart tgz before install | TC-108 | ❌ Missing |
+| FR-033 | AC-7: missing ix-local.secrets.yaml → graceful skip | TC-105 | ❌ Missing (unit) |
+| FR-033 | AC-8: tmpDir always deleted in finally | TC-107 | ❌ Missing (unit) |
 
 ### Non-Functional Requirement Coverage
 
@@ -252,6 +260,15 @@ Tests fall into four types:
 | TC-097 | runDown deduplicates releases via a seen set | Static | P1 | FR-031-AC-11 | ✅ Complete |
 | TC-098 | local-secrets exports ensureGhcrCredsInNamespace producing dockerconfigjson | Static | P1 | FR-032-AC-1, FR-032-AC-2 | ✅ Complete |
 | TC-099 | runImageModeUp calls ensureGhcrCredsInNamespace before helm install for every install ns | Static | P1 | FR-032-AC-3 | ✅ Complete |
+| TC-100 | local-secrets exports loadSecretContractFromTgz | Static | P1 | FR-033-AC-1 | ✅ Complete |
+| TC-101 | up-image.ts does not call findSecretContractDir | Static | P1 | FR-033-AC-2 | ✅ Complete |
+| TC-102 | runImageModeUp does not declare devDir parameter | Static | P1 | FR-033-AC-3 | ✅ Complete |
+| TC-103 | UP_PHASES has pull before secrets | Static | P1 | FR-033-AC-4 | ✅ Complete |
+| TC-104 | up-image.ts imports loadSecretContractFromTgz | Static | P1 | FR-033-AC-1, FR-033-AC-5 | ✅ Complete |
+| TC-105 | loadSecretContractFromTgz returns null when no ix-local.secrets.yaml in chart | Unit | P1 | FR-033-AC-7 | ❌ Missing |
+| TC-106 | loadSecretContractFromTgz returns parsed contract when ix-local.secrets.yaml present | Unit | P1 | FR-033-AC-1 | ❌ Missing |
+| TC-107 | loadSecretContractFromTgz cleans up tmpDir on success and on error | Unit | P1 | FR-033-AC-8 | ❌ Missing |
+| TC-108 | Single-service: runImageModeUp pulls chart tgz before runSingleServiceListr | Static | P1 | FR-033-AC-6 | ❌ Missing |
 
 ---
 

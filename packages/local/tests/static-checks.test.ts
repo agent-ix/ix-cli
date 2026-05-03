@@ -310,3 +310,36 @@ describe("FR-032: ghcr-creds auto-applied to install namespaces", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// FR-033: Image-mode secrets contract loaded from published chart tgz.
+// Secrets are read from the pulled chart, not from a local devDir checkout.
+// TC-100 through TC-104
+// ---------------------------------------------------------------------------
+describe("FR-033: image-mode secrets contract from published chart", () => {
+  it("TC-100: local-secrets exports loadSecretContractFromTgz", () => {
+    const src = readSrc("local-secrets.ts");
+    expect(src).toMatch(/export async function loadSecretContractFromTgz/);
+  });
+
+  it("TC-101: up-image.ts does not call findSecretContractDir", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).not.toMatch(/findSecretContractDir/);
+  });
+
+  it("TC-102: runImageModeUp does not accept a devDir parameter", () => {
+    const src = readSrc("commands/up-image.ts");
+    // The function signature must not include devDir
+    expect(src).not.toMatch(/runImageModeUp[\s\S]{0,200}devDir/);
+  });
+
+  it("TC-103: UP_PHASES has pull before secrets (pull → secrets → install → ready)", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/"pull"[\s\S]{0,50}"secrets"/);
+  });
+
+  it("TC-104: up-image.ts imports loadSecretContractFromTgz from local-secrets", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/loadSecretContractFromTgz/);
+  });
+});

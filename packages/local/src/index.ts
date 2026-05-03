@@ -239,7 +239,6 @@ export async function runUp(
         continueOnError: opts.continueOnError,
         namespaceOverride: opts.namespace,
       },
-      DEV_DIR,
     );
   }
 }

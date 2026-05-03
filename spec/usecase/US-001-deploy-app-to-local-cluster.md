@@ -17,7 +17,7 @@ As a **developer**, I want to run `ix up <app>` and have all of the app's servic
 
 ## Context
 
-`ix up <app>` expands an app manifest into its constituent services, then runs each service through a four-phase pipeline: secrets → pull → install → ready. Services run concurrently, rate-limited by shared pools to avoid registry throttling.
+`ix up <app>` expands an app manifest into its constituent services, then runs each service through a four-phase pipeline: pull → secrets → install → ready. The umbrella chart is pulled first so secret contracts can be extracted from the published subchart tgzs before any kubectl or helm install runs. Services run concurrently, rate-limited by shared pools to avoid registry throttling.
 
 ## Acceptance
 

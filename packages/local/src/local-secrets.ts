@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execa } from "execa";
 import { password, isCancel } from "@agent-ix/ix-ui-cli";
@@ -376,6 +377,24 @@ export async function applySecretContract(
       if (line) onOutput?.(line);
     });
     await subprocess;
+  }
+}
+
+/**
+ * FR-033: Extract a chart tgz and load its secret contract, if present.
+ * Returns null when the chart contains no ix-local.secrets.yaml.
+ * The temporary extraction directory is always deleted in a finally block.
+ */
+export async function loadSecretContractFromTgz(
+  tgzPath: string,
+  chartName: string,
+): Promise<SecretContract | null> {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-secrets-extract-"));
+  try {
+    await execa("tar", ["-xzf", tgzPath, "-C", tmpDir]);
+    return await loadSecretContract(path.join(tmpDir, chartName));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 }
 
