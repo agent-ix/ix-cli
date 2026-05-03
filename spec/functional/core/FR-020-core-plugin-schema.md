@@ -68,11 +68,10 @@ const CoreSecretsSchema: SecretDeclaration[] = [
   { name: 'github-token',       description: 'GitHub OAuth access token (device-flow login)', envVar: 'IX_GITHUB_TOKEN' },
   { name: 'auth-access-token',  description: 'IX auth-service access token',                  envVar: 'IX_AUTH_ACCESS_TOKEN' },
   { name: 'auth-refresh-token', description: 'IX auth-service refresh token',                                                  },
-  { name: 'migration-marker',   description: 'Sentinel — set after legacy creds migration (FR-017)',                            },
 ];
 ```
 
-Resulting `SecretId`s: `core.github-token`, `core.auth-access-token`, `core.auth-refresh-token`, `core.migration-marker`. The `migration-marker` is written without a value beyond a sentinel string; its presence is what `FR-017` checks to skip subsequent migrations.
+Resulting `SecretId`s: `core.github-token`, `core.auth-access-token`, `core.auth-refresh-token`.
 
 ### Out of scope for v1
 

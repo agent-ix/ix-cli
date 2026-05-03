@@ -51,7 +51,8 @@
     "@agent-ix/ix-cli-local": "workspace:*",
     "@agent-ix/ix-ui-cli": ">=0.3.6-0",
     "@oclif/core": ">=4.10.6",
-    "picocolors": ">=1.1.1"
+    "picocolors": ">=1.1.1",
+    "zod": ">=4.0.0"
   },
   "devDependencies": {
     "vite": ">=6.3.4",

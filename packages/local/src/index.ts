@@ -11,6 +11,15 @@ import { runSourceModeUp } from "./commands/up-source.js";
 import { loadRegistry, findDeployable } from "./registry.js";
 import { resolveGhcrToken } from "./credentials.js";
 
+// Schema + plugin metadata (consumed by apps/ix init hook).
+export {
+  LocalConfigSchema,
+  LocalEnvBindings,
+  LocalSecretsSchema,
+  LOCAL_PLUGIN_ID,
+  type LocalConfig,
+} from "./schema.js";
+
 // Re-export everything needed by apps/ix command files.
 export {
   loadConfig,
