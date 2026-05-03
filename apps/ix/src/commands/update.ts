@@ -3,6 +3,8 @@ import { spawn } from "node:child_process";
 import { startListing } from "@agent-ix/ix-ui-cli";
 import pc from "picocolors";
 
+const DEFAULT_REGISTRY = "https://npm.pkg.github.com/";
+
 function spawnAsync(cmd: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -34,11 +36,18 @@ export default class Update extends Command {
     check: Flags.boolean({
       description: "Check for updates without installing.",
     }),
+    registry: Flags.string({
+      description: "npm registry to use (e.g. http://npm.ix/ for local dev).",
+      default: DEFAULT_REGISTRY,
+    }),
   };
 
   async run(): Promise<void> {
     const { flags } = await this.parse(Update);
     const list = startListing("ix update");
+
+    const registry = flags.registry;
+    list.note(`registry ${pc.cyan(registry)}`);
 
     const current = this.config.version;
     list.note(`current  ${pc.cyan(current)}`);
@@ -50,7 +59,7 @@ export default class Update extends Command {
         "@agent-ix/ix",
         "version",
         "--registry",
-        "http://npm.ix/",
+        registry,
       ]);
     } catch (err) {
       list.error(
@@ -80,7 +89,7 @@ export default class Update extends Command {
         "-g",
         `@agent-ix/ix@${latest}`,
         "--registry",
-        "http://npm.ix/",
+        registry,
       ]);
     } catch (err) {
       list.error(
