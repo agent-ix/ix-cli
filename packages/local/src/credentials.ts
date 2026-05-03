@@ -43,31 +43,36 @@ function resolveFallbackEnvToken(): string | null {
 /**
  * Resolve the GHCR token. Per FR-011 / FR-014:
  *
- * 1. Canonical env binding `IX_GHCR_TOKEN` (handled inside
- *    `SecretsService.get` via the `local.ghcr-token` declaration).
+ * 1. Canonical env binding `IX_GHCR_TOKEN` (declared on the secret
+ *    via `local.ghcr-token.envVar` and honored by `SecretsService.get`).
  * 2. Compatibility env vars (`GITHUB_TOKEN`, `GH_TOKEN`, `GHCR_TOKEN`,
- *    `CR_PAT`).
+ *    `CR_PAT`). Explicit env settings ALWAYS beat persisted-backend
+ *    values — a CI runner that exports any of these expects them to
+ *    override whatever `ix secrets set` previously stored.
  * 3. SecretsService backend (keyring / age-file).
  * 4. Interactive prompt → persists via `SecretsService.set` (no
  *    plaintext file written; the value lands in the active backend).
  *
- * @param forcePrompt — bypass backend lookup and re-prompt.
+ * @param forcePrompt — bypass env + backend lookup and re-prompt.
  */
 export async function resolveGhcrToken(forcePrompt = false): Promise<string> {
   const svc = defaultSecretsService();
 
   if (!forcePrompt) {
-    // SecretsService.get honors the IX_GHCR_TOKEN binding internally,
-    // so this single call covers env + backend in one shot.
+    // 1. Canonical IX_GHCR_TOKEN (highest precedence, regardless of
+    //    backend state).
+    const ix = process.env.IX_GHCR_TOKEN?.trim();
+    if (ix) return ix;
+
+    // 2. Compatibility env vars before the backend — explicit settings
+    //    beat implicit persisted state.
+    const fallback = resolveFallbackEnvToken();
+    if (fallback) return fallback;
+
+    // 3. Persisted-backend value (keyring or age-file).
     const stored = await svc.get(SECRET_ID);
     if (stored) return stored;
   }
-
-  // Compatibility env vars (NOT declared on the secret schema, so
-  // `SecretsService.get` does NOT see them — we honor them here for
-  // CI invocations that already set GITHUB_TOKEN/GH_TOKEN/etc.).
-  const fallback = resolveFallbackEnvToken();
-  if (fallback && !forcePrompt) return fallback;
 
   log.info(
     [
