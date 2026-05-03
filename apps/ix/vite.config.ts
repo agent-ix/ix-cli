@@ -45,6 +45,7 @@ export default defineConfig({
           "src/commands/local/auth/config/registration/set.ts",
         "commands/local/auth/config/registration/show":
           "src/commands/local/auth/config/registration/show.ts",
+        "commands/update": "src/commands/update.ts",
         "commands/plugin/install": "src/commands/plugin/install.ts",
         "commands/plugin/remove": "src/commands/plugin/remove.ts",
         "commands/plugin/list": "src/commands/plugin/list.ts",
