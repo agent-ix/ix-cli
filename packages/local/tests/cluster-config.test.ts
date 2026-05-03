@@ -1,33 +1,42 @@
 /**
  * TC-022–TC-031: loadClusterConfig() and computeEffectiveDeploySet()
- * FR-009, FR-005 (deploy set algorithm)
+ * FR-009 (cluster defaults), FR-005 (deploy set algorithm).
+ *
+ * After slice 9: loadClusterConfig() routes through the shared
+ * ConfigService; the legacy `~/.ix/config.yaml` path is gone. Tests
+ * isolate XDG_CONFIG_HOME and seed `~/.config/ix/config.d/local.yaml`
+ * directly.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import os from "node:os";
-import path from "node:path";
-import fs from "node:fs";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-// Mock fs and path so loadClusterConfig reads our fixture
-const CONFIG_PATH = path.join(os.homedir(), ".ix", "config.yaml");
+let dir: string;
+
+function seedLocalYaml(content: string): void {
+  const target = join(dir, "ix", "config.d");
+  mkdirSync(target, { recursive: true, mode: 0o700 });
+  writeFileSync(join(target, "local.yaml"), content, { mode: 0o600 });
+}
+
+beforeEach(async () => {
+  dir = mkdtempSync(join(tmpdir(), "ix-local-cfg-"));
+  process.env.XDG_CONFIG_HOME = dir;
+  // Reset the shared registry so each test starts clean.
+  const { _resetRegistryForTests } =
+    await import("@agent-ix/ix-cli-core/src/config/registry.js");
+  _resetRegistryForTests();
+});
+
+afterEach(() => {
+  delete process.env.XDG_CONFIG_HOME;
+  rmSync(dir, { recursive: true, force: true });
+});
 
 describe("loadClusterConfig", () => {
-  let originalExists: typeof fs.existsSync;
-  let originalReadFile: typeof fs.readFileSync;
-
-  beforeEach(() => {
-    originalExists = fs.existsSync;
-    originalReadFile = fs.readFileSync;
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-    (fs as unknown as Record<string, unknown>).existsSync = originalExists;
-    (fs as unknown as Record<string, unknown>).readFileSync = originalReadFile;
-  });
-
   it("TC-022: missing config file returns defaults { defaultTags: ['ix-core'], extraApps: [], skipApps: [] }", async () => {
-    vi.spyOn(fs, "existsSync").mockReturnValue(false);
     const { loadClusterConfig } = await import("../src/config.js");
     const cfg = loadClusterConfig();
     expect(cfg).toEqual({
@@ -38,19 +47,9 @@ describe("loadClusterConfig", () => {
   });
 
   it("TC-023: config with cluster key parsed correctly", async () => {
-    vi.spyOn(fs, "existsSync").mockImplementation((p) =>
-      p === CONFIG_PATH
-        ? true
-        : (originalExists as typeof fs.existsSync)(p as string),
+    seedLocalYaml(
+      "cluster:\n  defaultTags: [ix-core, extra]\n  extraApps: [myapp]\n  skipApps: [skipme]\n",
     );
-    vi.spyOn(fs, "readFileSync").mockImplementation((p, enc) => {
-      if (p === CONFIG_PATH)
-        return "cluster:\n  defaultTags: [ix-core, extra]\n  extraApps: [myapp]\n  skipApps: [skipme]\n";
-      return (originalReadFile as typeof fs.readFileSync)(
-        p as string,
-        enc as BufferEncoding,
-      );
-    });
     const { loadClusterConfig } = await import("../src/config.js");
     const cfg = loadClusterConfig();
     expect(cfg.defaultTags).toEqual(["ix-core", "extra"]);
@@ -58,22 +57,18 @@ describe("loadClusterConfig", () => {
     expect(cfg.skipApps).toEqual(["skipme"]);
   });
 
-  it("TC-024: non-array value for defaultTags throws ConfigValidationError", async () => {
-    vi.spyOn(fs, "existsSync").mockImplementation((p) =>
-      p === CONFIG_PATH
-        ? true
-        : (originalExists as typeof fs.existsSync)(p as string),
-    );
-    vi.spyOn(fs, "readFileSync").mockImplementation((p, enc) => {
-      if (p === CONFIG_PATH) return "cluster:\n  defaultTags: not-an-array\n";
-      return (originalReadFile as typeof fs.readFileSync)(
-        p as string,
-        enc as BufferEncoding,
-      );
-    });
-    const { loadClusterConfig, ConfigValidationError } =
-      await import("../src/config.js");
-    expect(() => loadClusterConfig()).toThrow(ConfigValidationError);
+  it("TC-024: malformed cluster.defaultTags falls back to defaults; incident recorded (FR-011-AC-1)", async () => {
+    seedLocalYaml("cluster:\n  defaultTags: not-an-array\n");
+    const [{ loadClusterConfig }, { listIncidents }] = await Promise.all([
+      import("../src/config.js"),
+      import("@agent-ix/ix-cli-core"),
+    ]);
+    // Per FR-011-AC-1 the loader silently defaults rather than throws.
+    const cfg = loadClusterConfig();
+    expect(cfg.defaultTags).toEqual(["ix-core"]);
+    const incs = listIncidents().filter((i) => i.pluginId === "local");
+    expect(incs.length).toBeGreaterThan(0);
+    expect(incs[incs.length - 1].kind).toBe("schema");
   });
 });
 

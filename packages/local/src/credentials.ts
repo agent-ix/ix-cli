@@ -1,22 +1,29 @@
 /**
- * FR-011 — Registry Credential Storage and Loading
- * XDG-aware credential file, @clack/prompts password() prompt, IX_GHCR_TOKEN override.
+ * FR-011 — GHCR Credential Resolution
+ *
+ * Routes through the shared `SecretsService` (FR-014). Resolution
+ * order:
+ *   1. Env vars (`IX_GHCR_TOKEN` is the canonical binding declared by
+ *      the `local` plugin's `secretsSchema`; `GITHUB_TOKEN` /
+ *      `GH_TOKEN` / `GHCR_TOKEN` / `CR_PAT` are honored as
+ *      compatibility fallbacks).
+ *   2. Active SecretsService backend (OS keyring or age-encrypted
+ *      file fallback).
+ *   3. Optional interactive prompt that persists to the active
+ *      backend (no plaintext file).
  */
 
-import fs from "node:fs";
-import path from "node:path";
-import os from "node:os";
-import { log, password, isCancel } from "@agent-ix/ix-ui-cli";
+import { isCancel, log, password } from "@agent-ix/ix-ui-cli";
+import { defaultSecretsService } from "@agent-ix/ix-cli-core";
 
-const CONFIG_DIR = path.join(
-  process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), ".config"),
-  "ix-local",
-);
-const CREDENTIALS_FILE = path.join(CONFIG_DIR, "credentials.json");
+const FALLBACK_ENV_NAMES = [
+  "GITHUB_TOKEN",
+  "GH_TOKEN",
+  "GHCR_TOKEN",
+  "CR_PAT",
+] as const;
 
-interface CredentialsSchema {
-  ghcr_token: string;
-}
+const SECRET_ID = "local.ghcr-token" as const;
 
 export class CredentialsError extends Error {
   constructor(message: string) {
@@ -25,91 +32,43 @@ export class CredentialsError extends Error {
   }
 }
 
-function readCredentialsFile(): string | null {
-  if (!fs.existsSync(CREDENTIALS_FILE)) {
-    return null;
-  }
-  let raw: string;
-  try {
-    raw = fs.readFileSync(CREDENTIALS_FILE, "utf-8");
-  } catch (err) {
-    // M1: Distinguish unreadable file (permission/IO) from parse failure.
-    // An unreadable file is a hard error — re-prompting would silently
-    // overwrite credentials the user can't see.
-    throw new CredentialsError(
-      `Cannot read credentials file at ${CREDENTIALS_FILE}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-  try {
-    const parsed = JSON.parse(raw) as CredentialsSchema;
-    if (!parsed.ghcr_token || typeof parsed.ghcr_token !== "string") {
-      return null; // FR-011-AC-5: missing field treated as absent
-    }
-    return parsed.ghcr_token;
-  } catch {
-    return null; // FR-011-AC-5: invalid JSON treated as absent
-  }
-}
-
-function writeCredentialsFile(token: string): void {
-  fs.mkdirSync(CONFIG_DIR, { recursive: true });
-  const content = JSON.stringify({ ghcr_token: token }, null, 2);
-  // C3: writeFileSync({ mode: 0o600 }) only sets mode on create. Unlink any
-  // pre-existing file first so the new file is created fresh with 0600, then
-  // chmod defensively in case the umask widened it.
-  try {
-    fs.unlinkSync(CREDENTIALS_FILE);
-  } catch {
-    // file did not exist — fine
-  }
-  fs.writeFileSync(CREDENTIALS_FILE, content, { mode: 0o600 }); // FR-011-AC-2
-  fs.chmodSync(CREDENTIALS_FILE, 0o600);
-}
-
-function resolveEnvToken(): string | null {
-  const envNames = [
-    "IX_GHCR_TOKEN",
-    "GITHUB_TOKEN",
-    "GH_TOKEN",
-    "GHCR_TOKEN",
-    "CR_PAT",
-  ] as const;
-
-  for (const envName of envNames) {
+function resolveFallbackEnvToken(): string | null {
+  for (const envName of FALLBACK_ENV_NAMES) {
     const token = process.env[envName]?.trim();
-    if (token) {
-      return token;
-    }
+    if (token) return token;
   }
-
   return null;
 }
 
 /**
- * Resolve the GHCR token using priority order (FR-011):
- *   1. Supported env vars (`IX_GHCR_TOKEN`, `GITHUB_TOKEN`, `GH_TOKEN`, `GHCR_TOKEN`, `CR_PAT`)
- *   2. credentials file
- *   3. Interactive prompt (persists to file)
+ * Resolve the GHCR token. Per FR-011 / FR-014:
  *
- * @param forcePrompt — if true, skip file read and re-prompt (FR-007-AC-7)
+ * 1. Canonical env binding `IX_GHCR_TOKEN` (handled inside
+ *    `SecretsService.get` via the `local.ghcr-token` declaration).
+ * 2. Compatibility env vars (`GITHUB_TOKEN`, `GH_TOKEN`, `GHCR_TOKEN`,
+ *    `CR_PAT`).
+ * 3. SecretsService backend (keyring / age-file).
+ * 4. Interactive prompt → persists via `SecretsService.set` (no
+ *    plaintext file written; the value lands in the active backend).
+ *
+ * @param forcePrompt — bypass backend lookup and re-prompt.
  */
 export async function resolveGhcrToken(forcePrompt = false): Promise<string> {
-  // FR-011-AC-4: env var takes absolute priority, file not touched.
-  const envToken = resolveEnvToken();
-  if (envToken) {
-    return envToken;
-  }
+  const svc = defaultSecretsService();
 
-  // FR-011-AC-3: load from file on subsequent runs (unless forced)
   if (!forcePrompt) {
-    const stored = readCredentialsFile();
-    if (stored) {
-      return stored;
-    }
+    // SecretsService.get honors the IX_GHCR_TOKEN binding internally,
+    // so this single call covers env + backend in one shot.
+    const stored = await svc.get(SECRET_ID);
+    if (stored) return stored;
   }
 
-  // FR-011-AC-1 / FR-011-AC-6: interactive prompt, input masked with • by
-  // @clack/prompts PasswordPrompt for both typed and pasted characters.
+  // Compatibility env vars (NOT declared on the secret schema, so
+  // `SecretsService.get` does NOT see them — we honor them here for
+  // CI invocations that already set GITHUB_TOKEN/GH_TOKEN/etc.).
+  const fallback = resolveFallbackEnvToken();
+  if (fallback && !forcePrompt) return fallback;
+
   log.info(
     [
       "To pull charts and images from GHCR, a GitHub Personal Access Token",
@@ -117,7 +76,7 @@ export async function resolveGhcrToken(forcePrompt = false): Promise<string> {
       "",
       "Create one at: https://github.com/settings/tokens",
       "",
-      `The token will be saved to ${CREDENTIALS_FILE}.`,
+      `The token will be stored via 'ix secrets' (active backend = ${await svc.activeBackendId()}).`,
     ].join("\n"),
   );
   const token = await password({
@@ -130,13 +89,11 @@ export async function resolveGhcrToken(forcePrompt = false): Promise<string> {
     },
   });
 
-  // M2: Throw instead of process.exit(1) so the caller can render its outro
-  // and the function is testable in isolation.
   if (isCancel(token)) {
     throw new CredentialsError("Credential prompt cancelled");
   }
 
   const trimmed = (token as string).trim();
-  writeCredentialsFile(trimmed);
+  await svc.set(SECRET_ID, trimmed);
   return trimmed;
 }

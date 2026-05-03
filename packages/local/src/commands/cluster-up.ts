@@ -60,7 +60,7 @@ export async function runClusterUp(
   await runInitCluster(config, opts.reconfigureCredentials ?? false);
 
   // Phase 2: discover + deploy effective service set
-  const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+  const token = await resolveGhcrToken(false);
   const registry = await loadRegistry({
     org: config.org,
     githubToken: token,

@@ -3,12 +3,13 @@
  * Validated configuration model for all commands that render or apply manifests.
  */
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { parse as parseYaml } from "yaml";
+import { ConfigService } from "@agent-ix/ix-cli-core";
 
-const IX_CONFIG_PATH = path.join(os.homedir(), ".ix", "config.yaml");
+import {
+  LocalConfigSchema,
+  LocalEnvBindings,
+  LOCAL_PLUGIN_ID,
+} from "./schema.js";
 
 /**
  * Kubernetes namespace contract.
@@ -26,73 +27,24 @@ export const IX_AUTH_NAMESPACE = "auth";
 export const IX_PLATFORM_NAMESPACE = "platform";
 export const IX_APPS_NAMESPACE = "apps";
 
-/** FR-009 — cluster bring-up defaults read from ~/.ix/config.yaml cluster: key */
+/** FR-009 — cluster bring-up defaults */
 export interface ClusterConfig {
   defaultTags: string[];
   extraApps: string[];
   skipApps: string[];
 }
 
-const CLUSTER_DEFAULTS: ClusterConfig = {
-  defaultTags: ["ix-core"],
-  extraApps: [],
-  skipApps: [],
-};
-
+/**
+ * Load the `cluster:` section of `~/.config/ix/config.d/local.yaml` via
+ * the shared `ConfigService`. Schema validation is enforced by
+ * `LocalConfigSchema`; any malformed key triggers FR-011-AC-1's
+ * defaulting + incident recording (visible via `ix config doctor`).
+ */
 export function loadClusterConfig(): ClusterConfig {
-  if (!fs.existsSync(IX_CONFIG_PATH)) return { ...CLUSTER_DEFAULTS };
-
-  let raw: string;
-  try {
-    raw = fs.readFileSync(IX_CONFIG_PATH, "utf8");
-  } catch (err) {
-    throw new ConfigValidationError(
-      `Failed to read ${IX_CONFIG_PATH}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = parseYaml(raw);
-  } catch (err) {
-    throw new ConfigValidationError(
-      `Failed to parse ${IX_CONFIG_PATH}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  if (parsed === null || typeof parsed !== "object")
-    return { ...CLUSTER_DEFAULTS };
-
-  const cfg = parsed as Record<string, unknown>;
-  const cluster = cfg["cluster"];
-  if (cluster === undefined || cluster === null) return { ...CLUSTER_DEFAULTS };
-  if (typeof cluster !== "object" || Array.isArray(cluster)) {
-    throw new ConfigValidationError(
-      `${IX_CONFIG_PATH}: 'cluster' must be an object`,
-    );
-  }
-
-  const c = cluster as Record<string, unknown>;
-
-  function resolveStringArray(key: string, fallback: string[]): string[] {
-    const val = c[key];
-    if (val === undefined || val === null) return fallback;
-    if (!Array.isArray(val) || !val.every((v) => typeof v === "string")) {
-      throw new ConfigValidationError(
-        `${IX_CONFIG_PATH}: cluster.${key} must be an array of strings`,
-      );
-    }
-    return val as string[];
-  }
-
-  return {
-    defaultTags: resolveStringArray(
-      "defaultTags",
-      CLUSTER_DEFAULTS.defaultTags,
-    ),
-    extraApps: resolveStringArray("extraApps", CLUSTER_DEFAULTS.extraApps),
-    skipApps: resolveStringArray("skipApps", CLUSTER_DEFAULTS.skipApps),
-  };
+  const cfg = ConfigService.forPlugin(LOCAL_PLUGIN_ID, LocalConfigSchema, {
+    envBindings: LocalEnvBindings,
+  });
+  return cfg.get().cluster;
 }
 
 export interface IxConfig {
@@ -112,7 +64,6 @@ export interface IxConfig {
   helmChartRegistry: string;
   /** GitHub org under which deployable Helm charts are published */
   org: string;
-  ghcrToken: string | null;
   kindClusterName: string;
   certManagerVersion: string;
   certManagerTimeoutSeconds: number;
@@ -127,25 +78,6 @@ export class ConfigValidationError extends Error {
     super(message);
     this.name = "ConfigValidationError";
   }
-}
-
-function resolveConfiguredGhcrToken(): string | null {
-  const envNames = [
-    "IX_GHCR_TOKEN",
-    "GITHUB_TOKEN",
-    "GH_TOKEN",
-    "GHCR_TOKEN",
-    "CR_PAT",
-  ] as const;
-
-  for (const envName of envNames) {
-    const token = process.env[envName]?.trim();
-    if (token) {
-      return token;
-    }
-  }
-
-  return null;
 }
 
 function parsePositiveInt(name: string, raw: string, fallback: number): number {
@@ -235,7 +167,6 @@ export function loadConfig(): IxConfig {
     imageRegistry: process.env.IX_IMAGE_REGISTRY ?? "ghcr.io/agent-ix",
     helmChartRegistry: process.env.IX_HELM_CHART_REGISTRY ?? "ghcr.io",
     org: process.env.IX_ORG ?? "agent-ix",
-    ghcrToken: resolveConfiguredGhcrToken(),
     kindClusterName: process.env.IX_KIND_CLUSTER_NAME ?? "platform",
     certManagerVersion: process.env.IX_CERT_MANAGER_VERSION ?? "v1.14.5",
     certManagerTimeoutSeconds: parsePositiveInt(

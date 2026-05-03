@@ -351,8 +351,7 @@ export async function runSourceModeUp(
               {
                 title: "Authenticate Helm registry",
                 task: async (_ctx: unknown, task: { output: string }) => {
-                  const token =
-                    config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+                  const token = await resolveGhcrToken(false);
                   const subprocess = execa(
                     "helm",
                     [

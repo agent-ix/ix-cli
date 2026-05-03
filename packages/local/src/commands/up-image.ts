@@ -232,8 +232,9 @@ export async function runImageModeUp(
   }
 
   // Resolve credentials before entering Listr / PhaseTable — interactive
-  // prompts need direct terminal access.
-  const ghcrToken = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+  // prompts need direct terminal access. resolveGhcrToken honors env
+  // precedence and routes through the shared SecretsService.
+  const ghcrToken = await resolveGhcrToken(false);
 
   // FR-032: ensure ghcr-creds exists in every install namespace BEFORE helm
   // install runs, so the kubelet can pull images. Image-mode pods reference

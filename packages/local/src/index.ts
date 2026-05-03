@@ -325,7 +325,7 @@ export async function runRefresh(
   const list = startListing("ix local refresh");
   list.commit();
   try {
-    const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+    const token = await resolveGhcrToken(false);
     const reg = await loadRegistry({
       org: config.org,
       githubToken: token,
@@ -339,7 +339,7 @@ export async function runRefresh(
 }
 
 async function loadRegistryForCommand(config: import("./config.js").IxConfig) {
-  const token = config.ghcrToken?.trim() || (await resolveGhcrToken(false));
+  const token = await resolveGhcrToken(false);
   const list = startListing(`ix local · resolving registry · ${config.org}`);
   try {
     return await loadRegistry({ org: config.org, githubToken: token });

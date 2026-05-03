@@ -15,6 +15,7 @@ export default defineConfig({
       external: [
         /^node:/,
         "@agent-ix/ix-ui-cli",
+        "@agent-ix/ix-cli-core",
         "@clack/prompts",
         "cli-table3",
         "commander",
@@ -22,6 +23,10 @@ export default defineConfig({
         "listr2",
         "picocolors",
         "yaml",
+        "zod",
+        "age-encryption",
+        "@napi-rs/keyring",
+        /^@napi-rs\/keyring-/,
       ],
     },
   },
