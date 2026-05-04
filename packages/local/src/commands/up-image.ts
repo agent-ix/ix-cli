@@ -496,11 +496,6 @@ export async function runImageModeUp(
         ReturnType<typeof detectHelmHookFailure>
       > | null = null;
       const subprocess = execa("helm", args, { all: true });
-      subprocess.all?.on("data", (chunk) => {
-        const line = chunk.toString().trim();
-        if (!line) return;
-        display.setPodStatus(APP_ROW, line);
-      });
       const checkHookFailure = () => {
         void detectHelmHookFailure(umbrellaNamespace, deployable.name).then(
           (failure) => {
@@ -683,12 +678,7 @@ async function runSingleServiceListr(
         task: async (_ctx: unknown, task: { output: string }) => {
           try {
             const args = buildHelmInstallArgs(install, config, tagOverride);
-            const subprocess = execa("helm", args, { all: true });
-            subprocess.all?.on("data", (chunk) => {
-              const line = chunk.toString().trim();
-              if (line) task.output = line;
-            });
-            await subprocess;
+            await execa("helm", args, { all: true });
             const nullSink = {
               output: "",
             } as unknown as ListrTaskWrapper<unknown, never, never>;

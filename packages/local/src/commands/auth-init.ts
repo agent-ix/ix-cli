@@ -28,6 +28,9 @@ import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 type ExecFn = typeof kubectlExecJson;
 type EnsureIdentityFn = (config: IxConfig) => Promise<void>;
 type HasIdentityDeploymentFn = () => Promise<boolean>;
+export interface AuthInitOptions {
+  bootstrapIfMissing?: boolean;
+}
 export interface IdentityDeps {
   kubectlExecJson?: ExecFn;
   ensureIdentityDeployment?: EnsureIdentityFn;
@@ -94,14 +97,16 @@ async function ensureIdentityDeployment(config: IxConfig): Promise<void> {
 export async function runAuthInit(
   config: IxConfig,
   deps?: IdentityDeps,
+  opts: AuthInitOptions = {},
 ): Promise<void> {
   const _exec = deps?.kubectlExecJson ?? kubectlExecJson;
   const ensureIdentity =
     deps?.ensureIdentityDeployment ?? ensureIdentityDeployment;
   const hasIdentity =
     deps?.hasIdentityDeployment ?? hasIdentityDeployment;
+  const bootstrapIfMissing = opts.bootstrapIfMissing ?? true;
 
-  if (!(await hasIdentity())) {
+  if (!(await hasIdentity()) && bootstrapIfMissing) {
     await ensureIdentity(config);
   }
 
@@ -140,7 +145,9 @@ export async function runAuthInit(
               }
               if (isIdentityDeploymentMissing(err)) {
                 throw new Error(
-                  "identity deployment missing after auth bootstrap",
+                  bootstrapIfMissing
+                    ? "identity deployment missing after auth bootstrap"
+                    : "identity deployment missing; run `ix local up auth` first",
                 );
               }
               throw new Error(

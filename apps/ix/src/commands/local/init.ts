@@ -4,6 +4,7 @@ import {
   loadClusterConfig,
   runClusterUp,
   runAuthInit,
+  runUp,
 } from "@agent-ix/ix-cli-local";
 
 export default class LocalInit extends Command {
@@ -32,14 +33,22 @@ export default class LocalInit extends Command {
     const config = loadConfig();
     const clusterConfig = loadClusterConfig();
     try {
-      await runClusterUp(config, clusterConfig, {
+      const effectiveClusterConfig = {
+        ...clusterConfig,
+        skipApps: flags["skip-auth"]
+          ? clusterConfig.skipApps
+          : Array.from(new Set([...clusterConfig.skipApps, "auth"])),
+      };
+      await runClusterUp(config, effectiveClusterConfig, {
         reconfigureCredentials: flags["reconfigure-credentials"],
         includeTags: flags["include-tag"] ? [flags["include-tag"]] : undefined,
         excludeTags: flags["exclude-tag"] ? [flags["exclude-tag"]] : undefined,
       });
       if (!flags["skip-auth"]) {
         process.stdout.write("\n");
-        await runAuthInit(config);
+        await runUp(["auth"]);
+        process.stdout.write("\n");
+        await runAuthInit(config, undefined, { bootstrapIfMissing: false });
       }
     } catch {
       this.exit(1);
