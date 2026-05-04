@@ -13,12 +13,14 @@ vi.mock("execa", async () => {
   const actual = await vi.importActual<typeof import("execa")>("execa");
   return {
     ...actual,
-    execa: vi.fn((file: string, args: readonly string[] = [], options?: unknown) => {
-      if (file === "kubectl") {
-        return Promise.resolve({ stdout: "", stderr: "", all: "" });
-      }
-      return actual.execa(file, args as string[], options as never);
-    }),
+    execa: vi.fn(
+      (file: string, args: readonly string[] = [], options?: unknown) => {
+        if (file === "kubectl") {
+          return Promise.resolve({ stdout: "", stderr: "", all: "" });
+        }
+        return actual.execa(file, args as string[], options as never);
+      },
+    ),
   };
 });
 

@@ -52,6 +52,7 @@ function formatExpiry(iso: string): string {
 }
 
 const IDENTITY_DEPLOYMENT = "identity";
+const AUTH_DEPLOYABLE = IX_AUTH_NAMESPACE;
 const IDENTITY_CLI_INIT = [
   "python",
   "-m",
@@ -91,7 +92,7 @@ async function hasIdentityDeployment(): Promise<boolean> {
 async function ensureIdentityDeployment(config: IxConfig): Promise<void> {
   void config;
   const { runUp } = await import("../index.js");
-  await runUp(["auth"]);
+  await runUp([AUTH_DEPLOYABLE]);
 }
 
 export async function runAuthInit(
@@ -102,8 +103,7 @@ export async function runAuthInit(
   const _exec = deps?.kubectlExecJson ?? kubectlExecJson;
   const ensureIdentity =
     deps?.ensureIdentityDeployment ?? ensureIdentityDeployment;
-  const hasIdentity =
-    deps?.hasIdentityDeployment ?? hasIdentityDeployment;
+  const hasIdentity = deps?.hasIdentityDeployment ?? hasIdentityDeployment;
   const bootstrapIfMissing = opts.bootstrapIfMissing ?? true;
 
   if (!(await hasIdentity()) && bootstrapIfMissing) {

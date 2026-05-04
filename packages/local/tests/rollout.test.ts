@@ -158,9 +158,7 @@ describe("detectHelmHookFailure", () => {
       }),
     } as never);
 
-    await expect(
-      detectHelmHookFailure("auth", "auth"),
-    ).resolves.toEqual({
+    await expect(detectHelmHookFailure("auth", "auth")).resolves.toEqual({
       jobName: "auth-permission-service-pgboot",
       message:
         'CreateContainerConfigError (secret "permission-service-secrets" not found)',
@@ -193,9 +191,7 @@ describe("detectHelmHookFailure", () => {
       stdout: JSON.stringify({ items: [] }),
     } as never);
 
-    await expect(
-      detectHelmHookFailure("auth", "auth"),
-    ).resolves.toEqual({
+    await expect(detectHelmHookFailure("auth", "auth")).resolves.toEqual({
       jobName: "auth-permission-service-pgboot",
       message: "Job was active longer than specified deadline",
     });

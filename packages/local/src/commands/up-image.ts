@@ -141,7 +141,10 @@ async function loadBundledSubchartContract(
   install: ChildInstall,
 ): Promise<SecretContract | null> {
   const directoryPath = path.join(chartsDir, install.name);
-  if (fs.existsSync(directoryPath) && fs.statSync(directoryPath).isDirectory()) {
+  if (
+    fs.existsSync(directoryPath) &&
+    fs.statSync(directoryPath).isDirectory()
+  ) {
     const contract = await loadSecretContract(directoryPath);
     if (contract && contract.secrets.length > 0) return contract;
   }
@@ -356,6 +359,13 @@ export async function runImageModeUp(
   const contractsByName = new Map<string, SecretContract>();
 
   const APP_ROW = deployable.name;
+  const serviceLabels: Record<string, string> = {
+    [APP_ROW]: `${deployable.name} ${pc.dim(deployable.version)}`,
+  };
+  for (const install of installs) {
+    serviceLabels[install.name] =
+      `${install.name} ${pc.dim(install.chartVersion)}`;
+  }
   const display = new PhaseTable<Phase>(
     [APP_ROW, ...installs.map((i) => i.name)],
     {
@@ -363,13 +373,13 @@ export async function runImageModeUp(
       phaseLabels: UP_PHASE_LABELS,
       header: headerText,
       initialLineCount: 0,
-      serviceLabels: {
-        [APP_ROW]: `${deployable.name} ${pc.dim(deployable.version)}`,
-      },
+      hidePendingRows: true,
+      serviceLabels,
     },
   );
 
   preflightList!.stop();
+  display.entry(`${deployable.name} ${pc.dim(deployable.version)}`);
   display.start();
 
   const failures: string[] = [];
@@ -393,7 +403,6 @@ export async function runImageModeUp(
     const umbrellaRef = `oci://${config.helmChartRegistry}/${deployable.chartRepository}/${deployable.name}`;
     const umbrellaDir = path.join(tmpDir, deployable.name);
     fs.mkdirSync(umbrellaDir, { recursive: true });
-    display.transition(APP_ROW, "pull", "running");
     installs.forEach((i) => display.transition(i.name, "pull", "running"));
     let umbrellaTgzPath: string;
     try {
@@ -418,7 +427,6 @@ export async function runImageModeUp(
         );
       }
       umbrellaTgzPath = path.join(umbrellaDir, tgzFiles[0]);
-      display.transition(APP_ROW, "pull", "done");
       installs.forEach((i) => display.transition(i.name, "pull", "done"));
     } catch (err) {
       display.transition(APP_ROW, "pull", "failed");
@@ -443,7 +451,10 @@ export async function runImageModeUp(
       );
       if (fs.existsSync(chartsDir)) {
         for (const install of installs) {
-          const contract = await loadBundledSubchartContract(chartsDir, install);
+          const contract = await loadBundledSubchartContract(
+            chartsDir,
+            install,
+          );
           if (contract) contractsByName.set(install.name, contract);
         }
       }
@@ -453,7 +464,6 @@ export async function runImageModeUp(
     }
 
     // --- secrets phase (per-subchart, parallel) ---
-    display.transition(APP_ROW, "secrets", "done");
     await Promise.all(
       installs.map(async (install) => {
         const contract = contractsByName.get(install.name);
@@ -482,7 +492,6 @@ export async function runImageModeUp(
     // No --wait/--atomic: we want per-subchart rollout watchers below to
     // stream live status into the table instead of one opaque spinner.
     const umbrellaNamespace = installs[0].namespace;
-    display.transition(APP_ROW, "install", "running");
     installs.forEach((i) => display.transition(i.name, "install", "running"));
     try {
       const args = buildUmbrellaInstallArgs(
@@ -520,7 +529,6 @@ export async function runImageModeUp(
       } finally {
         clearInterval(poller);
       }
-      display.transition(APP_ROW, "install", "done");
       installs.forEach((i) => display.transition(i.name, "install", "done"));
     } catch (err) {
       display.transition(APP_ROW, "install", "failed");
@@ -553,8 +561,6 @@ export async function runImageModeUp(
     }
 
     // --- ready phase (per-subchart rollout watchers, parallel) ---
-    display.transition(APP_ROW, "ready", "running");
-    let anyReadyFailed = false;
     await Promise.all(
       installs.map((install) =>
         pools.kubectlWatch.run(async () => {
@@ -573,7 +579,6 @@ export async function runImageModeUp(
             );
             display.transition(install.name, "ready", "done");
           } catch (err) {
-            anyReadyFailed = true;
             display.transition(install.name, "ready", "failed");
             const execaErr = err as {
               stderr?: string;
@@ -603,11 +608,10 @@ export async function runImageModeUp(
         }),
       ),
     );
-    display.transition(APP_ROW, "ready", anyReadyFailed ? "failed" : "done");
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
     // Always freeze the display — clears the ticker regardless of outcome.
-    display.finish(deployable.entry, config.internalBaseDomain);
+    display.finish(null, config.internalBaseDomain);
   }
 
   // FR-021-AC-6: exit 1 whenever any child failed, regardless of --continue-on-error.

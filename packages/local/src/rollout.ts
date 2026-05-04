@@ -218,10 +218,7 @@ async function detectTerminalFailure(
   return null;
 }
 
-function summarizeWaitingFailure(
-  reason: string,
-  message?: string,
-): string {
+function summarizeWaitingFailure(reason: string, message?: string): string {
   const detail = message
     ? ` (${message.split("\n")[0].replace(/\s+(?:container|pod)=\S+/g, "")})`
     : "";
@@ -284,7 +281,8 @@ export async function detectHelmHookFailure(
         ],
         { all: true },
       );
-      const pods = (JSON.parse(podStdout) as { items: unknown[] }).items as Array<{
+      const pods = (JSON.parse(podStdout) as { items: unknown[] })
+        .items as Array<{
         status: {
           containerStatuses?: Array<{
             state: {
@@ -301,10 +299,7 @@ export async function detectHelmHookFailure(
           if (waiting?.reason && TERMINAL_WAITING_REASONS.has(waiting.reason)) {
             return {
               jobName: job.metadata.name,
-              message: summarizeWaitingFailure(
-                waiting.reason,
-                waiting.message,
-              ),
+              message: summarizeWaitingFailure(waiting.reason, waiting.message),
             };
           }
           const terminated = cs.state.terminated;
