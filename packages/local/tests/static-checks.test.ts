@@ -242,6 +242,15 @@ describe("FR-030: --refresh flag is wired end-to-end", () => {
     const src = readSrc("commands/up-source.ts");
     expect(src).toMatch(/opts\.refresh[\s\S]*?dependencyUpdate:\s*true/);
   });
+
+  it("TC-092a: source mode prefers chart-local secret contracts", () => {
+    const src = readSrc("commands/up-source.ts");
+    expect(src).toMatch(/secretContractDir/);
+    expect(src).toMatch(
+      /path\.join\(chartPath,\s*SECRETS_FILENAME\)[\s\S]*?return chartPath/,
+    );
+    expect(src).toMatch(/install\.secretContractDir/);
+  });
 });
 
 // ---------------------------------------------------------------------------

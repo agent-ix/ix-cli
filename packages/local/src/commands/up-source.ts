@@ -12,7 +12,11 @@ import {
   resolveCatalog,
   resolveProfile,
 } from "../host-mounts.js";
-import { applySecretContract, loadSecretContract } from "../local-secrets.js";
+import {
+  SECRETS_FILENAME,
+  applySecretContract,
+  loadSecretContract,
+} from "../local-secrets.js";
 import { waitForRollout } from "../rollout.js";
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
@@ -34,6 +38,7 @@ interface LocalInstall {
   chartPath: string;
   valuesFiles: string[];
   repoDir: string;
+  secretContractDir: string;
   dependencyUpdate: boolean;
   tags: string[];
   /** Target Kubernetes namespace, resolved via the four-tier name fallback. */
@@ -156,6 +161,11 @@ function makefileHasTargets(repoDir: string, targets: string[]): boolean {
   );
 }
 
+function resolveSecretContractDir(repoDir: string, chartPath: string): string {
+  if (fs.existsSync(path.join(chartPath, SECRETS_FILENAME))) return chartPath;
+  return repoDir;
+}
+
 function resolveServiceInstall(
   name: string,
   devDir: string,
@@ -190,6 +200,7 @@ function resolveServiceInstall(
     chartPath,
     valuesFiles: [valuesPath],
     repoDir,
+    secretContractDir: resolveSecretContractDir(repoDir, chartPath),
     dependencyUpdate: shouldDependencyUpdate(chartPath),
     tags: parseChartTags(chartPath),
     namespace: parseChartNamespace(chartPath),
@@ -280,16 +291,16 @@ function resolveLocalInstalls(
     return {
       secretRepoDirs: [
         app.appRepoDir,
-        ...app.installs.map((install) => install.repoDir),
+        ...app.installs.map((install) => install.secretContractDir),
       ],
       installs: app.installs,
     };
   }
   const install = resolveServiceInstall(name, devDir);
   if (!matchesTagFilters(install.tags, opts)) {
-    return { secretRepoDirs: [install.repoDir], installs: [] };
+    return { secretRepoDirs: [install.secretContractDir], installs: [] };
   }
-  return { secretRepoDirs: [install.repoDir], installs: [install] };
+  return { secretRepoDirs: [install.secretContractDir], installs: [install] };
 }
 
 function buildLocalHelmArgs(
@@ -374,7 +385,7 @@ export async function runSourceModeUp(
           title: `Apply repo secrets: ${pc.cyan(path.basename(contract.repoDir))}`,
           task: async (_ctx: unknown, task: { output: string }) => {
             const matched = installs.find(
-              (i) => i.repoDir === contract.repoDir,
+              (i) => i.secretContractDir === contract.repoDir,
             );
             const namespace = matched?.namespace ?? IX_APPS_NAMESPACE;
             await applySecretContract(contract, namespace, (line) => {
