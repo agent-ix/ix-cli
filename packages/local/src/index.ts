@@ -214,8 +214,6 @@ export async function runUp(
       deployable.role === "app"
         ? async () => {
             const { defaultExpandApp } = await import("./commands/up-image.js");
-            const { resolveDeployableNamespace } =
-              await import("./discovery.js");
             const installs = await defaultExpandApp(deployable, config);
             return installs
               .filter((install) => {
@@ -227,7 +225,6 @@ export async function runUp(
                 const child = registry.find((d) => d.name === install.name);
                 const next = { ...install };
                 if (child) {
-                  next.namespace = resolveDeployableNamespace(child);
                   if (opts.latest) next.chartVersion = child.version;
                 }
                 return next;

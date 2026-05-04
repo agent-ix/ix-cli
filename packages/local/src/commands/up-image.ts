@@ -521,7 +521,7 @@ export async function runImageModeUp(
     // --- install phase (single umbrella `helm upgrade --install`) ---
     // No --wait/--atomic: we want per-subchart rollout watchers below to
     // stream live status into the table instead of one opaque spinner.
-    const umbrellaNamespace = installs[0].namespace;
+    const umbrellaNamespace = resolveDeployableNamespace(deployable);
     display.transition(APP_ROW, "install", "running");
     try {
       await cleanupFailedHelmHookJobs(umbrellaNamespace, deployable.name);
