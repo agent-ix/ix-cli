@@ -84,14 +84,19 @@ Tests fall into four types:
 | auth | ix-cli-auth-CON-4: no namespace string literals (covered by TC-085) | TC-085 | ❌ Missing (static) |
 | auth | ix-cli-auth-CON-5: Deployable registry — identity/auth-service/permission-service declare `namespace: IX_AUTH_NAMESPACE`; up-image/up-source honor `deployable.namespace` | TC-089 | ❌ Missing (integration) |
 | FR-031 | AC-13: waitForRollout enriches status with `·label` when readyReplicas=0 | TC-109 | ✅ Complete |
-| FR-033 | AC-1: loadSecretContractFromTgz exported, uses tar, cleans up | TC-100, TC-106, TC-107 | ⚠️ Partial (static; unit missing) |
+| FR-033 | AC-1: loadSecretContractFromTgz exported, uses tar, cleans up | TC-100, TC-106, TC-107 | ⚠️ Partial (static; cleanup unit missing) |
 | FR-033 | AC-2: findSecretContractDir not called from up-image | TC-101 | ✅ Complete (static) |
 | FR-033 | AC-3: runImageModeUp has no devDir param | TC-102 | ✅ Complete (static) |
 | FR-033 | AC-4: UP_PHASES pull before secrets | TC-103 | ✅ Complete (static) |
-| FR-033 | AC-5: contractsByName built from subchart tgzs after pull | TC-104 | ⚠️ Partial (import check only; unit missing) |
+| FR-033 | AC-5: contractsByName built from bundled subcharts after pull | TC-104, TC-274, TC-275 | ⚠️ Partial (static + directory-layout static; integration missing) |
 | FR-033 | AC-6: single-service pulls chart tgz before install | TC-108 | ❌ Missing |
 | FR-033 | AC-7: missing ix-local.secrets.yaml → graceful skip | TC-105 | ❌ Missing (unit) |
 | FR-033 | AC-8: tmpDir always deleted in finally | TC-107 | ❌ Missing (unit) |
+| FR-033 | AC-9: app mode loads secret contracts from vendored subchart directories | TC-274 | ✅ Complete (static) |
+| FR-033 | AC-10: directory-based app-mode contract loading imports and calls `loadSecretContract` | TC-275 | ✅ Complete (static) |
+| FR-033 | AC-11: image-mode secret contracts must live inside the packaged chart source tree | TC-277 | ❌ Missing (artifact inspection) |
+| FR-033 | AC-12: missing packaged contract for a Secret-referencing chart is an artifact defect | TC-278 | ❌ Missing (artifact + manifest inspection) |
+| FR-033 | AC-13: app umbrella install polls Helm hook failures and aborts early | TC-276 | ✅ Complete (static + unit hook detection) |
 
 ### Non-Functional Requirement Coverage
 
@@ -268,9 +273,14 @@ Tests fall into four types:
 | TC-103 | UP_PHASES has pull before secrets | Static | P1 | FR-033-AC-4 | ✅ Complete |
 | TC-104 | up-image.ts imports loadSecretContractFromTgz | Static | P1 | FR-033-AC-1, FR-033-AC-5 | ✅ Complete |
 | TC-105 | loadSecretContractFromTgz returns null when no ix-local.secrets.yaml in chart | Unit | P1 | FR-033-AC-7 | ❌ Missing |
-| TC-106 | loadSecretContractFromTgz returns parsed contract when ix-local.secrets.yaml present | Unit | P1 | FR-033-AC-1 | ❌ Missing |
+| TC-106 | loadSecretContractFromTgz returns parsed contract when ix-local.secrets.yaml present | Unit | P1 | FR-033-AC-1 | ✅ Complete |
 | TC-107 | loadSecretContractFromTgz cleans up tmpDir on success and on error | Unit | P1 | FR-033-AC-8 | ❌ Missing |
 | TC-108 | Single-service: runImageModeUp pulls chart tgz before runSingleServiceListr | Static | P1 | FR-033-AC-6 | ❌ Missing |
+| TC-274 | App-mode bundled subcharts may be directories or tgzs; up-image supports both | Static | P1 | FR-033-AC-5, FR-033-AC-9 | ✅ Complete |
+| TC-275 | App-mode bundled subchart directory path imports and calls loadSecretContract | Static | P1 | FR-033-AC-5, FR-033-AC-10 | ✅ Complete |
+| TC-276 | App umbrella install polls detectHelmHookFailure and aborts helm on hook failure | Static + Unit | P1 | FR-033-AC-13 | ✅ Complete |
+| TC-277 | Published chart artifact contains `ix-local.secrets.yaml` only when the source chart places it inside the packaged chart tree | Artifact inspection | P1 | FR-033-AC-11 | ❌ Missing |
+| TC-278 | A chart whose rendered manifests reference a materialized Secret but whose published artifact lacks the contract is flagged as an artifact defect | Artifact + manifest inspection | P1 | FR-033-AC-12 | ❌ Missing |
 
 ---
 

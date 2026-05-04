@@ -15,6 +15,7 @@
  */
 
 import type { IxConfig } from "../config.js";
+import { execa, type ExecaError } from "execa";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
 import {
   kubectlExecJson,
@@ -25,8 +26,12 @@ import {
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
 type ExecFn = typeof kubectlExecJson;
+type EnsureIdentityFn = (config: IxConfig) => Promise<void>;
+type HasIdentityDeploymentFn = () => Promise<boolean>;
 export interface IdentityDeps {
   kubectlExecJson?: ExecFn;
+  ensureIdentityDeployment?: EnsureIdentityFn;
+  hasIdentityDeployment?: HasIdentityDeploymentFn;
 }
 
 interface SeedResponse {
@@ -53,11 +58,52 @@ const IDENTITY_CLI_INIT = [
   "json",
 ];
 
+function isIdentityDeploymentMissing(err: KubectlExecError): boolean {
+  const stderr = err.stderr.trim();
+  return /deployments\.apps "identity" not found/i.test(stderr);
+}
+
+async function hasIdentityDeployment(): Promise<boolean> {
+  try {
+    await execa("kubectl", [
+      "get",
+      "deployment",
+      IDENTITY_DEPLOYMENT,
+      "-n",
+      IX_AUTH_NAMESPACE,
+      "-o",
+      "name",
+    ]);
+    return true;
+  } catch (err) {
+    const e = err as ExecaError;
+    const stderr = String(e.stderr ?? "").trim();
+    if (/notfound/i.test(stderr)) return false;
+    throw new Error(
+      `failed to check identity deployment: ${stderr || e.shortMessage || e.message}`,
+    );
+  }
+}
+
+async function ensureIdentityDeployment(config: IxConfig): Promise<void> {
+  void config;
+  const { runUp } = await import("../index.js");
+  await runUp(["auth"]);
+}
+
 export async function runAuthInit(
-  _config: IxConfig,
+  config: IxConfig,
   deps?: IdentityDeps,
 ): Promise<void> {
   const _exec = deps?.kubectlExecJson ?? kubectlExecJson;
+  const ensureIdentity =
+    deps?.ensureIdentityDeployment ?? ensureIdentityDeployment;
+  const hasIdentity =
+    deps?.hasIdentityDeployment ?? hasIdentityDeployment;
+
+  if (!(await hasIdentity())) {
+    await ensureIdentity(config);
+  }
 
   const list = startListing("ix local auth init");
   list.commit();
@@ -70,13 +116,16 @@ export async function runAuthInit(
       {
         title: "Seeding admin account (kubectl exec → identity.cli init-admin)",
         task: async (_ctx, task) => {
-          task.output = `kubectl exec -n ${IX_AUTH_NAMESPACE} deployment/${IDENTITY_DEPLOYMENT} -- ${IDENTITY_CLI_INIT.join(" ")}`;
+          const commandText = `kubectl exec -n ${IX_AUTH_NAMESPACE} deployment/${IDENTITY_DEPLOYMENT} -- ${IDENTITY_CLI_INIT.join(" ")}`;
+          task.output = commandText;
           try {
             seedResp = await _exec<SeedResponse>(
               IX_AUTH_NAMESPACE,
               IDENTITY_DEPLOYMENT,
               IDENTITY_CLI_INIT,
             );
+            task.output = "Admin account created";
+            return;
           } catch (err) {
             if (err instanceof KubectlExecError) {
               if (err.exitCode === 2) {
@@ -89,13 +138,17 @@ export async function runAuthInit(
                   `identity database unreachable: ${err.stderr.trim() || err.message}`,
                 );
               }
+              if (isIdentityDeploymentMissing(err)) {
+                throw new Error(
+                  "identity deployment missing after auth bootstrap",
+                );
+              }
               throw new Error(
                 `identity init-admin failed (exit ${err.exitCode}): ${err.stderr.trim() || err.message}`,
               );
             }
             throw err;
           }
-          task.output = "Admin account created";
         },
       },
     ],

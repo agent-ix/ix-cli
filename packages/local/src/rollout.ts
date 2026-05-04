@@ -7,6 +7,11 @@
 import { execa } from "execa";
 import type { ListrTaskWrapper } from "listr2";
 
+export interface HookFailure {
+  jobName: string;
+  message: string;
+}
+
 /**
  * Extract a human-readable failure reason from pod state after a rollout fails.
  * Checks container waiting/terminated reasons (CrashLoopBackOff, OOMKilled, etc.)
@@ -210,6 +215,125 @@ async function detectTerminalFailure(
   } catch {
     // pod may not exist yet
   }
+  return null;
+}
+
+function summarizeWaitingFailure(
+  reason: string,
+  message?: string,
+): string {
+  const detail = message
+    ? ` (${message.split("\n")[0].replace(/\s+(?:container|pod)=\S+/g, "")})`
+    : "";
+  return `${reason}${detail}`;
+}
+
+/**
+ * Detect a failing Helm hook job while `helm upgrade --install` is still
+ * running. This allows the caller to abort early instead of waiting for Helm's
+ * hook timeout/deadline.
+ */
+export async function detectHelmHookFailure(
+  namespace: string,
+  releaseName: string,
+): Promise<HookFailure | null> {
+  try {
+    const { stdout } = await execa(
+      "kubectl",
+      [
+        "get",
+        "jobs",
+        "-n",
+        namespace,
+        "-l",
+        `app.kubernetes.io/instance=${releaseName}`,
+        "-o",
+        "json",
+      ],
+      { all: true },
+    );
+    const jobs = (JSON.parse(stdout) as { items: unknown[] }).items as Array<{
+      metadata: {
+        name: string;
+        annotations?: Record<string, string>;
+      };
+      status?: {
+        conditions?: Array<{
+          type?: string;
+          status?: string;
+          reason?: string;
+          message?: string;
+        }>;
+      };
+    }>;
+
+    for (const job of jobs) {
+      if (!job.metadata.annotations?.["helm.sh/hook"]) continue;
+
+      const { stdout: podStdout } = await execa(
+        "kubectl",
+        [
+          "get",
+          "pods",
+          "-n",
+          namespace,
+          "-l",
+          `job-name=${job.metadata.name}`,
+          "-o",
+          "json",
+        ],
+        { all: true },
+      );
+      const pods = (JSON.parse(podStdout) as { items: unknown[] }).items as Array<{
+        status: {
+          containerStatuses?: Array<{
+            state: {
+              waiting?: { reason?: string; message?: string };
+              terminated?: { reason?: string; exitCode?: number };
+            };
+          }>;
+        };
+      }>;
+
+      for (const pod of pods) {
+        for (const cs of pod.status.containerStatuses ?? []) {
+          const waiting = cs.state.waiting;
+          if (waiting?.reason && TERMINAL_WAITING_REASONS.has(waiting.reason)) {
+            return {
+              jobName: job.metadata.name,
+              message: summarizeWaitingFailure(
+                waiting.reason,
+                waiting.message,
+              ),
+            };
+          }
+          const terminated = cs.state.terminated;
+          if (terminated?.reason && terminated.reason !== "Completed") {
+            return {
+              jobName: job.metadata.name,
+              message: `${terminated.reason} (exit ${terminated.exitCode ?? "?"})`,
+            };
+          }
+        }
+      }
+
+      const failed = job.status?.conditions?.find(
+        (c) => c.type === "Failed" && c.status === "True",
+      );
+      if (failed) {
+        return {
+          jobName: job.metadata.name,
+          message:
+            failed.message?.trim() ||
+            failed.reason?.trim() ||
+            "Helm hook job failed",
+        };
+      }
+    }
+  } catch {
+    // Ignore transient API errors; caller will continue normal helm/watch flow.
+  }
+
   return null;
 }
 

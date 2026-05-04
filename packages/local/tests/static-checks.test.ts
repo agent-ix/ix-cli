@@ -342,4 +342,23 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
     const src = readSrc("commands/up-image.ts");
     expect(src).toMatch(/loadSecretContractFromTgz/);
   });
+
+  it("TC-274: up-image.ts supports bundled subcharts as directories as well as tgzs", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/path\.join\(chartsDir, install\.name\)/);
+    expect(src).toMatch(/f\.endsWith\("\.tgz"\)/);
+  });
+
+  it("TC-275: up-image.ts imports loadSecretContract for bundled subchart directories", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/loadSecretContract,/);
+    expect(src).toMatch(/loadSecretContract\(directoryPath\)/);
+  });
+
+  it("TC-276: app umbrella install polls detectHelmHookFailure and aborts helm on hook failure", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/detectHelmHookFailure/);
+    expect(src).toMatch(/subprocess\.kill\(\)/);
+    expect(src).toMatch(/hook .* failed:/);
+  });
 });

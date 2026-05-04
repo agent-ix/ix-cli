@@ -23,10 +23,15 @@ import type { Deployable } from "../discovery.js";
 import { resolveDeployableNamespace } from "../discovery.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
-import { waitForRollout, diagnosePodFailure } from "../rollout.js";
+import {
+  waitForRollout,
+  diagnosePodFailure,
+  detectHelmHookFailure,
+} from "../rollout.js";
 import {
   applySecretContract,
   ensureGhcrCredsInNamespace,
+  loadSecretContract,
   loadSecretContractFromTgz,
   type SecretContract,
 } from "../local-secrets.js";
@@ -130,6 +135,37 @@ export const defaultExpandApp: AppExpander = async (deployable, config) => {
   ]);
   return parseChartDependencies(stdout, resolveDeployableNamespace(deployable));
 };
+
+async function loadBundledSubchartContract(
+  chartsDir: string,
+  install: ChildInstall,
+): Promise<SecretContract | null> {
+  const directoryPath = path.join(chartsDir, install.name);
+  if (fs.existsSync(directoryPath) && fs.statSync(directoryPath).isDirectory()) {
+    const contract = await loadSecretContract(directoryPath);
+    if (contract && contract.secrets.length > 0) return contract;
+  }
+
+  const subchartTgzFiles = fs
+    .readdirSync(chartsDir)
+    .filter((f) => f.endsWith(".tgz") && f.startsWith(`${install.name}-`));
+  for (const f of subchartTgzFiles) {
+    const contract = await loadSecretContractFromTgz(
+      path.join(chartsDir, f),
+      install.name,
+    );
+    if (contract && contract.secrets.length > 0) return contract;
+  }
+
+  return null;
+}
+
+function findInstallForHookJob(
+  installs: ChildInstall[],
+  jobName: string,
+): ChildInstall | null {
+  return installs.find((install) => jobName.includes(install.name)) ?? null;
+}
 
 function buildHelmInstallArgs(
   install: ChildInstall,
@@ -394,7 +430,8 @@ export async function runImageModeUp(
       return; // umbrella pull failure is fatal — finally{} freezes display
     }
 
-    // FR-033: extract secret contracts from subchart tgzs inside the umbrella.
+    // FR-033: extract secret contracts from subcharts bundled inside the
+    // umbrella. Published charts may vendor subcharts as directories or tgzs.
     const umbrellaExtractDir = path.join(tmpDir, "umbrella-extracted");
     fs.mkdirSync(umbrellaExtractDir, { recursive: true });
     try {
@@ -406,19 +443,8 @@ export async function runImageModeUp(
       );
       if (fs.existsSync(chartsDir)) {
         for (const install of installs) {
-          const subchartTgzFiles = fs
-            .readdirSync(chartsDir)
-            .filter(
-              (f) => f.endsWith(".tgz") && f.startsWith(`${install.name}-`),
-            );
-          for (const f of subchartTgzFiles) {
-            const contract = await loadSecretContractFromTgz(
-              path.join(chartsDir, f),
-              install.name,
-            );
-            if (contract && contract.secrets.length > 0)
-              contractsByName.set(install.name, contract);
-          }
+          const contract = await loadBundledSubchartContract(chartsDir, install);
+          if (contract) contractsByName.set(install.name, contract);
         }
       }
     } catch {
@@ -466,7 +492,39 @@ export async function runImageModeUp(
         config,
         tagOverride,
       );
-      await execa("helm", args, { all: true });
+      let hookFailure: Awaited<
+        ReturnType<typeof detectHelmHookFailure>
+      > | null = null;
+      const subprocess = execa("helm", args, { all: true });
+      subprocess.all?.on("data", (chunk) => {
+        const line = chunk.toString().trim();
+        if (!line) return;
+        display.setPodStatus(APP_ROW, line);
+      });
+      const checkHookFailure = () => {
+        void detectHelmHookFailure(umbrellaNamespace, deployable.name).then(
+          (failure) => {
+            if (failure && !hookFailure) {
+              hookFailure = failure;
+              subprocess.kill();
+            }
+          },
+        );
+      };
+      checkHookFailure();
+      const poller = setInterval(checkHookFailure, 1000);
+      try {
+        await subprocess;
+      } catch (err) {
+        if (hookFailure) {
+          throw new Error(
+            `hook ${hookFailure.jobName} failed: ${hookFailure.message}`,
+          );
+        }
+        throw err;
+      } finally {
+        clearInterval(poller);
+      }
       display.transition(APP_ROW, "install", "done");
       installs.forEach((i) => display.transition(i.name, "install", "done"));
     } catch (err) {
@@ -483,6 +541,16 @@ export async function runImageModeUp(
           .split("\n")
           .filter(Boolean)
           .pop() ?? String(err);
+      const hookMatch = rawMsg.match(/^hook ([^ ]+) failed: (.+)$/);
+      if (hookMatch) {
+        const install = findInstallForHookJob(installs, hookMatch[1]);
+        if (install) {
+          display.setError(
+            install.name,
+            `install: hook ${hookMatch[1]} failed: ${hookMatch[2]}`,
+          );
+        }
+      }
       const failureMsg = `install (umbrella): ${rawMsg}`;
       display.setError(APP_ROW, failureMsg);
       failures.push(`${APP_ROW}: ${failureMsg}`);

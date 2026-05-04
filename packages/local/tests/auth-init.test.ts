@@ -59,7 +59,10 @@ describe("runAuthInit — happy path", () => {
     };
     const mockExec = vi.fn().mockResolvedValueOnce(seedResp);
 
-    await runAuthInit(mockConfig, { kubectlExecJson: mockExec });
+    await runAuthInit(mockConfig, {
+      kubectlExecJson: mockExec,
+      hasIdentityDeployment: vi.fn().mockResolvedValue(true),
+    });
 
     expect(mockExec).toHaveBeenCalledTimes(1);
     expect(mockWriteSecret).toHaveBeenCalledWith({
@@ -81,7 +84,10 @@ describe("runAuthInit — admin already exists (exit 2)", () => {
   it("prints an already-exists note and does NOT write a secret", async () => {
     const mockExec = vi.fn().mockRejectedValueOnce(makeExecError(2));
 
-    await runAuthInit(mockConfig, { kubectlExecJson: mockExec });
+    await runAuthInit(mockConfig, {
+      kubectlExecJson: mockExec,
+      hasIdentityDeployment: vi.fn().mockResolvedValue(true),
+    });
 
     expect(mockWriteSecret).not.toHaveBeenCalled();
     expect(mockNote).toHaveBeenCalledWith(
@@ -98,8 +104,42 @@ describe("runAuthInit — database unreachable (exit 3)", () => {
       .mockRejectedValueOnce(makeExecError(3, "connection refused"));
 
     await expect(
-      runAuthInit(mockConfig, { kubectlExecJson: mockExec }),
+      runAuthInit(mockConfig, {
+        kubectlExecJson: mockExec,
+        hasIdentityDeployment: vi.fn().mockResolvedValue(true),
+      }),
     ).rejects.toThrow(/identity database unreachable/);
+  });
+});
+
+describe("runAuthInit — identity deployment missing", () => {
+  it("starts auth once before init-admin when identity is absent", async () => {
+    const seedResp = {
+      user_id: "u1",
+      password: "tmp-pass",
+      expires_at: "2026-05-01T00:00:00+00:00",
+      login_url: "https://identity.dev.ix/login",
+    };
+    const mockExec = vi.fn().mockResolvedValueOnce(seedResp);
+    const mockEnsureIdentity = vi.fn().mockResolvedValue(undefined);
+    const mockHasIdentity = vi.fn().mockResolvedValue(false);
+
+    await runAuthInit(mockConfig, {
+      kubectlExecJson: mockExec,
+      ensureIdentityDeployment: mockEnsureIdentity,
+      hasIdentityDeployment: mockHasIdentity,
+    });
+
+    expect(mockHasIdentity).toHaveBeenCalledTimes(1);
+    expect(mockEnsureIdentity).toHaveBeenCalledTimes(1);
+    expect(mockExec).toHaveBeenCalledTimes(1);
+    expect(mockWriteSecret).toHaveBeenCalledWith({
+      password: "tmp-pass",
+      expiresAt: "2026-05-01T00:00:00+00:00",
+      userId: "u1",
+      loginUrl: "https://identity.dev.ix/login",
+    });
+    expect(mockSuccess).toHaveBeenCalledWith("Admin account created.");
   });
 });
 
@@ -110,7 +150,31 @@ describe("runAuthInit — generic exec failure", () => {
       .mockRejectedValueOnce(makeExecError(99, "something exploded"));
 
     await expect(
-      runAuthInit(mockConfig, { kubectlExecJson: mockExec }),
+      runAuthInit(mockConfig, {
+        kubectlExecJson: mockExec,
+        hasIdentityDeployment: vi.fn().mockResolvedValue(true),
+      }),
     ).rejects.toThrow(/exit 99/);
+  });
+});
+
+describe("runAuthInit — identity still missing after bootstrap", () => {
+  it("fails clearly if init-admin still cannot find identity", async () => {
+    const mockExec = vi
+      .fn()
+      .mockRejectedValueOnce(
+        makeExecError(
+          1,
+          'Error from server (NotFound): deployments.apps "identity" not found',
+        ),
+      );
+
+    await expect(
+      runAuthInit(mockConfig, {
+        kubectlExecJson: mockExec,
+        ensureIdentityDeployment: vi.fn().mockResolvedValue(undefined),
+        hasIdentityDeployment: vi.fn().mockResolvedValue(false),
+      }),
+    ).rejects.toThrow(/identity deployment missing after auth bootstrap/);
   });
 });

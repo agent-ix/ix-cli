@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("execa");
 
 import { execa } from "execa";
-import { waitForRollout } from "../src/rollout.js";
+import { waitForRollout, detectHelmHookFailure } from "../src/rollout.js";
 
 const mockExeca = vi.mocked(execa);
 
@@ -115,5 +115,89 @@ describe("waitForRollout", () => {
     expect(statuses[0]).toBe("0/1·start");
     // Final status must be the plain ready count with no label
     expect(statuses[statuses.length - 1]).toMatch(/^1\/1/);
+  });
+});
+
+describe("detectHelmHookFailure", () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it("returns an early terminal pod failure for a Helm hook job", async () => {
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({
+        items: [
+          {
+            metadata: {
+              name: "auth-permission-service-pgboot",
+              annotations: { "helm.sh/hook": "pre-install" },
+            },
+            status: {},
+          },
+        ],
+      }),
+    } as never);
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({
+        items: [
+          {
+            status: {
+              containerStatuses: [
+                {
+                  state: {
+                    waiting: {
+                      reason: "CreateContainerConfigError",
+                      message: 'secret "permission-service-secrets" not found',
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    } as never);
+
+    await expect(
+      detectHelmHookFailure("auth", "auth"),
+    ).resolves.toEqual({
+      jobName: "auth-permission-service-pgboot",
+      message:
+        'CreateContainerConfigError (secret "permission-service-secrets" not found)',
+    });
+  });
+
+  it("falls back to the job failed condition message when pod state is gone", async () => {
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({
+        items: [
+          {
+            metadata: {
+              name: "auth-permission-service-pgboot",
+              annotations: { "helm.sh/hook": "pre-install" },
+            },
+            status: {
+              conditions: [
+                {
+                  type: "Failed",
+                  status: "True",
+                  message: "Job was active longer than specified deadline",
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    } as never);
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({ items: [] }),
+    } as never);
+
+    await expect(
+      detectHelmHookFailure("auth", "auth"),
+    ).resolves.toEqual({
+      jobName: "auth-permission-service-pgboot",
+      message: "Job was active longer than specified deadline",
+    });
   });
 });

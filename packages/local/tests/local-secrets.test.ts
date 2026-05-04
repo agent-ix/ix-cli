@@ -6,11 +6,21 @@ import { execa } from "execa";
 import {
   applySecretContract,
   loadSecretContract,
+  loadSecretContractFromTgz,
 } from "../src/local-secrets.js";
 
-vi.mock("execa", () => ({
-  execa: vi.fn(),
-}));
+vi.mock("execa", async () => {
+  const actual = await vi.importActual<typeof import("execa")>("execa");
+  return {
+    ...actual,
+    execa: vi.fn((file: string, args: readonly string[] = [], options?: unknown) => {
+      if (file === "kubectl") {
+        return Promise.resolve({ stdout: "", stderr: "", all: "" });
+      }
+      return actual.execa(file, args as string[], options as never);
+    }),
+  };
+});
 
 const mockExeca = vi.mocked(execa);
 
@@ -23,6 +33,42 @@ beforeEach(() => {
 });
 
 describe("local secret contracts", () => {
+  it("loads a packaged ix-local.secrets.yaml from a chart tgz", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-secrets-chart-"));
+    try {
+      const chartDir = path.join(dir, "npm-proxy");
+      fs.mkdirSync(chartDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(chartDir, "ix-local.secrets.yaml"),
+        [
+          "secrets:",
+          "  - name: npm-proxy-github",
+          "    namespace: platform",
+          "    keys:",
+          "      - secretKey: GH_TOKEN",
+          "        env: GITHUB_TOKEN",
+          "        required: true",
+          "",
+        ].join("\n"),
+      );
+      fs.writeFileSync(
+        path.join(chartDir, "Chart.yaml"),
+        "apiVersion: v2\nname: npm-proxy\nversion: 0.1.5\n",
+      );
+      const tgzPath = path.join(dir, "npm-proxy-0.1.5.tgz");
+      await execa("tar", ["-czf", tgzPath, "-C", dir, "npm-proxy"]);
+
+      process.env.GITHUB_TOKEN = "from-env";
+      const contract = await loadSecretContractFromTgz(tgzPath, "npm-proxy");
+      expect(contract).not.toBeNull();
+      expect(contract?.secrets).toHaveLength(1);
+      expect(contract?.secrets[0].name).toBe("npm-proxy-github");
+    } finally {
+      delete process.env.GITHUB_TOKEN;
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("reuses existing generated secret keys instead of rotating them", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-secrets-test-"));
     try {
