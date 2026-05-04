@@ -7,7 +7,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("execa");
 
 import { execa } from "execa";
-import { waitForRollout, detectHelmHookFailure } from "../src/rollout.js";
+import {
+  waitForRollout,
+  detectHelmHookFailure,
+  cleanupFailedHelmHookJobs,
+} from "../src/rollout.js";
 
 const mockExeca = vi.mocked(execa);
 
@@ -195,5 +199,62 @@ describe("detectHelmHookFailure", () => {
       jobName: "auth-permission-service-pgboot",
       message: "Job was active longer than specified deadline",
     });
+  });
+});
+
+describe("cleanupFailedHelmHookJobs", () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it("deletes only failed Helm hook jobs for the release", async () => {
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({
+        items: [
+          {
+            metadata: {
+              name: "auth-permission-service-pgboot",
+              annotations: { "helm.sh/hook": "pre-install,pre-upgrade" },
+            },
+            status: {
+              conditions: [{ type: "Failed", status: "True" }],
+            },
+          },
+          {
+            metadata: {
+              name: "auth-identity-pgboot",
+              annotations: { "helm.sh/hook": "pre-install,pre-upgrade" },
+            },
+            status: {
+              conditions: [{ type: "Complete", status: "True" }],
+            },
+          },
+          {
+            metadata: {
+              name: "ordinary-failed-job",
+              annotations: {},
+            },
+            status: {
+              conditions: [{ type: "Failed", status: "True" }],
+            },
+          },
+        ],
+      }),
+    } as never);
+    mockExeca.mockResolvedValueOnce({ stdout: "" } as never);
+
+    await expect(cleanupFailedHelmHookJobs("auth", "auth")).resolves.toEqual([
+      "auth-permission-service-pgboot",
+    ]);
+
+    expect(mockExeca).toHaveBeenCalledTimes(2);
+    expect(mockExeca).toHaveBeenNthCalledWith(2, "kubectl", [
+      "delete",
+      "job",
+      "auth-permission-service-pgboot",
+      "-n",
+      "auth",
+      "--ignore-not-found=true",
+    ]);
   });
 });

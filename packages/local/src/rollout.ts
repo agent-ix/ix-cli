@@ -12,6 +12,69 @@ export interface HookFailure {
   message: string;
 }
 
+interface HookJob {
+  metadata: {
+    name: string;
+    annotations?: Record<string, string>;
+  };
+  status?: {
+    conditions?: Array<{
+      type?: string;
+      status?: string;
+    }>;
+  };
+}
+
+function isFailedHookJob(job: HookJob): boolean {
+  if (!job.metadata.annotations?.["helm.sh/hook"]) return false;
+  return (
+    job.status?.conditions?.some(
+      (c) => c.type === "Failed" && c.status === "True",
+    ) ?? false
+  );
+}
+
+/**
+ * Removes failed Helm hook Jobs for a release before retrying an install.
+ * Helm normally honors hook-delete-policy=before-hook-creation, but a failed
+ * retry can still encounter stale hook Jobs from a prior interrupted/failed
+ * attempt. Only Jobs already marked Failed are deleted.
+ */
+export async function cleanupFailedHelmHookJobs(
+  namespace: string,
+  releaseName: string,
+): Promise<string[]> {
+  const { stdout } = await execa(
+    "kubectl",
+    [
+      "get",
+      "jobs",
+      "-n",
+      namespace,
+      "-l",
+      `app.kubernetes.io/instance=${releaseName}`,
+      "-o",
+      "json",
+    ],
+    { all: true },
+  );
+  const jobs = (JSON.parse(stdout) as { items: unknown[] }).items as HookJob[];
+  const failedHookJobs = jobs.filter(isFailedHookJob);
+
+  for (const job of failedHookJobs) {
+    await execa("kubectl", [
+      "delete",
+      "job",
+      job.metadata.name,
+      "-n",
+      namespace,
+      "--ignore-not-found=true",
+    ]);
+  }
+
+  return failedHookJobs.map((job) => job.metadata.name);
+}
+
 /**
  * Extract a human-readable failure reason from pod state after a rollout fails.
  * Checks container waiting/terminated reasons (CrashLoopBackOff, OOMKilled, etc.)

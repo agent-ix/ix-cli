@@ -24,6 +24,7 @@ import { resolveDeployableNamespace } from "../discovery.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
 import {
+  cleanupFailedHelmHookJobs,
   waitForRollout,
   diagnosePodFailure,
   detectHelmHookFailure,
@@ -191,8 +192,15 @@ function buildHelmInstallArgs(
   if (imageTagOverride) {
     args.push("--set-string", `ix-service.image.tag=${imageTagOverride}`);
   }
+  if (shouldForceImagePull(imageTagOverride)) {
+    args.push("--set-string", "ix-service.image.pullPolicy=Always");
+  }
   args.push(...buildHelmSetArgs(resolveCatalog()));
   return args;
+}
+
+function shouldForceImagePull(imageTagOverride: string | null): boolean {
+  return imageTagOverride === null || imageTagOverride === "latest";
 }
 
 /**
@@ -208,6 +216,7 @@ function buildUmbrellaInstallArgs(
   namespace: string,
   config: IxConfig,
   imageTagOverride: string | null,
+  childInstalls: ChildInstall[],
 ): string[] {
   const args = [
     "upgrade",
@@ -222,6 +231,14 @@ function buildUmbrellaInstallArgs(
   args.push(...buildGlobalSetArgs(config));
   if (imageTagOverride) {
     args.push("--set-string", `global.imageTag=${imageTagOverride}`);
+  }
+  if (shouldForceImagePull(imageTagOverride)) {
+    for (const child of childInstalls) {
+      args.push(
+        "--set-string",
+        `${child.name}.ix-service.image.pullPolicy=Always`,
+      );
+    }
   }
   args.push(...buildHelmSetArgs(resolveCatalog()));
   return args;
@@ -435,7 +452,9 @@ export async function runImageModeUp(
       const failureMsg = `pull (umbrella): ${msg}`;
       display.setError(APP_ROW, failureMsg);
       failures.push(`${APP_ROW}: ${failureMsg}`);
-      return; // umbrella pull failure is fatal — finally{} freezes display
+      throw new Error(
+        `App '${deployable.name}' failed: ${failures.join("; ")}`,
+      );
     }
 
     // FR-033: extract secret contracts from subcharts bundled inside the
@@ -494,22 +513,24 @@ export async function runImageModeUp(
     const umbrellaNamespace = installs[0].namespace;
     installs.forEach((i) => display.transition(i.name, "install", "running"));
     try {
+      await cleanupFailedHelmHookJobs(umbrellaNamespace, deployable.name);
       const args = buildUmbrellaInstallArgs(
         deployable.name,
         umbrellaTgzPath,
         umbrellaNamespace,
         config,
         tagOverride,
+        installs,
       );
-      let hookFailure: Awaited<
-        ReturnType<typeof detectHelmHookFailure>
-      > | null = null;
+      const hookFailureRef: {
+        current: Awaited<ReturnType<typeof detectHelmHookFailure>> | null;
+      } = { current: null };
       const subprocess = execa("helm", args, { all: true });
       const checkHookFailure = () => {
         void detectHelmHookFailure(umbrellaNamespace, deployable.name).then(
           (failure) => {
-            if (failure && !hookFailure) {
-              hookFailure = failure;
+            if (failure && !hookFailureRef.current) {
+              hookFailureRef.current = failure;
               subprocess.kill();
             }
           },
@@ -520,10 +541,9 @@ export async function runImageModeUp(
       try {
         await subprocess;
       } catch (err) {
-        if (hookFailure) {
-          throw new Error(
-            `hook ${hookFailure.jobName} failed: ${hookFailure.message}`,
-          );
+        if (hookFailureRef.current) {
+          const failure = hookFailureRef.current;
+          throw new Error(`hook ${failure.jobName} failed: ${failure.message}`);
         }
         throw err;
       } finally {
@@ -557,7 +577,9 @@ export async function runImageModeUp(
       const failureMsg = `install (umbrella): ${rawMsg}`;
       display.setError(APP_ROW, failureMsg);
       failures.push(`${APP_ROW}: ${failureMsg}`);
-      return;
+      throw new Error(
+        `App '${deployable.name}' failed: ${failures.join("; ")}`,
+      );
     }
 
     // --- ready phase (per-subchart rollout watchers, parallel) ---

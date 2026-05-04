@@ -361,4 +361,30 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
     expect(src).toMatch(/subprocess\.kill\(\)/);
     expect(src).toMatch(/hook .* failed:/);
   });
+
+  it("TC-277: fatal umbrella pull/install failures throw instead of returning successfully", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/App '\$\{deployable\.name\}' failed/);
+    expect(src).not.toMatch(/return;\s*\/\/ umbrella pull failure is fatal/);
+    expect(src).not.toMatch(
+      /failures\.push\(`\$\{APP_ROW\}: \$\{failureMsg\}`\);\s*return;/,
+    );
+  });
+
+  it("TC-278: umbrella install cleans up failed Helm hook jobs before retry", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/cleanupFailedHelmHookJobs/);
+    expect(src).toMatch(
+      /cleanupFailedHelmHookJobs\(umbrellaNamespace, deployable\.name\)[\s\S]*?buildUmbrellaInstallArgs/,
+    );
+  });
+
+  it("TC-279: image mode forces image pulls when deploying latest tags", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/function shouldForceImagePull/);
+    expect(src).toMatch(/ix-service\.image\.pullPolicy=Always/);
+    expect(src).toMatch(
+      /\$\{child\.name\}\.ix-service\.image\.pullPolicy=Always/,
+    );
+  });
 });
