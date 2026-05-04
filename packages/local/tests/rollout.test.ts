@@ -10,6 +10,7 @@ import { execa } from "execa";
 import {
   waitForRollout,
   detectHelmHookFailure,
+  detectHelmHookStatus,
   cleanupFailedHelmHookJobs,
 } from "../src/rollout.js";
 
@@ -198,6 +199,61 @@ describe("detectHelmHookFailure", () => {
     await expect(detectHelmHookFailure("auth", "auth")).resolves.toEqual({
       jobName: "auth-permission-service-pgboot",
       message: "Job was active longer than specified deadline",
+    });
+  });
+});
+
+describe("detectHelmHookStatus", () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it("returns running hook status with the latest pod log line", async () => {
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({
+        items: [
+          {
+            metadata: {
+              name: "cloud-manager-app-catalog-service-pgboot",
+              annotations: { "helm.sh/hook": "pre-install" },
+            },
+            status: { active: 1 },
+          },
+        ],
+      }),
+    } as never);
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({
+        items: [
+          {
+            metadata: {
+              name: "cloud-manager-app-catalog-service-pgboot-smgkx",
+            },
+            status: {
+              containerStatuses: [
+                {
+                  state: {
+                    running: {},
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    } as never);
+    mockExeca.mockResolvedValueOnce({
+      stdout:
+        "waiting for postgres at postgres.platform.svc.cluster.local:5432 ...\n",
+    } as never);
+
+    await expect(
+      detectHelmHookStatus("apps", "cloud-manager-app"),
+    ).resolves.toEqual({
+      jobName: "cloud-manager-app-catalog-service-pgboot",
+      phase: "running",
+      message:
+        "waiting for postgres at postgres.platform.svc.cluster.local:5432 ...",
     });
   });
 });

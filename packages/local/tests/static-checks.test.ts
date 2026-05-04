@@ -364,9 +364,9 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
     expect(src).toMatch(/loadSecretContract\(directoryPath\)/);
   });
 
-  it("TC-276: app umbrella install polls detectHelmHookFailure and aborts helm on hook failure", () => {
+  it("TC-276: app umbrella install polls hook status and aborts helm on hook failure", () => {
     const src = readSrc("commands/up-image.ts");
-    expect(src).toMatch(/detectHelmHookFailure/);
+    expect(src).toMatch(/detectHelmHookStatus/);
     expect(src).toMatch(/subprocess\.kill\(\)/);
     expect(src).toMatch(/hook .* failed:/);
   });
@@ -395,5 +395,16 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
     expect(src).toMatch(
       /\$\{child\.name\}\.ix-service\.image\.pullPolicy=Always/,
     );
+  });
+
+  it("TC-280: umbrella hook status is not applied to every child row", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).not.toMatch(
+      /installs\.forEach\(\(i\) => display\.transition\(i\.name, "install", "running"\)\)/,
+    );
+    expect(src).not.toMatch(
+      /installs\.forEach\(\(i\) => display\.transition\(i\.name, "install", "failed"\)\)/,
+    );
+    expect(src).toMatch(/findInstallForHookJob\(installs, status\.jobName\)/);
   });
 });

@@ -27,7 +27,8 @@ import {
   cleanupFailedHelmHookJobs,
   waitForRollout,
   diagnosePodFailure,
-  detectHelmHookFailure,
+  detectHelmHookStatus,
+  type HookStatus,
 } from "../rollout.js";
 import {
   applySecretContract,
@@ -168,7 +169,17 @@ function findInstallForHookJob(
   installs: ChildInstall[],
   jobName: string,
 ): ChildInstall | null {
-  return installs.find((install) => jobName.includes(install.name)) ?? null;
+  return (
+    installs
+      .filter(
+        (install) =>
+          jobName === install.name ||
+          jobName.startsWith(`${install.name}-`) ||
+          jobName.includes(`-${install.name}-`) ||
+          jobName.endsWith(`-${install.name}`),
+      )
+      .sort((a, b) => b.name.length - a.name.length)[0] ?? null
+  );
 }
 
 function buildHelmInstallArgs(
@@ -511,7 +522,7 @@ export async function runImageModeUp(
     // No --wait/--atomic: we want per-subchart rollout watchers below to
     // stream live status into the table instead of one opaque spinner.
     const umbrellaNamespace = installs[0].namespace;
-    installs.forEach((i) => display.transition(i.name, "install", "running"));
+    display.transition(APP_ROW, "install", "running");
     try {
       await cleanupFailedHelmHookJobs(umbrellaNamespace, deployable.name);
       const args = buildUmbrellaInstallArgs(
@@ -523,21 +534,36 @@ export async function runImageModeUp(
         installs,
       );
       const hookFailureRef: {
-        current: Awaited<ReturnType<typeof detectHelmHookFailure>> | null;
+        current: HookStatus | null;
       } = { current: null };
+      const observedHookRows = new Set<string>();
       const subprocess = execa("helm", args, { all: true });
-      const checkHookFailure = () => {
-        void detectHelmHookFailure(umbrellaNamespace, deployable.name).then(
-          (failure) => {
-            if (failure && !hookFailureRef.current) {
-              hookFailureRef.current = failure;
+      const checkHookStatus = () => {
+        void detectHelmHookStatus(umbrellaNamespace, deployable.name).then(
+          (status) => {
+            if (!status) return;
+            const install = findInstallForHookJob(installs, status.jobName);
+            if (install) {
+              if (!observedHookRows.has(install.name)) {
+                display.transition(install.name, "install", status.phase);
+                observedHookRows.add(install.name);
+              } else if (status.phase === "failed") {
+                display.transition(install.name, "install", "failed");
+              }
+              display.setPodStatus(
+                install.name,
+                `hook ${status.jobName}: ${status.message}`,
+              );
+            }
+            if (status.phase === "failed" && !hookFailureRef.current) {
+              hookFailureRef.current = status;
               subprocess.kill();
             }
           },
         );
       };
-      checkHookFailure();
-      const poller = setInterval(checkHookFailure, 1000);
+      checkHookStatus();
+      const poller = setInterval(checkHookStatus, 1000);
       try {
         await subprocess;
       } catch (err) {
@@ -549,10 +575,10 @@ export async function runImageModeUp(
       } finally {
         clearInterval(poller);
       }
+      display.transition(APP_ROW, "install", "done");
       installs.forEach((i) => display.transition(i.name, "install", "done"));
     } catch (err) {
       display.transition(APP_ROW, "install", "failed");
-      installs.forEach((i) => display.transition(i.name, "install", "failed"));
       const execaErr = err as {
         stderr?: string;
         all?: string;
@@ -568,6 +594,7 @@ export async function runImageModeUp(
       if (hookMatch) {
         const install = findInstallForHookJob(installs, hookMatch[1]);
         if (install) {
+          display.transition(install.name, "install", "failed");
           display.setError(
             install.name,
             `install: hook ${hookMatch[1]} failed: ${hookMatch[2]}`,

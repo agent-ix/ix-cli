@@ -12,6 +12,10 @@ export interface HookFailure {
   message: string;
 }
 
+export interface HookStatus extends HookFailure {
+  phase: "running" | "failed";
+}
+
 interface HookJob {
   metadata: {
     name: string;
@@ -297,6 +301,33 @@ export async function detectHelmHookFailure(
   namespace: string,
   releaseName: string,
 ): Promise<HookFailure | null> {
+  const status = await detectHelmHookStatus(namespace, releaseName);
+  if (status?.phase === "failed") {
+    return { jobName: status.jobName, message: status.message };
+  }
+  return null;
+}
+
+function latestNonEmptyLine(output: string): string | null {
+  return (
+    output
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .pop() ?? null
+  );
+}
+
+/**
+ * Observes Helm hook jobs while `helm upgrade --install` is still running.
+ * Failed terminal pod/job states are returned as `failed`; active hook pods
+ * return their latest log line so the caller can show progress only on the
+ * service row that owns the hook.
+ */
+export async function detectHelmHookStatus(
+  namespace: string,
+  releaseName: string,
+): Promise<HookStatus | null> {
   try {
     const { stdout } = await execa(
       "kubectl",
@@ -318,6 +349,7 @@ export async function detectHelmHookFailure(
         annotations?: Record<string, string>;
       };
       status?: {
+        active?: number;
         conditions?: Array<{
           type?: string;
           status?: string;
@@ -346,9 +378,11 @@ export async function detectHelmHookFailure(
       );
       const pods = (JSON.parse(podStdout) as { items: unknown[] })
         .items as Array<{
+        metadata: { name: string };
         status: {
           containerStatuses?: Array<{
             state: {
+              running?: Record<string, never>;
               waiting?: { reason?: string; message?: string };
               terminated?: { reason?: string; exitCode?: number };
             };
@@ -362,6 +396,7 @@ export async function detectHelmHookFailure(
           if (waiting?.reason && TERMINAL_WAITING_REASONS.has(waiting.reason)) {
             return {
               jobName: job.metadata.name,
+              phase: "failed",
               message: summarizeWaitingFailure(waiting.reason, waiting.message),
             };
           }
@@ -369,6 +404,7 @@ export async function detectHelmHookFailure(
           if (terminated?.reason && terminated.reason !== "Completed") {
             return {
               jobName: job.metadata.name,
+              phase: "failed",
               message: `${terminated.reason} (exit ${terminated.exitCode ?? "?"})`,
             };
           }
@@ -381,10 +417,44 @@ export async function detectHelmHookFailure(
       if (failed) {
         return {
           jobName: job.metadata.name,
+          phase: "failed",
           message:
             failed.message?.trim() ||
             failed.reason?.trim() ||
             "Helm hook job failed",
+        };
+      }
+
+      for (const pod of pods) {
+        const hasRunningContainer = (pod.status.containerStatuses ?? []).some(
+          (cs) => cs.state.running,
+        );
+        if (!hasRunningContainer) continue;
+        try {
+          const { stdout: logs } = await execa(
+            "kubectl",
+            ["logs", pod.metadata.name, "-n", namespace, "--tail=20"],
+            { all: true },
+          );
+          return {
+            jobName: job.metadata.name,
+            phase: "running",
+            message: latestNonEmptyLine(logs) ?? "hook running",
+          };
+        } catch {
+          return {
+            jobName: job.metadata.name,
+            phase: "running",
+            message: "hook running",
+          };
+        }
+      }
+
+      if ((job.status?.active ?? 0) > 0 || pods.length > 0) {
+        return {
+          jobName: job.metadata.name,
+          phase: "running",
+          message: "hook running",
         };
       }
     }
