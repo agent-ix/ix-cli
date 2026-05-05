@@ -115,6 +115,8 @@ Tests fall into four types:
 | NFR-001-AC-1 | Static grep: no console.log/error/warn/process.stderr.write | TC-011, TC-012 | ✅ Complete (static) |
 | NFR-001-AC-2 | Static grep: introCommand/outroSuccess/outroError imported from @agent-ix/ix-ui-cli in every command that calls them | TC-013 | ✅ Complete (static) |
 | NFR-001-AC-3 | Static grep: PhaseTable imported from @agent-ix/ix-ui-cli | TC-010 | ✅ Complete (static) |
+| NFR-001-AC-6 | Static grep: live Ink command wrappers delegate process orchestration to controllers | TC-282, TC-283, TC-284 | ✅ Complete (static) |
+| NFR-001-AC-7 | Unit: shared phase row model emits cloned snapshots and preserves failure state | TC-285, TC-286, TC-287, TC-288 | ✅ Complete (unit) |
 | NFR-002-AC-1 | Unit: prompt message contains cluster name | TC-038 | ✅ Complete (unit) |
 | NFR-002-AC-2 | Unit: decline/cancel exits 0 without destructive action | TC-033, TC-034 | ✅ Complete (unit) |
 | NFR-002-AC-3 | Unit: --yes bypasses prompt | TC-032 | ✅ Complete (unit) |
@@ -293,6 +295,13 @@ Tests fall into four types:
 | TC-275 | App-mode bundled subchart directory path imports and calls loadSecretContract | Static | P1 | FR-033-AC-5, FR-033-AC-10 | ✅ Complete |
 | TC-276 | App umbrella install polls detectHelmHookFailure and aborts helm on hook failure | Static + Unit | P1 | FR-033-AC-13 | ✅ Complete |
 | TC-280c | unmatched umbrella install failures pass failed final state to PhaseTable | Static | P1 | FR-031-AC-6 | ✅ Complete |
+| TC-282 | Image command wrapper delegates Helm/Kubernetes orchestration to `up-image-controller` | Static | P1 | NFR-001-AC-6 | ✅ Complete |
+| TC-283 | Source command wrapper delegates process orchestration to `up-source-controller` | Static | P1 | NFR-001-AC-6 | ✅ Complete |
+| TC-284 | init-cluster command wrapper delegates bootstrap process orchestration to `init-cluster-controller` | Static | P1 | NFR-001-AC-6 | ✅ Complete |
+| TC-285 | PhaseRows creates pending rows for every service and phase | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
+| TC-286 | PhaseRows emits immutable snapshots when phases change | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
+| TC-287 | PhaseRows marks failures and finishes prior pending/running phases | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
+| TC-288 | PhaseRows snapshots clone row and phase maps | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
 | TC-277 | Published chart artifact contains `ix-local.secrets.yaml` only when the source chart places it inside the packaged chart tree | Artifact inspection | P1 | FR-033-AC-11 | ❌ Missing |
 | TC-278 | A chart whose rendered manifests reference a materialized Secret but whose published artifact lacks the contract is flagged as an artifact defect | Artifact + manifest inspection | P1 | FR-033-AC-12 | ❌ Missing |
 

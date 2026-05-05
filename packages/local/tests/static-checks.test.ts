@@ -169,7 +169,6 @@ describe("Ink React singleton wiring", () => {
       "local-secrets.ts",
       "credentials.ts",
       "commands/cluster-down.ts",
-      "commands/init-cluster.ts",
       "phase-table-runner.ts",
     ];
 
@@ -199,12 +198,22 @@ describe("Ink React singleton wiring", () => {
 describe("Ink rendering stays separated from image-mode orchestration", () => {
   it("image mode delegates live rendering to the shared phase-table runner", () => {
     const src = readSrc("commands/up-image.ts");
+    const controller = readSrc("up-image-controller.ts");
 
     expect(src).toMatch(
-      /renderPhaseTableRun<Phase,\s*AppInstallPipelineResult>/,
+      /renderPhaseTableRun<[\s\S]*?Phase[\s\S]*?ImageInstallPipelineResult/,
     );
-    expect(src).toMatch(/async function runAppInstallPipeline/);
+    expect(controller).toMatch(/export async function runAppInstallPipeline/);
     expect(src).not.toMatch(/const AppPhaseTable/);
+  });
+
+  it("TC-282: image command wrapper does not own Helm or Kubernetes orchestration", () => {
+    const src = readSrc("commands/up-image.ts");
+
+    expect(src).not.toMatch(/\bexeca\(/);
+    expect(src).not.toMatch(/\bwaitForRollout\(/);
+    expect(src).not.toMatch(/\bensureGhcrCredsInNamespace\(/);
+    expect(src).not.toMatch(/\bloadSecretContractFromTgz\(/);
   });
 
   it("the shared phase-table runner owns Ink lifecycle but no Helm/Kubernetes process work", () => {
@@ -230,6 +239,28 @@ describe("Source and image mode share the live PhaseTable renderer", () => {
     expect(src).toMatch(/phaseLabels:\s*SOURCE_PHASE_LABELS/);
     expect(src).not.toMatch(/renderStatic\(/);
     expect(src).not.toMatch(/<Listing/);
+  });
+
+  it("TC-283: source command wrapper delegates process orchestration to the controller", () => {
+    const src = readSrc("commands/up-source.ts");
+    const controller = readSrc("up-source-controller.ts");
+
+    expect(src).not.toMatch(/\bexeca\(/);
+    expect(src).not.toMatch(/\bwaitForRollout\(/);
+    expect(controller).toMatch(/export async function runSourceModePipeline/);
+  });
+
+  it("TC-284: init-cluster command wrapper delegates process orchestration to the controller", () => {
+    const src = readSrc("commands/init-cluster.ts");
+    const controller = readSrc("init-cluster-controller.ts");
+
+    expect(src).toMatch(/renderPhaseTableRun<InitPhase,\s*InitClusterResult>/);
+    expect(src).not.toMatch(/\bexeca\(/);
+    expect(src).not.toMatch(/\buseEffect\b/);
+    expect(src).not.toMatch(/\buseState\b/);
+    expect(controller).toMatch(
+      /export async function runInitClusterController/,
+    );
   });
 });
 
@@ -318,17 +349,17 @@ describe("FR-030: --refresh flag is wired end-to-end", () => {
   });
 
   it("TC-091: UpFilterOptions declares refresh", () => {
-    const src = readSrc("commands/up-source.ts");
+    const src = readSrc("up-source-controller.ts");
     expect(src).toMatch(/refresh\?:\s*boolean/);
   });
 
   it("TC-092: runSourceModeUp forces dependencyUpdate=true when refresh is set", () => {
-    const src = readSrc("commands/up-source.ts");
+    const src = readSrc("up-source-controller.ts");
     expect(src).toMatch(/opts\.refresh[\s\S]*?dependencyUpdate:\s*true/);
   });
 
   it("TC-092a: source mode prefers chart-local secret contracts", () => {
-    const src = readSrc("commands/up-source.ts");
+    const src = readSrc("up-source-controller.ts");
     expect(src).toMatch(/secretContractDir/);
     expect(src).toMatch(
       /path\.join\(chartPath,\s*SECRETS_FILENAME\)[\s\S]*?return chartPath/,
@@ -371,14 +402,14 @@ describe("FR-034: ix local refresh diff output", () => {
 // ---------------------------------------------------------------------------
 describe("FR-031: umbrella install + settling indicator", () => {
   it("TC-093: up-image.ts builds umbrella install args (single helm release per app)", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(/buildUmbrellaInstallArgs/);
     // Per-subchart helm install helper is gone — replaced by the umbrella path.
     expect(src).not.toMatch(/buildHelmLocalInstallArgs/);
   });
 
   it("TC-094: umbrella path issues `helm pull` against the app OCI ref, not per-subchart", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     // Only one helm pull call inside runImageModeUp's app branch — it pulls
     // the umbrella, not each child.
     expect(src).toMatch(/helm[\s\S]{0,50}"pull"[\s\S]{0,200}umbrellaRef/);
@@ -421,12 +452,10 @@ describe("FR-032: ghcr-creds auto-applied to install namespaces", () => {
   });
 
   it("TC-099: runImageModeUp calls ensureGhcrCredsInNamespace for every install namespace before helm install", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(/ensureGhcrCredsInNamespace/);
-    // The call sits between ghcrToken resolution and the role-branch dispatch
-    // so it covers both single-service and umbrella install paths.
     expect(src).toMatch(
-      /resolveGhcrToken[\s\S]*?ensureGhcrCredsInNamespace[\s\S]*?role !== "app"/,
+      /resolveGhcrToken[\s\S]*?ensureGhcrCredsInNamespace[\s\S]*?authenticateHelmRegistry/,
     );
   });
 });
@@ -455,6 +484,7 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
 
   it("TC-103: app display uses child service rows with pull → secrets → install → ready", () => {
     const src = readSrc("commands/up-image.ts");
+    const controller = readSrc("up-image-controller.ts");
     const runner = readSrc("phase-table-runner.ts");
     const phases = readSrc("phases.ts");
     expect(phases).toMatch(/\["pull", "secrets", "install", "ready"\]/);
@@ -463,44 +493,44 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
     expect(src).toMatch(/phases:\s*PHASES/);
     expect(src).toMatch(/phaseLabels:\s*PHASE_LABELS/);
     expect(runner).toMatch(/<PhaseTable<P>/);
-    expect(src).not.toMatch(/const APP_ROW/);
-    expect(src).not.toMatch(/\[APP_ROW,/);
-    expect(src).not.toMatch(/hidePendingRows:\s*true/);
+    expect(controller).not.toMatch(/const APP_ROW/);
+    expect(controller).not.toMatch(/\[APP_ROW,/);
+    expect(controller).not.toMatch(/hidePendingRows:\s*true/);
   });
 
   it("TC-104: up-image.ts imports loadSecretContractFromTgz from local-secrets", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(/loadSecretContractFromTgz/);
   });
 
   it("TC-108: single-service image mode pulls the chart tgz before helm install", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(
-      /runSingleServiceFlow[\s\S]*?"pull"[\s\S]*?loadSecretContractFromTgz[\s\S]*?buildHelmInstallArgs/,
+      /runSingleServicePipeline[\s\S]*?"pull"[\s\S]*?loadSecretContractFromTgz[\s\S]*?buildHelmInstallArgs/,
     );
   });
 
   it("TC-274: up-image.ts supports bundled subcharts as directories as well as tgzs", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(/path\.join\(chartsDir, install\.name\)/);
     expect(src).toMatch(/f\.endsWith\("\.tgz"\)/);
   });
 
   it("TC-275: up-image.ts imports loadSecretContract for bundled subchart directories", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(/loadSecretContract,/);
     expect(src).toMatch(/loadSecretContract\(directoryPath\)/);
   });
 
   it("TC-276: app umbrella install polls hook status and aborts helm on hook failure", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(/detectHelmHookStatuses/);
     expect(src).toMatch(/subprocess\.kill\(\)/);
     expect(src).toMatch(/hook .* failed:/);
   });
 
   it("TC-277: fatal umbrella pull/install failures throw instead of returning successfully", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(/App '\$\{deployable\.name\}' failed/);
     expect(src).not.toMatch(/return;\s*\/\/ umbrella pull failure is fatal/);
     expect(src).not.toMatch(
@@ -509,7 +539,7 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
   });
 
   it("TC-278: umbrella install cleans up failed Helm hook jobs before retry", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(/cleanupFailedHelmHookJobs/);
     expect(src).toMatch(
       /cleanupFailedHelmHookJobs\(umbrellaNamespace, deployable\.name\)[\s\S]*?buildUmbrellaInstallArgs/,
@@ -517,7 +547,7 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
   });
 
   it("TC-279: image mode forces image pulls when deploying latest tags", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(/function shouldForceImagePull/);
     expect(src).toMatch(/ix-service\.image\.pullPolicy=Always/);
     expect(src).toMatch(
@@ -526,7 +556,7 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
   });
 
   it("TC-280: umbrella hook status is not applied to every child row", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).not.toMatch(
       /installs\.forEach\(\(i\) => display\.transition\(i\.name, "install", "running"\)\)/,
     );
@@ -540,14 +570,14 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
   });
 
   it("TC-280b: app install polls Kubernetes readiness during Helm install", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(/getRolloutReadyStatus/);
     expect(src).toMatch(/appRows\.updateK8sInstallStatus/);
     expect(src).toMatch(/reconcileActiveInstallHooks/);
   });
 
   it("TC-280a: late Helm job failures are routed to the matching child row", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(/parseHookFailureMessage/);
     expect(src).toMatch(/\\bjob\\s\+\(\\S\+\)\\s\+failed:/);
     // Format-tolerant: prettier may split the call over multiple lines.
@@ -569,7 +599,7 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
   });
 
   it("TC-281: secret apply output is not written into service status rows", () => {
-    const src = readSrc("commands/up-image.ts");
+    const src = readSrc("up-image-controller.ts");
     expect(src).toMatch(
       /await applySecretContract\(contract, install\.namespace\);/,
     );

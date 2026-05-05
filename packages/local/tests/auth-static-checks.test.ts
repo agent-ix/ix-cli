@@ -113,6 +113,7 @@ describe("ix-cli-auth-AC-6 — namespace constants are the single source of trut
     "src/local-secrets.tsx",
     "src/commands/init-cluster.ts",
     "src/commands/init-cluster.tsx",
+    "src/init-cluster-controller.ts",
     "src/rollout.ts", // function-default in JSDoc-only; see below
   ]);
 
@@ -202,8 +203,8 @@ describe("ix-cli-auth-CON-3 — kubectlRaw targets the auth namespace", () => {
 // NFR-003 namespace + RBAC bootstrap manifest
 // ---------------------------------------------------------------------------
 
-describe("NFR-003 namespace + RBAC bootstrap (init-cluster.ts)", () => {
-  const src = readSrc("commands/init-cluster.ts");
+describe("NFR-003 namespace + RBAC bootstrap (init-cluster controller)", () => {
+  const src = readSrc("init-cluster-controller.ts");
 
   it("creates the four namespaces", () => {
     // Expect a `Namespace` resource for each tier in the manifest string.
