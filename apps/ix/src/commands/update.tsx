@@ -1,6 +1,7 @@
 import { Command, Flags } from "@oclif/core";
 import { spawn } from "node:child_process";
-import { startListing } from "@agent-ix/ix-ui-cli";
+import React from "react";
+import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
 import pc from "picocolors";
 
 const DEFAULT_REGISTRY = "https://npm.pkg.github.com/";
@@ -44,13 +45,19 @@ export default class Update extends Command {
 
   async run(): Promise<void> {
     const { flags } = await this.parse(Update);
-    const list = startListing("ix update");
-
     const registry = flags.registry;
-    list.note(`registry ${pc.cyan(registry)}`);
-
     const current = this.config.version;
-    list.note(`current  ${pc.cyan(current)}`);
+
+    const baseNotes = (
+      <>
+        <Note>
+          {`registry ${pc.cyan(registry)}`}
+        </Note>
+        <Note>
+          {`current  ${pc.cyan(current)}`}
+        </Note>
+      </>
+    );
 
     let latest: string;
     try {
@@ -62,27 +69,52 @@ export default class Update extends Command {
         registry,
       ]);
     } catch (err) {
-      list.error(
-        `Could not reach registry: ${err instanceof Error ? err.message : String(err)}`,
+      const msg = err instanceof Error ? err.message : String(err);
+      await renderStatic(
+        <Listing
+          header="ix update"
+          status="failed"
+          tail={`Could not reach registry: ${msg}`}
+          tailVariant="error"
+        >
+          {baseNotes}
+        </Listing>,
       );
       this.exit(1);
       return;
     }
 
-    list.note(`latest   ${pc.cyan(latest)}`);
-
     if (current === latest) {
-      list.success("Already up to date.");
+      await renderStatic(
+        <Listing
+          header="ix update"
+          status="passed"
+          tail="Already up to date."
+        >
+          {baseNotes}
+          <Note>{`latest   ${pc.cyan(latest)}`}</Note>
+        </Listing>,
+      );
       return;
     }
 
     if (flags.check) {
-      list.warn(`Update available: ${pc.cyan(latest)}`);
+      await renderStatic(
+        <Listing
+          header="ix update"
+          status="passed"
+          tail={`Update available: ${pc.cyan(latest)}`}
+          tailVariant="warn"
+        >
+          {baseNotes}
+          <Note>{`latest   ${pc.cyan(latest)}`}</Note>
+        </Listing>,
+      );
       return;
     }
 
-    list.commit();
-
+    // For the install: npm install -g writes its own progress directly to
+    // stdout. We let it inherit, then render a final summary listing.
     try {
       await spawnInherited("npm", [
         "install",
@@ -92,13 +124,31 @@ export default class Update extends Command {
         registry,
       ]);
     } catch (err) {
-      list.error(
-        `Install failed: ${err instanceof Error ? err.message : String(err)}`,
+      const msg = err instanceof Error ? err.message : String(err);
+      await renderStatic(
+        <Listing
+          header="ix update"
+          status="failed"
+          tail={`Install failed: ${msg}`}
+          tailVariant="error"
+        >
+          {baseNotes}
+          <Note>{`latest   ${pc.cyan(latest)}`}</Note>
+        </Listing>,
       );
       this.exit(1);
       return;
     }
 
-    list.success(`Updated to ${pc.cyan(latest)}`);
+    await renderStatic(
+      <Listing
+        header="ix update"
+        status="passed"
+        tail={`Updated to ${pc.cyan(latest)}`}
+      >
+        {baseNotes}
+        <Note>{`latest   ${pc.cyan(latest)}`}</Note>
+      </Listing>,
+    );
   }
 }
