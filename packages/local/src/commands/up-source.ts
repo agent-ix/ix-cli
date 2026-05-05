@@ -17,6 +17,7 @@ import {
   applySecretContract,
   loadSecretContract,
 } from "../local-secrets.js";
+import { ensureNamespace } from "../namespaces.js";
 import { waitForRollout } from "../rollout.js";
 import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
 
@@ -379,8 +380,17 @@ export async function runSourceModeUp(
     );
 
     const failures: string[] = [];
+    const installNamespaces = [...new Set(installs.map((i) => i.namespace))];
     const tasks = makeListr(
       [
+        {
+          title: "Prepare namespaces",
+          task: async () => {
+            for (const ns of installNamespaces) {
+              await ensureNamespace(ns);
+            }
+          },
+        },
         ...secretContracts.map((contract) => ({
           title: `Apply repo secrets: ${pc.cyan(path.basename(contract.repoDir))}`,
           task: async (_ctx: unknown, task: { output: string }) => {

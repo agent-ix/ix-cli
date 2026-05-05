@@ -38,6 +38,7 @@ import {
   loadSecretContractFromTgz,
   type SecretContract,
 } from "../local-secrets.js";
+import { ensureNamespace } from "../namespaces.js";
 import {
   PhaseTable,
   makeListr,
@@ -348,6 +349,7 @@ export async function runImageModeUp(
   // already cached on the kind node.
   const installNamespaces = new Set(installs.map((i) => i.namespace));
   for (const ns of installNamespaces) {
+    await ensureNamespace(ns);
     await ensureGhcrCredsInNamespace(ns, ghcrToken);
   }
 
