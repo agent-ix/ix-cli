@@ -1,0 +1,39 @@
+import React from "react";
+import { Listing, renderStatic } from "@agent-ix/ix-ui-cli";
+import { addTap } from "../../tap-config.js";
+import { invalidateCache } from "../../registry/cache.js";
+
+export async function runTapAdd(url: string): Promise<void> {
+  try {
+    const added = addTap(url);
+    if (!added) {
+      await renderStatic(
+        <Listing
+          header="ix elements tap add"
+          status="passed"
+          tail={`Tap '${url}' is already configured.`}
+        />,
+      );
+      return;
+    }
+    invalidateCache(url);
+    await renderStatic(
+      <Listing
+        header="ix elements tap add"
+        status="passed"
+        tail={`Added tap: ${url}`}
+      />,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header="ix elements tap add"
+        status="failed"
+        tail={`Failed: ${msg}`}
+        tailVariant="error"
+      />,
+    );
+    throw err;
+  }
+}

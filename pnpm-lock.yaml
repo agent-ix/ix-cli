@@ -42,18 +42,24 @@ importers:
         specifier: workspace:*
         version: link:../../packages/local
       '@agent-ix/ix-ui-cli':
-        specifier: '>=0.3.6-0'
-        version: 0.3.8
+        specifier: link:../../../ix-ui/packages/cli
+        version: link:../../../ix-ui/packages/cli
       '@oclif/core':
         specifier: '>=4.10.6'
         version: 4.11.0
       picocolors:
         specifier: '>=1.1.1'
         version: 1.1.1
+      react:
+        specifier: '>=18.3.1'
+        version: 19.2.5
       zod:
         specifier: '>=4.0.0'
         version: 4.4.2
     devDependencies:
+      '@types/react':
+        specifier: '>=18.3.12'
+        version: 19.2.14
       vite:
         specifier: '>=6.3.4'
         version: 8.0.10(@types/node@25.6.0)(yaml@2.8.4)
@@ -67,8 +73,8 @@ importers:
   packages/core:
     dependencies:
       '@agent-ix/ix-ui-cli':
-        specifier: '>=0.3.6-0'
-        version: 0.3.8
+        specifier: link:../../../ix-ui/packages/cli
+        version: link:../../../ix-ui/packages/cli
       '@clack/prompts':
         specifier: '>=1.3.0'
         version: 1.3.0
@@ -78,6 +84,9 @@ importers:
       age-encryption:
         specifier: '>=0.3.0'
         version: 0.3.0
+      react:
+        specifier: '>=18.3.1'
+        version: 19.2.5
       yaml:
         specifier: '>=2.8.3'
         version: 2.8.4
@@ -88,6 +97,9 @@ importers:
       '@types/node':
         specifier: '>=25.6.0'
         version: 25.6.0
+      '@types/react':
+        specifier: '>=18.3.12'
+        version: 19.2.14
       vite:
         specifier: '>=6.3.4'
         version: 8.0.10(@types/node@25.6.0)(yaml@2.8.4)
@@ -104,8 +116,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       '@agent-ix/ix-ui-cli':
-        specifier: '>=0.3.6-0'
-        version: 0.3.8
+        specifier: link:../../../ix-ui/packages/cli
+        version: link:../../../ix-ui/packages/cli
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.3.0
@@ -115,10 +127,16 @@ importers:
       picocolors:
         specifier: '>=1.1.1'
         version: 1.1.1
+      react:
+        specifier: '>=18.3.1'
+        version: 19.2.5
       yaml:
         specifier: '>=2.8.3'
         version: 2.8.4
     devDependencies:
+      '@types/react':
+        specifier: '>=18.3.12'
+        version: 19.2.14
       vite:
         specifier: '>=6.3.4'
         version: 8.0.10(@types/node@25.6.0)(yaml@2.8.4)
@@ -135,8 +153,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       '@agent-ix/ix-ui-cli':
-        specifier: '>=0.3.6-0'
-        version: 0.3.8
+        specifier: link:../../../ix-ui/packages/cli
+        version: link:../../../ix-ui/packages/cli
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.3.0
@@ -152,6 +170,9 @@ importers:
       picocolors:
         specifier: '>=1.1.1'
         version: 1.1.1
+      react:
+        specifier: '>=18.3.1'
+        version: 19.2.5
       yaml:
         specifier: '>=2.8.3'
         version: 2.8.4
@@ -162,6 +183,9 @@ importers:
       '@types/node':
         specifier: '>=25.6.0'
         version: 25.6.0
+      '@types/react':
+        specifier: '>=18.3.12'
+        version: 19.2.14
       vite:
         specifier: '>=6.3.4'
         version: 8.0.10(@types/node@25.6.0)(yaml@2.8.4)
@@ -173,12 +197,6 @@ importers:
         version: 4.1.5(@types/node@25.6.0)(vite@8.0.10(@types/node@25.6.0)(yaml@2.8.4))
 
 packages:
-
-  '@agent-ix/ix-ui-cli@0.3.8':
-    resolution: {integrity: sha512-i3w0y9Ly13Qvet1flJ4H6dkqW1lOrqB+A4LiGiiY6J2KQVRok5ENBz3/Jfch46MiLbO1fH2UFBXZLbXEXEe2gA==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-ui-cli/0.3.8/f627260321a835c6591bebe9034eb51b4eb3a4ac}
-
-  '@agent-ix/ix-ui-semantic@0.3.8':
-    resolution: {integrity: sha512-+V4NaZF+jE1L2CLvOE+CEcI+3aqyDGwHOOJ/zL5Hd1GWWGkEr7vdR+6DsQGWB/Www83Ca/1uzS0JjXH2fOCaVg==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-ui-semantic/0.3.8/eb6397628d34a065281bec07d06342ff9dd16d5e}
 
   '@clack/core@1.3.0':
     resolution: {integrity: sha512-xJPHpAmEQUBrXSLx0gF+q5K/IyihXpsHZcha+jB+tyahsKRK3Dxo4D0coZDewHo12NhiuzC3dTtMPbm53GEAAA==}
@@ -519,6 +537,9 @@ packages:
   '@types/node@25.6.0':
     resolution: {integrity: sha512-+qIYRKdNYJwY3vRCZMdJbPLJAtGjQBudzZzdzwQYkEPQd+PJGixUL5QfvCLDaULoLv+RhT3LDkwEfKaAkgSmNQ==}
 
+  '@types/react@19.2.14':
+    resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
+
   '@typescript-eslint/eslint-plugin@8.59.1':
     resolution: {integrity: sha512-BOziFIfE+6osHO9FoJG4zjoHUcvI7fTNBSpdAwrNH0/TLvzjsk2oo8XSSOT2HhqUyhZPfHv4UOffoJ9oEEQ7Ag==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -727,6 +748,9 @@ packages:
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
+
+  csstype@3.2.3:
+    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -1208,6 +1232,10 @@ packages:
   quansync@0.2.11:
     resolution: {integrity: sha512-AifT7QEbW9Nri4tAwR5M/uzpBuqfZf+zwaEM/QkzEjj7NBuFD2rBuy0K3dE+8wltbezDV7JMA0WfnCPYRSYbXA==}
 
+  react@19.2.5:
+    resolution: {integrity: sha512-llUJLzz1zTUBrskt2pwZgLq59AemifIftw4aB7JxOqf1HY2FDaGDxgwpAPVzHU1kdWabH7FauP4i1oEeer2WCA==}
+    engines: {node: '>=0.10.0'}
+
   restore-cursor@5.1.0:
     resolution: {integrity: sha512-oMA2dcrw6u0YfxJQXm342bFKX/E4sG9rbTzO9ptUcR/e8A33cHuvStiYOwH7fszkZlZ1z/ta9AAoPk2F4qIOHA==}
     engines: {node: '>=18'}
@@ -1532,15 +1560,6 @@ packages:
 
 snapshots:
 
-  '@agent-ix/ix-ui-cli@0.3.8':
-    dependencies:
-      '@agent-ix/ix-ui-semantic': 0.3.8
-      '@clack/prompts': 1.3.0
-      listr2: 10.2.1
-      picocolors: 1.1.1
-
-  '@agent-ix/ix-ui-semantic@0.3.8': {}
-
   '@clack/core@1.3.0':
     dependencies:
       fast-wrap-ansi: 0.2.0
@@ -1826,6 +1845,10 @@ snapshots:
     dependencies:
       undici-types: 7.19.2
 
+  '@types/react@19.2.14':
+    dependencies:
+      csstype: 3.2.3
+
   '@typescript-eslint/eslint-plugin@8.59.1(@typescript-eslint/parser@8.59.1(eslint@10.3.0)(typescript@6.0.3))(eslint@10.3.0)(typescript@6.0.3)':
     dependencies:
       '@eslint-community/regexpp': 4.12.2
@@ -2069,6 +2092,8 @@ snapshots:
       path-key: 3.1.1
       shebang-command: 2.0.0
       which: 2.0.2
+
+  csstype@3.2.3: {}
 
   debug@4.4.3(supports-color@8.1.1):
     dependencies:
@@ -2496,6 +2521,8 @@ snapshots:
   punycode@2.3.1: {}
 
   quansync@0.2.11: {}
+
+  react@19.2.5: {}
 
   restore-cursor@5.1.0:
     dependencies:
