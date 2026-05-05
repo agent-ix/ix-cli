@@ -14,6 +14,7 @@
  * in the K8s Secret — never in files, env vars, or logs.
  */
 
+import React from "react";
 import type { IxConfig } from "../config.js";
 import { execa, type ExecaError } from "execa";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
@@ -23,7 +24,7 @@ import {
   IX_SYSTEM_NAMESPACE,
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
-import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
+import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
 
 type ExecFn = typeof kubectlExecJson;
 type EnsureIdentityFn = (config: IxConfig) => Promise<void>;
@@ -62,6 +63,8 @@ const IDENTITY_CLI_INIT = [
   "json",
 ];
 
+const HEADER = "ix local auth init";
+
 function isIdentityDeploymentMissing(err: KubectlExecError): boolean {
   const stderr = err.stderr.trim();
   return /deployments\.apps "identity" not found/i.test(stderr);
@@ -95,6 +98,17 @@ async function ensureIdentityDeployment(config: IxConfig): Promise<void> {
   await runUp([AUTH_DEPLOYABLE]);
 }
 
+async function renderFailure(msg: string): Promise<void> {
+  await renderStatic(
+    <Listing
+      header={HEADER}
+      status="failed"
+      tail={`init failed: ${msg}`}
+      tailVariant="error"
+    />,
+  );
+}
+
 export async function runAuthInit(
   config: IxConfig,
   deps?: IdentityDeps,
@@ -110,110 +124,75 @@ export async function runAuthInit(
     await ensureIdentity(config);
   }
 
-  const list = startListing("ix local auth init");
-  list.commit();
-
   let seedResp: SeedResponse | null = null;
   let adminExists = false;
 
-  const seedTask = makeListr(
-    [
-      {
-        title: "Seeding admin account (kubectl exec → identity.cli init-admin)",
-        task: async (_ctx, task) => {
-          const commandText = `kubectl exec -n ${IX_AUTH_NAMESPACE} deployment/${IDENTITY_DEPLOYMENT} -- ${IDENTITY_CLI_INIT.join(" ")}`;
-          task.output = commandText;
-          try {
-            seedResp = await _exec<SeedResponse>(
-              IX_AUTH_NAMESPACE,
-              IDENTITY_DEPLOYMENT,
-              IDENTITY_CLI_INIT,
-            );
-            task.output = "Admin account created";
-            return;
-          } catch (err) {
-            if (err instanceof KubectlExecError) {
-              if (err.exitCode === 2) {
-                adminExists = true;
-                task.output = "Admin user already exists";
-                return;
-              }
-              if (err.exitCode === 3) {
-                throw new Error(
-                  `identity database unreachable: ${err.stderr.trim() || err.message}`,
-                );
-              }
-              if (isIdentityDeploymentMissing(err)) {
-                throw new Error(
-                  bootstrapIfMissing
-                    ? "identity deployment missing after auth bootstrap"
-                    : "identity deployment missing; run `ix local up auth` first",
-                );
-              }
-              throw new Error(
-                `identity init-admin failed (exit ${err.exitCode}): ${err.stderr.trim() || err.message}`,
-              );
-            }
-            throw err;
-          }
-        },
-      },
-    ],
-    { concurrent: false },
-  );
-
   try {
-    await seedTask.run();
-  } catch (err) {
-    list.error(
-      `init failed: ${err instanceof Error ? err.message : String(err)}`,
+    seedResp = await _exec<SeedResponse>(
+      IX_AUTH_NAMESPACE,
+      IDENTITY_DEPLOYMENT,
+      IDENTITY_CLI_INIT,
     );
-    throw err;
+  } catch (err) {
+    if (err instanceof KubectlExecError) {
+      if (err.exitCode === 2) {
+        adminExists = true;
+      } else if (err.exitCode === 3) {
+        const msg = `identity database unreachable: ${err.stderr.trim() || err.message}`;
+        await renderFailure(msg);
+        throw new Error(msg);
+      } else if (isIdentityDeploymentMissing(err)) {
+        const msg = bootstrapIfMissing
+          ? "identity deployment missing after auth bootstrap"
+          : "identity deployment missing; run `ix local up auth` first";
+        await renderFailure(msg);
+        throw new Error(msg);
+      } else {
+        const msg = `identity init-admin failed (exit ${err.exitCode}): ${err.stderr.trim() || err.message}`;
+        await renderFailure(msg);
+        throw new Error(msg);
+      }
+    } else {
+      await renderFailure(err instanceof Error ? err.message : String(err));
+      throw err;
+    }
   }
 
   if (adminExists) {
-    list.note(
-      "Admin already exists. Use `ix local auth reset-admin` to reset the password.",
+    await renderStatic(
+      <Listing
+        header={HEADER}
+        status="passed"
+        tail="Admin already exists. Use `ix local auth reset-admin` to reset the password."
+        tailVariant="warn"
+      />,
     );
     return;
   }
 
-  const writeTask = makeListr(
-    [
-      {
-        title: `Writing admin-bootstrap Secret to ${IX_SYSTEM_NAMESPACE}`,
-        task: async (_ctx, task) => {
-          if (!seedResp) throw new Error("No seed response available");
-          await writeAdminBootstrapSecret({
-            password: seedResp.password,
-            expiresAt: seedResp.expires_at,
-            userId: seedResp.user_id,
-            loginUrl: seedResp.login_url,
-          });
-          task.output = `Secret ${IX_SYSTEM_NAMESPACE}/admin-bootstrap written`;
-        },
-      },
-    ],
-    { concurrent: false },
-  );
+  if (!seedResp) throw new Error("No seed response");
+  const resp: SeedResponse = seedResp;
 
   try {
-    await writeTask.run();
+    await writeAdminBootstrapSecret({
+      password: resp.password,
+      expiresAt: resp.expires_at,
+      userId: resp.user_id,
+      loginUrl: resp.login_url,
+    });
   } catch (err) {
-    list.error(
-      `init failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderFailure(msg);
     throw err;
   }
 
-  if (!seedResp) throw new Error("No seed response");
-  const resp = seedResp as SeedResponse;
-
   // FR-015-B6: print to stdout once — never to a log (NFR-004-AC-2)
-  list.note("Username:      admin");
-  list.note(
-    `Temp password: ${resp.password}     (expires ${formatExpiry(resp.expires_at)})`,
+  await renderStatic(
+    <Listing header={HEADER} status="passed" tail="Admin account created.">
+      <Note>{`Username:      admin`}</Note>
+      <Note>{`Temp password: ${resp.password}     (expires ${formatExpiry(resp.expires_at)})`}</Note>
+      <Note>{`Log in at:     ${resp.login_url}`}</Note>
+      <Note>{`Secret:        ${IX_SYSTEM_NAMESPACE}/admin-bootstrap`}</Note>
+    </Listing>,
   );
-  list.note(`Log in at:     ${resp.login_url}`);
-  list.success("Admin account created.");
 }

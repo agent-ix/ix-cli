@@ -19,7 +19,8 @@ import {
 } from "../local-secrets.js";
 import { ensureNamespace } from "../namespaces.js";
 import { waitForRollout } from "../rollout.js";
-import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
+import React from "react";
+import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
 
 /**
  * Resolve the values overlay file for an app chart, profile-aware.
@@ -343,8 +344,7 @@ export async function runSourceModeUp(
   devDir: string,
   opts: UpFilterOptions = {},
 ): Promise<void> {
-  const list = startListing(`ix local up · ${services.join(", ")} · source`);
-  list.commit();
+  const header = `ix local up · ${services.join(", ")} · source`;
 
   const imageTag = tagOverride ?? config.imageTag;
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-local-source-"));
@@ -381,138 +381,118 @@ export async function runSourceModeUp(
 
     const failures: string[] = [];
     const installNamespaces = [...new Set(installs.map((i) => i.namespace))];
-    const tasks = makeListr(
-      [
-        {
-          title: "Prepare namespaces",
-          task: async () => {
-            for (const ns of installNamespaces) {
-              await ensureNamespace(ns);
-            }
-          },
-        },
-        ...secretContracts.map((contract) => ({
-          title: `Apply repo secrets: ${pc.cyan(path.basename(contract.repoDir))}`,
-          task: async (_ctx: unknown, task: { output: string }) => {
-            const matched = installs.find(
-              (i) => i.secretContractDir === contract.repoDir,
-            );
-            const namespace = matched?.namespace ?? IX_APPS_NAMESPACE;
-            await applySecretContract(contract, namespace, (line) => {
-              task.output = line;
+
+    // Prepare namespaces.
+    for (const ns of installNamespaces) {
+      await ensureNamespace(ns);
+    }
+
+    // Apply repo secrets.
+    for (const contract of secretContracts) {
+      const matched = installs.find(
+        (i) => i.secretContractDir === contract.repoDir,
+      );
+      const namespace = matched?.namespace ?? IX_APPS_NAMESPACE;
+      await applySecretContract(contract, namespace);
+    }
+
+    // Authenticate Helm registry once if any install needs dependency updates.
+    if (requiresRegistryAuth) {
+      const token = await resolveGhcrToken(false);
+      await execa(
+        "helm",
+        [
+          "registry",
+          "login",
+          config.helmChartRegistry,
+          "-u",
+          "_token",
+          "--password-stdin",
+        ],
+        { input: token, stdio: ["pipe", "inherit", "inherit"] },
+      );
+    }
+
+    // Deploy each install. Inherit stdio so helm/make/kubectl progress
+    // streams directly; the final-state listing is rendered after the loop.
+    for (const install of installs) {
+      try {
+        const canBuild = makefileHasTargets(install.repoDir, [
+          "build",
+          "kind-load",
+        ]);
+        if (canBuild) {
+          for (const target of ["build", "kind-load"]) {
+            await execa("make", [target], {
+              cwd: install.repoDir,
+              stdio: "inherit",
             });
-          },
-        })),
-        ...(requiresRegistryAuth
-          ? [
-              {
-                title: "Authenticate Helm registry",
-                task: async (_ctx: unknown, task: { output: string }) => {
-                  const token = await resolveGhcrToken(false);
-                  const subprocess = execa(
-                    "helm",
-                    [
-                      "registry",
-                      "login",
-                      config.helmChartRegistry,
-                      "-u",
-                      "_token",
-                      "--password-stdin",
-                    ],
-                    { input: token, all: true },
-                  );
-                  subprocess.all?.on("data", (chunk) => {
-                    const line = chunk.toString().trim();
-                    if (line) task.output = line;
-                  });
-                  await subprocess;
-                },
-              },
-            ]
-          : []),
-        ...installs.map((install) => ({
-          title: `Deploy ${pc.cyan(install.name)} from local chart`,
-          task: async (_ctx: unknown, task: { output: string }) => {
-            try {
-              const canBuild = makefileHasTargets(install.repoDir, [
-                "build",
-                "kind-load",
-              ]);
-              if (canBuild) {
-                for (const target of ["build", "kind-load"]) {
-                  const subprocess = execa("make", [target], {
-                    cwd: install.repoDir,
-                    all: true,
-                  });
-                  subprocess.all?.on("data", (chunk) => {
-                    const line = chunk.toString().trim();
-                    if (line) task.output = line;
-                  });
-                  await subprocess;
-                }
-              }
+          }
+        }
 
-              const helmSubprocess = execa(
-                "helm",
-                buildLocalHelmArgs(install, config, imageTag),
-                { all: true },
-              );
-              helmSubprocess.all?.on("data", (chunk) => {
-                const line = chunk.toString().trim();
-                if (line) task.output = line;
-              });
-              await helmSubprocess;
+        await execa(
+          "helm",
+          buildLocalHelmArgs(install, config, imageTag),
+          { stdio: "inherit" },
+        );
 
-              const restartSubprocess = execa(
-                "kubectl",
-                [
-                  "rollout",
-                  "restart",
-                  `deployment/${install.name}`,
-                  "-n",
-                  install.namespace,
-                ],
-                { all: true },
-              );
-              restartSubprocess.all?.on("data", (chunk) => {
-                const line = chunk.toString().trim();
-                if (line) task.output = line;
-              });
-              await restartSubprocess;
+        await execa(
+          "kubectl",
+          [
+            "rollout",
+            "restart",
+            `deployment/${install.name}`,
+            "-n",
+            install.namespace,
+          ],
+          { stdio: "inherit" },
+        );
 
-              await waitForRollout(
-                install.name,
-                install.namespace,
-                config.rolloutTimeoutSeconds,
-                task as Parameters<typeof waitForRollout>[3],
-                `app.kubernetes.io/part-of=${install.name}`,
-              );
-            } catch (err) {
-              if (!opts.continueOnError) throw err;
-              const msg = err instanceof Error ? err.message : String(err);
-              failures.push(`${install.name}: ${msg}`);
-              task.output = pc.yellow(`Skipped after failure: ${msg}`);
-            }
-          },
-        })),
-      ],
-      { concurrent: false, exitOnError: !opts.continueOnError },
-    );
+        await waitForRollout(
+          install.name,
+          install.namespace,
+          config.rolloutTimeoutSeconds,
+          undefined,
+          `app.kubernetes.io/part-of=${install.name}`,
+        );
+      } catch (err) {
+        if (!opts.continueOnError) throw err;
+        const msg = err instanceof Error ? err.message : String(err);
+        failures.push(`${install.name}: ${msg}`);
+      }
+    }
 
-    await tasks.run();
     const urls = installs.map(
       (i) => `https://${i.name}.${config.internalBaseDomain}`,
     );
+
     if (failures.length > 0) {
-      list.warn(
-        `Deployed from local source with failures: ${failures.join("; ")}`,
+      await renderStatic(
+        <Listing
+          header={header}
+          status="passed"
+          tail={`Deployed from local source with failures: ${failures.join("; ")}`}
+          tailVariant="warn"
+        />,
       );
     } else {
-      for (const url of urls) list.note(url);
+      await renderStatic(
+        <Listing header={header} status="passed" tail="Deployed from local source.">
+          {urls.map((u) => (
+            <Note key={u}>{u}</Note>
+          ))}
+        </Listing>,
+      );
     }
   } catch (err) {
-    list.error(
-      `Failed to deploy from local source: ${err instanceof Error ? err.message : String(err)}`,
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header={header}
+        status="failed"
+        tail={`Failed to deploy from local source: ${msg}`}
+        tailVariant="error"
+      />,
     );
     throw err;
   } finally {
