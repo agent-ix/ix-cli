@@ -1,4 +1,3 @@
-import React from "react";
 import { Listing, renderStatic } from "@agent-ix/ix-ui-cli";
 import { addTap } from "../../tap-config.js";
 import { invalidateCache } from "../../registry/cache.js";

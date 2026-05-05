@@ -2,12 +2,10 @@
  * FR-007 — cluster status. Read-only node + unhealthy pod health summary.
  */
 
-import React from "react";
 import { execa } from "execa";
 import pc from "picocolors";
 import Table from "cli-table3";
-import { Text } from "ink";
-import { Listing, renderStatic } from "@agent-ix/ix-ui-cli";
+import { Listing, Text, renderStatic } from "@agent-ix/ix-ui-cli";
 
 interface NodeItem {
   metadata: { name: string; creationTimestamp: string };

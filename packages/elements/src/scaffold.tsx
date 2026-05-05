@@ -1,7 +1,6 @@
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
-import React from "react";
 import { execa } from "execa";
 import { Listing, renderStatic } from "@agent-ix/ix-ui-cli";
 import { resolveElementByType } from "./registry/resolver.js";

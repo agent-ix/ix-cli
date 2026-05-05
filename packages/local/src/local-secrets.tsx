@@ -2,12 +2,14 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import React, { useEffect } from "react";
+import type React from "react";
 import { execa } from "execa";
 import {
   PasswordPrompt,
   render,
+  useEffect,
   useRenderResult,
+  useState,
 } from "@agent-ix/ix-ui-cli";
 import { parse as parseYaml } from "yaml";
 
@@ -16,7 +18,7 @@ async function promptForSecret(message: string): Promise<string | null> {
   let cancelled = false;
   const Capture: React.FC = () => {
     const { exit } = useRenderResult();
-    const [done, setDone] = React.useState(false);
+    const [done, setDone] = useState(false);
     useEffect(() => {
       if (done) {
         const t = setTimeout(exit, 0);

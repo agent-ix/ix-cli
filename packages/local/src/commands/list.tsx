@@ -2,14 +2,12 @@
  * FR-007 — `ix-local list` — show all discovered deployables.
  */
 
-import React from "react";
 import Table from "cli-table3";
-import { Box, Text } from "ink";
 import type { IxConfig } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { loadRegistry } from "../registry.js";
 import type { Deployable } from "../discovery.js";
-import { Listing, Group, renderStatic } from "@agent-ix/ix-ui-cli";
+import { Box, Group, Listing, Text, renderStatic } from "@agent-ix/ix-ui-cli";
 
 export interface ListOptions {
   refresh?: boolean;

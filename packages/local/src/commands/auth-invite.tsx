@@ -13,7 +13,6 @@
  * Email delivery is handled entirely by identity (auth/FR-027).
  */
 
-import React from "react";
 import type { IxConfig } from "../config.js";
 import {
   kubectlRaw,

@@ -11,7 +11,6 @@
  * FR-029, FR-020 §2.3). Verified by static analysis (TC-080, TC-086).
  */
 
-import React from "react";
 import type { IxConfig } from "../config.js";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";
 import {

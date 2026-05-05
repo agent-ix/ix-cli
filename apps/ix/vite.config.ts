@@ -66,6 +66,7 @@ export default defineConfig({
     },
     rollupOptions: {
       external: [
+        /^react($|\/)/,
         "@agent-ix/ix-cli-local",
         "@agent-ix/ix-cli-core",
         "@agent-ix/ix-cli-elements",

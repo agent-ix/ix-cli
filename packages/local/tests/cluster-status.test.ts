@@ -4,31 +4,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { makeListingMock, type ListingMockBag } from "./listing-helpers.js";
 
 vi.mock("execa");
-vi.mock("@agent-ix/ix-ui-cli", () => {
-  const success = vi.fn();
-  const warn = vi.fn();
-  const error = vi.fn();
-  const raw = vi.fn();
-  return {
-    startListing: vi.fn(() => ({
-      group: vi.fn(),
-      item: vi.fn(),
-      note: vi.fn(),
-      raw,
-      commit: vi.fn(),
-      pause: vi.fn(),
-      success,
-      warn,
-      error,
-    })),
-    __success: success,
-    __warn: warn,
-    __error: error,
-    __raw: raw,
-  };
-});
+vi.mock("@agent-ix/ix-ui-cli", () => makeListingMock());
 vi.mock("picocolors", () => ({
   default: {
     green: (s: string) => s,
@@ -44,23 +23,11 @@ import * as ui from "@agent-ix/ix-ui-cli";
 import { runClusterStatus } from "../src/commands/cluster-status.js";
 
 const mockExeca = vi.mocked(execa);
-type Bag = typeof ui & {
-  __success: ReturnType<typeof vi.fn>;
-  __warn: ReturnType<typeof vi.fn>;
-  __error: ReturnType<typeof vi.fn>;
-  __raw: ReturnType<typeof vi.fn>;
-};
-const mockSuccess = (ui as unknown as Bag).__success;
-const mockWarn = (ui as unknown as Bag).__warn;
-const mockError = (ui as unknown as Bag).__error;
-const mockRaw = (ui as unknown as Bag).__raw;
+const calls = (ui as unknown as ListingMockBag).__calls;
+const resetListings = (ui as unknown as ListingMockBag).__reset;
 
-function rawText(): string {
-  // runClusterStatus emits its tables via Listing.raw(...). Concatenate every
-  // captured call's first argument to reconstruct the rendered output.
-  return mockRaw.mock.calls
-    .map((c: unknown[]) => (typeof c[0] === "string" ? c[0] : ""))
-    .join("");
+function joinedText(): string {
+  return calls.flatMap((c) => c.texts).join("\n");
 }
 
 const makeNode = (
@@ -101,6 +68,7 @@ function stubKubectl(nodes: object[], pods: object[]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetListings();
   vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 });
 
@@ -117,7 +85,7 @@ describe("runClusterStatus", () => {
 
     await runClusterStatus();
 
-    const written = rawText();
+    const written = joinedText();
     expect(written).toContain("NAME");
     expect(written).toContain("ROLE");
     expect(written).toContain("STATUS");
@@ -126,7 +94,7 @@ describe("runClusterStatus", () => {
     expect(written).toContain("control-plane");
   });
 
-  it("TC-040: all pods healthy — success outro with 'All pods healthy.' and no pod table", async () => {
+  it("TC-040: all pods healthy — passed listing with 'All pods healthy.' tail and only one table", async () => {
     stubKubectl(
       [makeNode("ix-control-plane", true, true)],
       [
@@ -137,8 +105,10 @@ describe("runClusterStatus", () => {
 
     await runClusterStatus();
 
-    expect(mockSuccess).toHaveBeenCalledWith("All pods healthy.");
-    expect(rawText()).not.toContain("NAMESPACE");
+    expect(calls).toHaveLength(1);
+    expect(calls[0].status).toBe("passed");
+    expect(calls[0].tail).toBe("All pods healthy.");
+    expect(joinedText()).not.toContain("NAMESPACE");
   });
 
   it("TC-041: unhealthy pod present — pod table rendered with NAMESPACE, NAME, PHASE, RESTARTS", async () => {
@@ -152,9 +122,11 @@ describe("runClusterStatus", () => {
 
     await runClusterStatus();
 
-    expect(mockSuccess).not.toHaveBeenCalledWith("All pods healthy.");
-    expect(mockWarn).toHaveBeenCalled();
-    const written = rawText();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].status).toBe("passed");
+    expect(calls[0].tailVariant).toBe("warn");
+    expect(calls[0].tail).toEqual(expect.stringContaining("unhealthy pod"));
+    const written = joinedText();
     expect(written).toContain("NAMESPACE");
     expect(written).toContain("NAME");
     expect(written).toContain("PHASE");
@@ -163,13 +135,13 @@ describe("runClusterStatus", () => {
     expect(written).toContain("kube-system");
   });
 
-  it("TC-042: kubectl get nodes fails — error outro called and descriptive error thrown", async () => {
+  it("TC-042: kubectl get nodes fails — failure listing emitted and descriptive error thrown", async () => {
     mockExeca.mockRejectedValueOnce(new Error("connection refused") as never);
 
     await expect(runClusterStatus()).rejects.toThrow(
       "kubectl get nodes failed",
     );
-    expect(mockError).toHaveBeenCalled();
+    expect(calls.some((c) => c.status === "failed")).toBe(true);
   });
 
   it("TC-043: picocolors mock strips color codes from node status and pod phase", async () => {
@@ -180,7 +152,7 @@ describe("runClusterStatus", () => {
 
     await runClusterStatus();
 
-    const written = rawText();
+    const written = joinedText();
     expect(written).toContain("NotReady");
     expect(written).toContain("CrashLoopBackOff");
     expect(written).not.toMatch(/\x1b\[[\d;]*mNotReady/);

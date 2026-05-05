@@ -35,6 +35,26 @@ beforeEach(() => {
 });
 
 describe("local secret contracts", () => {
+  it("returns null when a packaged chart has no ix-local.secrets.yaml", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-secrets-chart-"));
+    try {
+      const chartDir = path.join(dir, "plain-service");
+      fs.mkdirSync(chartDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(chartDir, "Chart.yaml"),
+        "apiVersion: v2\nname: plain-service\nversion: 0.1.0\n",
+      );
+      const tgzPath = path.join(dir, "plain-service-0.1.0.tgz");
+      await execa("tar", ["-czf", tgzPath, "-C", dir, "plain-service"]);
+
+      await expect(
+        loadSecretContractFromTgz(tgzPath, "plain-service"),
+      ).resolves.toBeNull();
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("loads a packaged ix-local.secrets.yaml from a chart tgz", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-secrets-chart-"));
     try {
@@ -69,6 +89,26 @@ describe("local secret contracts", () => {
       delete process.env.GITHUB_TOKEN;
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it("cleans up the extraction directory when tgz extraction fails", async () => {
+    const before = new Set(
+      fs
+        .readdirSync(os.tmpdir())
+        .filter((entry) => entry.startsWith("ix-secrets-extract-")),
+    );
+
+    await expect(
+      loadSecretContractFromTgz("/tmp/does-not-exist.tgz", "missing"),
+    ).rejects.toThrow();
+
+    const leaked = fs
+      .readdirSync(os.tmpdir())
+      .filter(
+        (entry) =>
+          entry.startsWith("ix-secrets-extract-") && !before.has(entry),
+      );
+    expect(leaked).toEqual([]);
   });
 
   it("reuses existing generated secret keys instead of rotating them", async () => {

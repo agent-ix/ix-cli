@@ -4,33 +4,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { makeListingMock, type ListingMockBag } from "./listing-helpers.js";
 
 vi.mock("execa");
-vi.mock("@agent-ix/ix-ui-cli", async () => {
-  const success = vi.fn();
-  const warn = vi.fn();
-  const error = vi.fn();
-  const pause = vi.fn(async (fn: () => unknown) => await fn());
-  return {
-    confirm: vi.fn(),
-    isCancel: vi.fn(() => false),
-    startListing: vi.fn(() => ({
-      group: vi.fn(),
-      item: vi.fn(),
-      note: vi.fn(),
-      raw: vi.fn(),
-      commit: vi.fn(),
-      pause,
-      success,
-      warn,
-      error,
-    })),
-    __success: success,
-    __warn: warn,
-    __error: error,
-    __pause: pause,
-  };
-});
+vi.mock("@agent-ix/ix-ui-cli", () => makeListingMock());
 
 import { execa } from "execa";
 import * as ui from "@agent-ix/ix-ui-cli";
@@ -53,16 +30,8 @@ const config: IxConfig = {
 };
 
 const mockExeca = vi.mocked(execa);
-const mockConfirm = vi.mocked(ui.confirm);
-const mockIsCancel = vi.mocked(ui.isCancel);
-type Bag = typeof ui & {
-  __success: ReturnType<typeof vi.fn>;
-  __warn: ReturnType<typeof vi.fn>;
-  __error: ReturnType<typeof vi.fn>;
-};
-const mockSuccess = (ui as unknown as Bag).__success;
-const mockWarn = (ui as unknown as Bag).__warn;
-const mockError = (ui as unknown as Bag).__error;
+const calls = (ui as unknown as ListingMockBag).__calls;
+const resetListings = (ui as unknown as ListingMockBag).__reset;
 
 function stubClusterExists() {
   mockExeca.mockResolvedValueOnce({ stdout: "ix\nother-cluster\n" } as never);
@@ -74,7 +43,7 @@ function stubClusterAbsent() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockIsCancel.mockReturnValue(false);
+  resetListings();
 });
 
 describe("runClusterDown", () => {
@@ -82,9 +51,10 @@ describe("runClusterDown", () => {
     stubClusterExists();
     mockExeca.mockResolvedValueOnce({} as never);
 
-    await runClusterDown(config, { yes: true });
+    const confirm = vi.fn(async () => true);
+    await runClusterDown(config, { yes: true }, { confirm });
 
-    expect(mockConfirm).not.toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
     expect(mockExeca).toHaveBeenCalledWith(
       "kind",
       ["delete", "cluster", "--name", "ix"],
@@ -93,48 +63,48 @@ describe("runClusterDown", () => {
   });
 
   it("TC-033: prompt returns false — no deletion, warn outro", async () => {
-    mockConfirm.mockResolvedValueOnce(false as never);
-    mockIsCancel.mockReturnValue(false);
-
-    await runClusterDown(config);
+    const confirm = vi.fn(async () => false);
+    await runClusterDown(config, {}, { confirm });
 
     expect(mockExeca).not.toHaveBeenCalled();
-    expect(mockWarn).toHaveBeenCalledWith(expect.stringContaining("Cancelled"));
+    expect(calls).toHaveLength(1);
+    expect(calls[0].tail).toEqual(expect.stringContaining("Cancelled"));
+    expect(calls[0].tailVariant).toBe("warn");
   });
 
-  it("TC-034: prompt cancelled (isCancel) — no deletion, warn outro", async () => {
-    const cancelSymbol = Symbol("cancel");
-    mockConfirm.mockResolvedValueOnce(cancelSymbol as never);
-    mockIsCancel.mockReturnValue(true);
-
-    await runClusterDown(config);
+  it("TC-034: prompt cancelled — no deletion, warn outro", async () => {
+    // The prompt seam returns false when ConfirmPrompt's onSubmit is cancelled.
+    const confirm = vi.fn(async () => false);
+    await runClusterDown(config, {}, { confirm });
 
     expect(mockExeca).not.toHaveBeenCalled();
-    expect(mockWarn).toHaveBeenCalled();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].tail).toEqual(expect.stringContaining("Cancelled"));
+    expect(calls[0].tailVariant).toBe("warn");
   });
 
   it("TC-035: cluster does not exist — exits cleanly without deletion", async () => {
-    mockConfirm.mockResolvedValueOnce(true as never);
     stubClusterAbsent();
-
     await runClusterDown(config, { yes: true });
 
     const deleteCalls = mockExeca.mock.calls.filter(
       (args) => args[0] === "kind" && (args[1] as string[]).includes("delete"),
     );
     expect(deleteCalls).toHaveLength(0);
-    expect(mockSuccess).toHaveBeenCalledWith(
-      expect.stringContaining("does not exist"),
-    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0].tail).toEqual(expect.stringContaining("does not exist"));
+    expect(calls[0].status).toBe("passed");
   });
 
-  it("TC-036: kind delete cluster fails — error called and error rethrown", async () => {
+  it("TC-036: kind delete cluster fails — error rendered and rethrown", async () => {
     stubClusterExists();
     const boom = new Error("kind: failed to delete");
     mockExeca.mockRejectedValueOnce(boom as never);
 
     await expect(runClusterDown(config, { yes: true })).rejects.toThrow(boom);
-    expect(mockError).toHaveBeenCalled();
+    const failed = calls.find((c) => c.status === "failed");
+    expect(failed).toBeDefined();
+    expect(failed!.tail).toEqual(expect.stringContaining("Failed to delete"));
   });
 
   it("TC-037: no helm uninstall called during cluster down", async () => {
@@ -147,15 +117,10 @@ describe("runClusterDown", () => {
     expect(helmCalls).toHaveLength(0);
   });
 
-  it("TC-038: prompt message contains the specific cluster name", async () => {
-    mockConfirm.mockResolvedValueOnce(false as never);
+  it("TC-038: prompt receives the specific cluster name", async () => {
+    const confirm = vi.fn(async () => false);
+    await runClusterDown(config, {}, { confirm });
 
-    await runClusterDown(config);
-
-    expect(mockConfirm).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: expect.stringContaining("ix"),
-      }),
-    );
+    expect(confirm).toHaveBeenCalledWith("ix");
   });
 });

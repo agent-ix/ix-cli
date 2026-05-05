@@ -13,7 +13,6 @@
  * `ix local auth reset-admin` (kubectl exec → identity.cli reset-admin).
  */
 
-import React from "react";
 import type { IxConfig } from "../config.js";
 import {
   kubectlRaw,

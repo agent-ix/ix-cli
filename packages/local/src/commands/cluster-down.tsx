@@ -3,22 +3,26 @@
  * Tear down the kind cluster with mandatory confirmation (NFR-002).
  */
 
-import React, { useEffect } from "react";
+import type React from "react";
 import { execa } from "execa";
 import {
   ConfirmPrompt,
   Listing,
   render,
   renderStatic,
+  useEffect,
   useRenderResult,
+  useState,
 } from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "../config.js";
 
-async function confirmDelete(clusterName: string): Promise<boolean> {
+const HEADER = "ix local cluster down";
+
+async function defaultConfirm(clusterName: string): Promise<boolean> {
   let answer: boolean | null = null;
   const Capture: React.FC = () => {
     const { exit } = useRenderResult();
-    const [done, setDone] = React.useState(false);
+    const [done, setDone] = useState(false);
     useEffect(() => {
       if (done) {
         const t = setTimeout(exit, 0);
@@ -40,18 +44,25 @@ async function confirmDelete(clusterName: string): Promise<boolean> {
   return answer === true;
 }
 
+export interface ClusterDownDeps {
+  /** Test seam — replace the interactive prompt with a function under test control. */
+  confirm?: (clusterName: string) => Promise<boolean>;
+}
+
 export async function runClusterDown(
   config: IxConfig,
   opts: { yes?: boolean } = {},
+  deps: ClusterDownDeps = {},
 ): Promise<void> {
   const clusterName = config.kindClusterName;
+  const confirm = deps.confirm ?? defaultConfirm;
 
   if (!opts.yes) {
-    const confirmed = await confirmDelete(clusterName);
+    const confirmed = await confirm(clusterName);
     if (!confirmed) {
       await renderStatic(
         <Listing
-          header="ix local cluster down"
+          header={HEADER}
           status="passed"
           tail="Cancelled. Cluster not deleted."
           tailVariant="warn"
@@ -76,7 +87,7 @@ export async function runClusterDown(
   if (!clusterExists) {
     await renderStatic(
       <Listing
-        header="ix local cluster down"
+        header={HEADER}
         status="passed"
         tail={`Cluster '${clusterName}' does not exist. Nothing to delete.`}
       />,
@@ -94,7 +105,7 @@ export async function runClusterDown(
     const msg = err instanceof Error ? err.message : String(err);
     await renderStatic(
       <Listing
-        header="ix local cluster down"
+        header={HEADER}
         status="failed"
         tail={`Failed to delete cluster: ${msg}`}
         tailVariant="error"
@@ -104,7 +115,7 @@ export async function runClusterDown(
   }
   await renderStatic(
     <Listing
-      header="ix local cluster down"
+      header={HEADER}
       status="passed"
       tail={`Cluster '${clusterName}' deleted.`}
     />,

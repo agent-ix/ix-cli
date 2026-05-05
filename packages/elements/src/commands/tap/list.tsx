@@ -1,4 +1,3 @@
-import React from "react";
 import { Listing, Item, renderStatic } from "@agent-ix/ix-ui-cli";
 import { loadTapConfig, ROOT_TAP } from "../../tap-config.js";
 

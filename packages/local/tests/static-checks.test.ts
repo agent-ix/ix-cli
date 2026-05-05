@@ -4,9 +4,19 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PKG_SRC = resolve(fileURLToPath(import.meta.url), "../../src");
+const PKG_ROOT = resolve(PKG_SRC, "..");
 
 function readSrc(rel: string): string {
-  return readFileSync(join(PKG_SRC, rel), "utf-8");
+  const direct = join(PKG_SRC, rel);
+  try {
+    return readFileSync(direct, "utf-8");
+  } catch {
+    // Files were renamed .ts → .tsx during the Ink migration; tolerate either.
+    if (rel.endsWith(".ts")) {
+      return readFileSync(`${direct}x`, "utf-8");
+    }
+    throw new Error(`readSrc: file not found: ${direct}`);
+  }
 }
 
 function grepSrc(pattern: RegExp, dir = PKG_SRC): string[] {
@@ -18,7 +28,7 @@ function grepSrc(pattern: RegExp, dir = PKG_SRC): string[] {
         walk(full);
         continue;
       }
-      if (!entry.name.endsWith(".ts")) continue;
+      if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".tsx")) continue;
       const src = readFileSync(full, "utf-8");
       if (pattern.test(src)) hits.push(full);
     }
@@ -83,7 +93,8 @@ describe("NFR-001-AC-2: ix-ui-cli used for command framing", () => {
           walk(full);
           continue;
         }
-        if (!entry.name.endsWith(".ts")) continue;
+        if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".tsx"))
+          continue;
         const src = readFileSync(full, "utf-8");
         if (/startListing\(/.test(src)) {
           expect(
@@ -104,7 +115,8 @@ describe("NFR-001-AC-2: ix-ui-cli used for command framing", () => {
           walk(full);
           continue;
         }
-        if (!entry.name.endsWith(".ts")) continue;
+        if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".tsx"))
+          continue;
         const src = readFileSync(full, "utf-8");
         expect(
           src,
@@ -138,14 +150,86 @@ describe("NFR-001-AC-5: no inline ANSI or connectors", () => {
 // ---------------------------------------------------------------------------
 describe("NFR-001-AC-3: PhaseTable imported from @agent-ix/ix-ui-cli", () => {
   it("PhaseTable is imported from @agent-ix/ix-ui-cli, not a relative path", () => {
-    const hits = grepSrc(/import.*PhaseTable/);
+    const hits = grepSrc(/import[\s\S]{0,160}\bPhaseTable\b/);
     for (const file of hits) {
       const src = readFileSync(file, "utf-8");
       expect(
         src,
         `${file} should import PhaseTable from @agent-ix/ix-ui-cli`,
-      ).toMatch(/import.*PhaseTable.*from\s+["']@agent-ix\/ix-ui-cli["']/);
+      ).toMatch(
+        /import[\s\S]{0,160}\bPhaseTable\b[\s\S]{0,160}from\s+["']@agent-ix\/ix-ui-cli["']/,
+      );
     }
+  });
+});
+
+describe("Ink React singleton wiring", () => {
+  it("live-hook components import hooks from @agent-ix/ix-ui-cli, not react", () => {
+    const files = [
+      "local-secrets.ts",
+      "credentials.ts",
+      "commands/cluster-down.ts",
+      "commands/init-cluster.ts",
+      "phase-table-runner.ts",
+    ];
+
+    for (const file of files) {
+      const src = readSrc(file);
+      expect(
+        src,
+        `${file} must not import runtime hooks from react`,
+      ).not.toMatch(
+        /import\s+(?:React,\s*)?\{[^}]*\buse(?:Effect|State)\b[^}]*\}\s+from\s+["']react["']/,
+      );
+      expect(
+        src,
+        `${file} must import live hooks from @agent-ix/ix-ui-cli`,
+      ).toMatch(
+        /from\s+["']@agent-ix\/ix-ui-cli["'][\s\S]*?\buseEffect\b[\s\S]*?\buseState\b|import\s+\{[\s\S]*?\buseEffect\b[\s\S]*?\buseState\b[\s\S]*?\}\s+from\s+["']@agent-ix\/ix-ui-cli["']/,
+      );
+    }
+  });
+
+  it("local build keeps react external so command chunks do not bundle a second hook dispatcher", () => {
+    const src = readFileSync(join(PKG_ROOT, "vite.config.ts"), "utf-8");
+    expect(src).toMatch(/\/\^react\(\$\|\\\/\)\//);
+  });
+});
+
+describe("Ink rendering stays separated from image-mode orchestration", () => {
+  it("image mode delegates live rendering to the shared phase-table runner", () => {
+    const src = readSrc("commands/up-image.ts");
+
+    expect(src).toMatch(
+      /renderPhaseTableRun<Phase,\s*AppInstallPipelineResult>/,
+    );
+    expect(src).toMatch(/async function runAppInstallPipeline/);
+    expect(src).not.toMatch(/const AppPhaseTable/);
+  });
+
+  it("the shared phase-table runner owns Ink lifecycle but no Helm/Kubernetes process work", () => {
+    const src = readSrc("phase-table-runner.ts");
+
+    expect(src).toMatch(/<PhaseTable<P>/);
+    expect(src).toMatch(
+      /controller\(\(snapshot\) => setServices\(snapshot\)\)/,
+    );
+    expect(src).not.toMatch(/\bexeca\(/);
+    expect(src).not.toMatch(/\bwaitForRollout\(/);
+    expect(src).not.toMatch(/\bkubectl\b/);
+    expect(src).not.toMatch(/\bhelm\b/);
+  });
+});
+
+describe("Source and image mode share the live PhaseTable renderer", () => {
+  it("source mode renders via renderPhaseTableRun instead of final-state Listing", () => {
+    const src = readSrc("commands/up-source.ts");
+
+    expect(src).toMatch(/renderPhaseTableRun<SourcePhase,\s*SourceModeResult>/);
+    expect(src).toMatch(/phases:\s*SOURCE_PHASES/);
+    expect(src).toMatch(/phaseLabels:\s*SOURCE_PHASE_LABELS/);
+    expect(src).not.toMatch(/renderStatic\(/);
+    expect(src).not.toMatch(/<Listing/);
   });
 });
 
@@ -265,10 +349,10 @@ describe("FR-034: ix local refresh diff output", () => {
     );
   });
 
-  it("TC-301: runRefresh emits diff rows via list.item", () => {
+  it("TC-301: runRefresh emits diff rows via <Item> children", () => {
     const src = readSrc("index.ts");
     expect(src).toMatch(
-      /diffRegistry\(prior,\s*reg\)[\s\S]*?list\.item\(formatRefreshChange/,
+      /diffRegistry\(prior,\s*reg\)[\s\S]*?<Item[\s\S]*?formatRefreshChange/,
     );
   });
 
@@ -371,11 +455,14 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
 
   it("TC-103: app display uses child service rows with pull → secrets → install → ready", () => {
     const src = readSrc("commands/up-image.ts");
+    const runner = readSrc("phase-table-runner.ts");
     const phases = readSrc("phases.ts");
     expect(phases).toMatch(/\["pull", "secrets", "install", "ready"\]/);
-    expect(src).toMatch(/new PhaseTable<Phase>/);
-    expect(src).toMatch(/phases: PHASES/);
-    expect(src).toMatch(/phaseLabels: PHASE_LABELS/);
+    // Declarative shared renderer receives PHASES/PHASE_LABELS from image mode.
+    expect(src).toMatch(/renderPhaseTableRun<Phase/);
+    expect(src).toMatch(/phases:\s*PHASES/);
+    expect(src).toMatch(/phaseLabels:\s*PHASE_LABELS/);
+    expect(runner).toMatch(/<PhaseTable<P>/);
     expect(src).not.toMatch(/const APP_ROW/);
     expect(src).not.toMatch(/\[APP_ROW,/);
     expect(src).not.toMatch(/hidePendingRows:\s*true/);
@@ -384,6 +471,13 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
   it("TC-104: up-image.ts imports loadSecretContractFromTgz from local-secrets", () => {
     const src = readSrc("commands/up-image.ts");
     expect(src).toMatch(/loadSecretContractFromTgz/);
+  });
+
+  it("TC-108: single-service image mode pulls the chart tgz before helm install", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(
+      /runSingleServiceFlow[\s\S]*?"pull"[\s\S]*?loadSecretContractFromTgz[\s\S]*?buildHelmInstallArgs/,
+    );
   });
 
   it("TC-274: up-image.ts supports bundled subcharts as directories as well as tgzs", () => {
@@ -456,17 +550,22 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
     const src = readSrc("commands/up-image.ts");
     expect(src).toMatch(/parseHookFailureMessage/);
     expect(src).toMatch(/\\bjob\\s\+\(\\S\+\)\\s\+failed:/);
+    // Format-tolerant: prettier may split the call over multiple lines.
     expect(src).toMatch(
-      /findInstallForHookJob\(installs, hookFailure\.jobName\)/,
+      /findInstallForHookJob\(\s*installs\s*,\s*hookFailure\.jobName\s*,?\s*\)/,
     );
     expect(src).toMatch(/appRows\.failInstall\(/);
   });
 
   it("TC-280c: unmatched umbrella failures force an overall failed final table", () => {
     const src = readSrc("commands/up-image.ts");
+    // The unmatched-failure path captures the message in finalDisplayError, then
+    // the React component drives the table into status="failed" with that
+    // message as the tail.
     expect(src).toMatch(/finalDisplayError/);
-    expect(src).toMatch(/failed:\s*true/);
-    expect(src).toMatch(/error:\s*finalDisplayError/);
+    expect(src).toMatch(/status:\s*"failed"/);
+    // Unmatched failures end with finalDisplayError carried into the final tail.
+    expect(src).toMatch(/finalDisplayError\s*\?\?\s*err\.message/);
   });
 
   it("TC-281: secret apply output is not written into service status rows", () => {

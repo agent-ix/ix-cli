@@ -13,14 +13,16 @@
  *      backend (no plaintext file).
  */
 
-import React, { useEffect } from "react";
+import type React from "react";
 import {
   Listing,
   Note,
   PasswordPrompt,
   render,
   renderStatic,
+  useEffect,
   useRenderResult,
+  useState,
 } from "@agent-ix/ix-ui-cli";
 import { defaultSecretsService } from "@agent-ix/ix-cli-core";
 
@@ -70,7 +72,7 @@ async function promptForToken(activeBackend: string): Promise<string | null> {
   let cancelled = false;
   const Capture: React.FC = () => {
     const { exit } = useRenderResult();
-    const [done, setDone] = React.useState(false);
+    const [done, setDone] = useState(false);
     useEffect(() => {
       if (done) {
         const t = setTimeout(exit, 0);

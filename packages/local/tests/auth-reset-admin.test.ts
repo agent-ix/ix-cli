@@ -1,25 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { makeListingMock, type ListingMockBag } from "./listing-helpers.js";
 
-vi.mock("@agent-ix/ix-ui-cli", () => {
-  const note = vi.fn();
-  const success = vi.fn();
-  const error = vi.fn();
-  return {
-    startListing: vi.fn(() => ({ commit: vi.fn(), note, success, error })),
-    makeListr: vi.fn(
-      (tasks: Array<{ task: (ctx: object, t: object) => Promise<void> }>) => ({
-        run: async () => {
-          for (const t of tasks) {
-            await t.task({}, { output: "" });
-          }
-        },
-      }),
-    ),
-    __note: note,
-    __success: success,
-    __error: error,
-  };
-});
+vi.mock("@agent-ix/ix-ui-cli", () => makeListingMock());
 
 vi.mock("../src/commands/auth-secret.js", () => ({
   writeAdminBootstrapSecret: vi.fn(),
@@ -30,12 +12,8 @@ import { writeAdminBootstrapSecret } from "../src/commands/auth-secret.js";
 import { KubectlExecError } from "../src/commands/auth-identity.js";
 import { runAuthResetAdmin } from "../src/commands/auth-reset-admin.js";
 
-type UiBag = typeof ui & {
-  __note: ReturnType<typeof vi.fn>;
-  __success: ReturnType<typeof vi.fn>;
-  __error: ReturnType<typeof vi.fn>;
-};
-const mockNote = (ui as unknown as UiBag).__note;
+const calls = (ui as unknown as ListingMockBag).__calls;
+const resetListings = (ui as unknown as ListingMockBag).__reset;
 const mockWriteSecret = vi.mocked(writeAdminBootstrapSecret);
 
 const mockConfig = { internalBaseDomain: "dev.ix" } as never;
@@ -53,8 +31,13 @@ const resetResp = {
   login_url: "https://identity.dev.ix/login",
 };
 
+function notesIn(): string[] {
+  return calls.flatMap((c) => c.notes);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  resetListings();
 });
 
 describe("runAuthResetAdmin — happy path", () => {
@@ -71,11 +54,10 @@ describe("runAuthResetAdmin — happy path", () => {
     expect(mockWriteSecret).toHaveBeenCalledWith(
       expect.objectContaining({ password: "new-pass" }),
     );
-    expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("new-pass"));
-    expect(mockNote).toHaveBeenCalledWith(
-      expect.stringContaining("admin@dev.ix"),
-    );
-    expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("u1"));
+    const notes = notesIn();
+    expect(notes.some((n) => n.includes("new-pass"))).toBe(true);
+    expect(notes.some((n) => n.includes("admin@dev.ix"))).toBe(true);
+    expect(notes.some((n) => n.includes("u1"))).toBe(true);
   });
 
   it("passes --email when --user is provided", async () => {
@@ -120,7 +102,7 @@ describe("runAuthResetAdmin — no admin exists (exit 4)", () => {
     expect(mockWriteSecret).toHaveBeenCalledWith(
       expect.objectContaining({ password: "init-pass" }),
     );
-    expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("init-pass"));
+    expect(notesIn().some((n) => n.includes("init-pass"))).toBe(true);
   });
 
   it("prints 'admin' as username/email fallback when init-admin response omits them", async () => {
@@ -136,7 +118,7 @@ describe("runAuthResetAdmin — no admin exists (exit 4)", () => {
 
     await runAuthResetAdmin(mockConfig, {}, { kubectlExecJson: mockExec });
 
-    expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("admin"));
+    expect(notesIn().some((n) => n.includes("admin"))).toBe(true);
   });
 });
 

@@ -6,7 +6,13 @@ import { fileURLToPath } from "node:url";
 const PKG_SRC = resolve(fileURLToPath(import.meta.url), "../../src");
 
 function readSrc(rel: string): string {
-  return readFileSync(join(PKG_SRC, rel), "utf-8");
+  const direct = join(PKG_SRC, rel);
+  try {
+    return readFileSync(direct, "utf-8");
+  } catch {
+    if (rel.endsWith(".ts")) return readFileSync(`${direct}x`, "utf-8");
+    throw new Error(`readSrc: file not found: ${direct}`);
+  }
 }
 
 function walkTs(dir: string, out: string[] = []): string[] {
@@ -16,7 +22,8 @@ function walkTs(dir: string, out: string[] = []): string[] {
       walkTs(full, out);
       continue;
     }
-    if (entry.name.endsWith(".ts")) out.push(full);
+    if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx"))
+      out.push(full);
   }
   return out;
 }
@@ -103,7 +110,9 @@ describe("ix-cli-auth-AC-6 — namespace constants are the single source of trut
   // of the IX_*_NAMESPACE constants.
   const ALLOWLIST = new Set([
     "src/local-secrets.ts",
+    "src/local-secrets.tsx",
     "src/commands/init-cluster.ts",
+    "src/commands/init-cluster.tsx",
     "src/rollout.ts", // function-default in JSDoc-only; see below
   ]);
 

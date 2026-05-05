@@ -14,7 +14,6 @@
  * in the K8s Secret — never in files, env vars, or logs.
  */
 
-import React from "react";
 import type { IxConfig } from "../config.js";
 import { execa, type ExecaError } from "execa";
 import { writeAdminBootstrapSecret } from "./auth-secret.js";

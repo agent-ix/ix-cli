@@ -1,10 +1,4 @@
-import React from "react";
-import {
-  Listing,
-  Group,
-  Item,
-  renderStatic,
-} from "@agent-ix/ix-ui-cli";
+import { Listing, Group, Item, renderStatic } from "@agent-ix/ix-ui-cli";
 import { resolveAllElements } from "../registry/resolver.js";
 
 export async function runElementsList(

@@ -1,10 +1,4 @@
-import React from "react";
-import {
-  Item,
-  Listing,
-  Note,
-  renderStatic,
-} from "@agent-ix/ix-ui-cli";
+import { Item, Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
 import { execa } from "execa";
 import pc from "picocolors";
 import fs from "node:fs";
@@ -307,7 +301,9 @@ export async function runDown(
     // Delete PVCs in every namespace we just uninstalled from so that
     // Retain-policy PVs don't get stuck in Released state on the next
     // `ix local up` cycle.
-    const uninstalledNamespaces = [...new Set(releases.map((r) => r.namespace))];
+    const uninstalledNamespaces = [
+      ...new Set(releases.map((r) => r.namespace)),
+    ];
     for (const ns of uninstalledNamespaces) {
       await execa(
         "kubectl",

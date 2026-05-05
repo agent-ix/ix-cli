@@ -5,7 +5,6 @@
  * `POST /internal/users/uninvite` endpoint.
  */
 
-import React from "react";
 import type { IxConfig } from "../config.js";
 import {
   kubectlRaw,

@@ -1,6 +1,5 @@
 import { Command, Flags } from "@oclif/core";
 import { spawn } from "node:child_process";
-import React from "react";
 import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
 import pc from "picocolors";
 
@@ -50,12 +49,8 @@ export default class Update extends Command {
 
     const baseNotes = (
       <>
-        <Note>
-          {`registry ${pc.cyan(registry)}`}
-        </Note>
-        <Note>
-          {`current  ${pc.cyan(current)}`}
-        </Note>
+        <Note>{`registry ${pc.cyan(registry)}`}</Note>
+        <Note>{`current  ${pc.cyan(current)}`}</Note>
       </>
     );
 
@@ -86,11 +81,7 @@ export default class Update extends Command {
 
     if (current === latest) {
       await renderStatic(
-        <Listing
-          header="ix update"
-          status="passed"
-          tail="Already up to date."
-        >
+        <Listing header="ix update" status="passed" tail="Already up to date.">
           {baseNotes}
           <Note>{`latest   ${pc.cyan(latest)}`}</Note>
         </Listing>,

@@ -19,8 +19,8 @@ import {
 } from "../local-secrets.js";
 import { ensureNamespace } from "../namespaces.js";
 import { waitForRollout } from "../rollout.js";
-import React from "react";
-import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import type { PhaseState, ServiceRow } from "@agent-ix/ix-ui-cli";
+import { renderPhaseTableRun } from "../phase-table-runner.js";
 
 /**
  * Resolve the values overlay file for an app chart, profile-aware.
@@ -45,6 +45,27 @@ interface LocalInstall {
   tags: string[];
   /** Target Kubernetes namespace, resolved via the four-tier name fallback. */
   namespace: string;
+}
+
+type SourcePhase = "secrets" | "build" | "install" | "ready";
+
+const SOURCE_PHASES: readonly SourcePhase[] = [
+  "secrets",
+  "build",
+  "install",
+  "ready",
+];
+
+const SOURCE_PHASE_LABELS: Record<SourcePhase, string> = {
+  secrets: "secrets",
+  build: "building",
+  install: "installing",
+  ready: "ready",
+};
+
+interface SourceModeResult {
+  failures: string[];
+  urls: string[];
 }
 
 interface RawDependency {
@@ -337,6 +358,211 @@ function buildLocalHelmArgs(
   return args;
 }
 
+function initialSourceRows(
+  installs: LocalInstall[],
+): ServiceRow<SourcePhase>[] {
+  return installs.map((install) => ({
+    name: install.name,
+    displayName: `${install.name} ${pc.dim("source")}`,
+    phases: {
+      secrets: "pending",
+      build: "pending",
+      install: "pending",
+      ready: "pending",
+    },
+    status: null,
+    error: null,
+  }));
+}
+
+function createSourceRowEmitter(
+  installs: LocalInstall[],
+  emit: (services: ServiceRow<SourcePhase>[]) => void,
+): {
+  setPhase: (
+    name: string,
+    phase: SourcePhase,
+    state: PhaseState,
+    status?: string | null,
+  ) => void;
+  setError: (name: string, phase: SourcePhase, error: string) => void;
+  finishPending: (name: string, through: SourcePhase) => void;
+} {
+  let rows = initialSourceRows(installs);
+
+  const snapshot = () =>
+    rows.map((row) => ({
+      ...row,
+      phases: { ...row.phases },
+    }));
+
+  const update = (
+    name: string,
+    fn: (row: ServiceRow<SourcePhase>) => ServiceRow<SourcePhase>,
+  ) => {
+    rows = rows.map((row) => (row.name === name ? fn(row) : row));
+    emit(snapshot());
+  };
+
+  const setPhase = (
+    name: string,
+    phase: SourcePhase,
+    state: PhaseState,
+    status: string | null = null,
+  ) => {
+    update(name, (row) => ({
+      ...row,
+      phases: { ...row.phases, [phase]: state },
+      status,
+    }));
+  };
+
+  const setError = (name: string, phase: SourcePhase, error: string) => {
+    update(name, (row) => ({
+      ...row,
+      phases: { ...row.phases, [phase]: "failed" },
+      status: error,
+      error,
+    }));
+  };
+
+  const finishPending = (name: string, through: SourcePhase) => {
+    const throughIndex = SOURCE_PHASES.indexOf(through);
+    update(name, (row) => {
+      const phases = { ...row.phases };
+      for (const phase of SOURCE_PHASES.slice(0, throughIndex + 1)) {
+        if (phases[phase] === "pending" || phases[phase] === "running") {
+          phases[phase] = "done";
+        }
+      }
+      return { ...row, phases };
+    });
+  };
+
+  emit(snapshot());
+  return { setPhase, setError, finishPending };
+}
+
+async function runSourceModePipeline(
+  installs: LocalInstall[],
+  secretContracts: NonNullable<
+    Awaited<ReturnType<typeof loadSecretContract>>
+  >[],
+  requiresRegistryAuth: boolean,
+  config: IxConfig,
+  imageTag: string,
+  opts: UpFilterOptions,
+  emit: (services: ServiceRow<SourcePhase>[]) => void,
+): Promise<SourceModeResult> {
+  const rows = createSourceRowEmitter(installs, emit);
+  const failures: string[] = [];
+  const installNamespaces = [...new Set(installs.map((i) => i.namespace))];
+
+  for (const ns of installNamespaces) {
+    await ensureNamespace(ns);
+  }
+
+  for (const install of installs) {
+    rows.setPhase(install.name, "secrets", "running", "checking secrets");
+  }
+  for (const contract of secretContracts) {
+    const matched = installs.find(
+      (i) => i.secretContractDir === contract.repoDir,
+    );
+    const namespace = matched?.namespace ?? IX_APPS_NAMESPACE;
+    await applySecretContract(contract, namespace);
+  }
+  for (const install of installs) {
+    rows.setPhase(install.name, "secrets", "done");
+  }
+
+  if (requiresRegistryAuth) {
+    for (const install of installs) {
+      rows.setPhase(install.name, "install", "queued", "helm registry login");
+    }
+    const token = await resolveGhcrToken(false);
+    await execa(
+      "helm",
+      [
+        "registry",
+        "login",
+        config.helmChartRegistry,
+        "-u",
+        "_token",
+        "--password-stdin",
+      ],
+      { input: token, all: true },
+    );
+    for (const install of installs) {
+      if (install.dependencyUpdate) {
+        rows.setPhase(install.name, "install", "pending");
+      }
+    }
+  }
+
+  for (const install of installs) {
+    let phase: SourcePhase = "build";
+    try {
+      const canBuild = makefileHasTargets(install.repoDir, [
+        "build",
+        "kind-load",
+      ]);
+      if (canBuild) {
+        rows.setPhase(install.name, "build", "running", "make build");
+        await execa("make", ["build"], { cwd: install.repoDir, all: true });
+        rows.setPhase(install.name, "build", "running", "make kind-load");
+        await execa("make", ["kind-load"], {
+          cwd: install.repoDir,
+          all: true,
+        });
+      }
+      rows.setPhase(install.name, "build", "done");
+
+      phase = "install";
+      rows.setPhase(install.name, "install", "running", "helm upgrade");
+      await execa("helm", buildLocalHelmArgs(install, config, imageTag), {
+        all: true,
+      });
+      rows.setPhase(install.name, "install", "running", "rollout restart");
+      await execa(
+        "kubectl",
+        [
+          "rollout",
+          "restart",
+          `deployment/${install.name}`,
+          "-n",
+          install.namespace,
+        ],
+        { all: true },
+      );
+      rows.setPhase(install.name, "install", "done");
+
+      phase = "ready";
+      rows.setPhase(install.name, "ready", "running", "checking rollout");
+      await waitForRollout(
+        install.name,
+        install.namespace,
+        config.rolloutTimeoutSeconds,
+        undefined,
+        `app.kubernetes.io/part-of=${install.name}`,
+        (status) => rows.setPhase(install.name, "ready", "running", status),
+      );
+      rows.setPhase(install.name, "ready", "done", "ready");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      rows.setError(install.name, phase, msg);
+      rows.finishPending(install.name, phase);
+      if (!opts.continueOnError) throw err;
+      failures.push(`${install.name}: ${msg}`);
+    }
+  }
+
+  return {
+    failures,
+    urls: installs.map((i) => `https://${i.name}.${config.internalBaseDomain}`),
+  };
+}
+
 export async function runSourceModeUp(
   services: string[],
   config: IxConfig,
@@ -379,122 +605,39 @@ export async function runSourceModeUp(
       (contract): contract is NonNullable<typeof contract> => contract !== null,
     );
 
-    const failures: string[] = [];
-    const installNamespaces = [...new Set(installs.map((i) => i.namespace))];
-
-    // Prepare namespaces.
-    for (const ns of installNamespaces) {
-      await ensureNamespace(ns);
-    }
-
-    // Apply repo secrets.
-    for (const contract of secretContracts) {
-      const matched = installs.find(
-        (i) => i.secretContractDir === contract.repoDir,
-      );
-      const namespace = matched?.namespace ?? IX_APPS_NAMESPACE;
-      await applySecretContract(contract, namespace);
-    }
-
-    // Authenticate Helm registry once if any install needs dependency updates.
-    if (requiresRegistryAuth) {
-      const token = await resolveGhcrToken(false);
-      await execa(
-        "helm",
-        [
-          "registry",
-          "login",
-          config.helmChartRegistry,
-          "-u",
-          "_token",
-          "--password-stdin",
-        ],
-        { input: token, stdio: ["pipe", "inherit", "inherit"] },
-      );
-    }
-
-    // Deploy each install. Inherit stdio so helm/make/kubectl progress
-    // streams directly; the final-state listing is rendered after the loop.
-    for (const install of installs) {
-      try {
-        const canBuild = makefileHasTargets(install.repoDir, [
-          "build",
-          "kind-load",
-        ]);
-        if (canBuild) {
-          for (const target of ["build", "kind-load"]) {
-            await execa("make", [target], {
-              cwd: install.repoDir,
-              stdio: "inherit",
-            });
-          }
-        }
-
-        await execa(
-          "helm",
-          buildLocalHelmArgs(install, config, imageTag),
-          { stdio: "inherit" },
-        );
-
-        await execa(
-          "kubectl",
-          [
-            "rollout",
-            "restart",
-            `deployment/${install.name}`,
-            "-n",
-            install.namespace,
-          ],
-          { stdio: "inherit" },
-        );
-
-        await waitForRollout(
-          install.name,
-          install.namespace,
-          config.rolloutTimeoutSeconds,
-          undefined,
-          `app.kubernetes.io/part-of=${install.name}`,
-        );
-      } catch (err) {
-        if (!opts.continueOnError) throw err;
-        const msg = err instanceof Error ? err.message : String(err);
-        failures.push(`${install.name}: ${msg}`);
-      }
-    }
-
-    const urls = installs.map(
-      (i) => `https://${i.name}.${config.internalBaseDomain}`,
-    );
-
-    if (failures.length > 0) {
-      await renderStatic(
-        <Listing
-          header={header}
-          status="passed"
-          tail={`Deployed from local source with failures: ${failures.join("; ")}`}
-          tailVariant="warn"
-        />,
-      );
-    } else {
-      await renderStatic(
-        <Listing header={header} status="passed" tail="Deployed from local source.">
-          {urls.map((u) => (
-            <Note key={u}>{u}</Note>
-          ))}
-        </Listing>,
-      );
-    }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await renderStatic(
-      <Listing
-        header={header}
-        status="failed"
-        tail={`Failed to deploy from local source: ${msg}`}
-        tailVariant="error"
-      />,
-    );
-    throw err;
+    await renderPhaseTableRun<SourcePhase, SourceModeResult>({
+      header,
+      phases: SOURCE_PHASES,
+      phaseLabels: SOURCE_PHASE_LABELS,
+      initialServices: initialSourceRows(installs),
+      controller: (emit) =>
+        runSourceModePipeline(
+          installs,
+          secretContracts,
+          requiresRegistryAuth,
+          config,
+          imageTag,
+          opts,
+          emit,
+        ),
+      frameForSuccess: ({ failures, urls }) =>
+        failures.length > 0
+          ? {
+              status: "passed",
+              tail: `Deployed from local source with failures: ${failures.join("; ")}`,
+              tailVariant: "warn",
+            }
+          : {
+              status: "passed",
+              tail: urls.join("  "),
+              tailVariant: "success",
+            },
+      frameForError: (err) => ({
+        status: "failed",
+        tail: `Failed to deploy from local source: ${err.message}`,
+        tailVariant: "error",
+      }),
+    });
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
