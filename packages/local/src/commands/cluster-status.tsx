@@ -1,12 +1,13 @@
 /**
- * FR-007 — cluster status
- * Read-only node + unhealthy pod health summary.
+ * FR-007 — cluster status. Read-only node + unhealthy pod health summary.
  */
 
+import React from "react";
 import { execa } from "execa";
 import pc from "picocolors";
 import Table from "cli-table3";
-import { startListing } from "@agent-ix/ix-ui-cli";
+import { Text } from "ink";
+import { Listing, renderStatic } from "@agent-ix/ix-ui-cli";
 
 interface NodeItem {
   metadata: { name: string; creationTimestamp: string };
@@ -54,14 +55,19 @@ function podRestarts(pod: PodItem): number {
 const HEALTHY_PHASES = new Set(["Running", "Succeeded"]);
 
 export async function runClusterStatus(): Promise<void> {
-  const list = startListing("ix local cluster status");
   let nodesJson: string;
   try {
     const { stdout } = await execa("kubectl", ["get", "nodes", "-o", "json"]);
     nodesJson = stdout;
   } catch (err) {
-    list.error(
-      `Cannot reach cluster: ${err instanceof Error ? err.message : String(err)}`,
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header="ix local cluster status"
+        status="failed"
+        tail={`Cannot reach cluster: ${msg}`}
+        tailVariant="error"
+      />,
     );
     throw new Error("kubectl get nodes failed — is the cluster running?");
   }
@@ -69,7 +75,6 @@ export async function runClusterStatus(): Promise<void> {
   const nodes: NodeItem[] = (JSON.parse(nodesJson) as { items: NodeItem[] })
     .items;
 
-  list.commit();
   const nodeTable = new Table({
     head: ["NAME", "ROLE", "STATUS", "AGE"],
     style: { head: ["cyan"] },
@@ -77,7 +82,6 @@ export async function runClusterStatus(): Promise<void> {
   for (const n of nodes) {
     nodeTable.push([n.metadata.name, nodeRole(n), nodeReady(n), nodeAge(n)]);
   }
-  list.raw(nodeTable.toString());
 
   const { stdout: podsJson } = await execa("kubectl", [
     "get",
@@ -92,7 +96,15 @@ export async function runClusterStatus(): Promise<void> {
   );
 
   if (unhealthy.length === 0) {
-    list.success("All pods healthy.");
+    await renderStatic(
+      <Listing
+        header="ix local cluster status"
+        status="passed"
+        tail="All pods healthy."
+      >
+        <Text>{nodeTable.toString()}</Text>
+      </Listing>,
+    );
     return;
   }
 
@@ -108,6 +120,15 @@ export async function runClusterStatus(): Promise<void> {
       String(podRestarts(pod)),
     ]);
   }
-  list.raw(podTable.toString());
-  list.warn(`${unhealthy.length} unhealthy pod(s).`);
+  await renderStatic(
+    <Listing
+      header="ix local cluster status"
+      status="passed"
+      tail={`${unhealthy.length} unhealthy pod(s).`}
+      tailVariant="warn"
+    >
+      <Text>{nodeTable.toString()}</Text>
+      <Text>{podTable.toString()}</Text>
+    </Listing>,
+  );
 }
