@@ -11,6 +11,8 @@ import {
   waitForRollout,
   detectHelmHookFailure,
   detectHelmHookStatus,
+  detectHelmHookStatuses,
+  getRolloutReadyStatus,
   cleanupFailedHelmHookJobs,
 } from "../src/rollout.js";
 
@@ -19,6 +21,32 @@ const mockExeca = vi.mocked(execa);
 const fakeTask = { output: "" } as unknown as Parameters<
   typeof waitForRollout
 >[3];
+
+function workloadJson(
+  ready: number,
+  total: number,
+  opts: {
+    available?: number;
+    currentRevision?: string;
+    generation?: number;
+    observedGeneration?: number;
+    updated?: number;
+    updateRevision?: string;
+  } = {},
+): string {
+  return JSON.stringify({
+    metadata: { generation: opts.generation ?? 1 },
+    spec: { replicas: total },
+    status: {
+      availableReplicas: opts.available ?? ready,
+      currentRevision: opts.currentRevision,
+      observedGeneration: opts.observedGeneration ?? opts.generation ?? 1,
+      readyReplicas: ready,
+      updatedReplicas: opts.updated ?? ready,
+      updateRevision: opts.updateRevision,
+    },
+  });
+}
 
 describe("waitForRollout", () => {
   beforeEach(() => {
@@ -31,7 +59,7 @@ describe("waitForRollout", () => {
       stdout: "statefulset.apps/vault\n",
     } as never);
     // initial getDeploymentStatus jsonpath
-    mockExeca.mockResolvedValueOnce({ stdout: "1/1" } as never);
+    mockExeca.mockResolvedValueOnce({ stdout: workloadJson(1, 1) } as never);
     // rollout status (subprocess — we resolve with empty all stream)
     const fakeProc = Promise.resolve({} as never) as unknown as ReturnType<
       typeof execa
@@ -41,7 +69,7 @@ describe("waitForRollout", () => {
     };
     mockExeca.mockReturnValueOnce(fakeProc);
     // final getDeploymentStatus
-    mockExeca.mockResolvedValueOnce({ stdout: "1/1" } as never);
+    mockExeca.mockResolvedValueOnce({ stdout: workloadJson(1, 1) } as never);
 
     await waitForRollout(
       "vault",
@@ -76,7 +104,7 @@ describe("waitForRollout", () => {
       stdout: "deployment.apps/auth-service\n",
     } as never);
     // 2. initial getDeploymentStatus jsonpath → ready=0, total=1
-    mockExeca.mockResolvedValueOnce({ stdout: "0/1/1/1/0" } as never);
+    mockExeca.mockResolvedValueOnce({ stdout: workloadJson(0, 1) } as never);
     // 3. getPodReadyLabel kubectl get pods → ContainerCreating
     mockExeca.mockResolvedValueOnce({
       stdout: JSON.stringify({
@@ -104,7 +132,7 @@ describe("waitForRollout", () => {
       stdout: JSON.stringify({ items: [] }),
     } as never);
     // 6. final getDeploymentStatus jsonpath → ready=1, total=1
-    mockExeca.mockResolvedValueOnce({ stdout: "1/1/1/1/1" } as never);
+    mockExeca.mockResolvedValueOnce({ stdout: workloadJson(1, 1) } as never);
 
     const statuses: string[] = [];
     await waitForRollout(
@@ -120,6 +148,94 @@ describe("waitForRollout", () => {
     expect(statuses[0]).toBe("0/1·start");
     // Final status must be the plain ready count with no label
     expect(statuses[statuses.length - 1]).toMatch(/^1\/1/);
+  });
+});
+
+describe("getRolloutReadyStatus", () => {
+  beforeEach(() => {
+    mockExeca.mockReset();
+  });
+
+  it("returns live workload ready status without waiting for rollout completion", async () => {
+    mockExeca.mockResolvedValueOnce({
+      stdout: "deployment.apps/catalog-service\n",
+    } as never);
+    mockExeca.mockResolvedValueOnce({ stdout: workloadJson(1, 2) } as never);
+
+    await expect(
+      getRolloutReadyStatus(
+        "catalog-service",
+        "apps",
+        "app.kubernetes.io/instance=catalog-service",
+      ),
+    ).resolves.toBe("1/2");
+  });
+
+  it("labels full ready status as settling when the controller has not reconciled", async () => {
+    mockExeca.mockResolvedValueOnce({
+      stdout: "deployment.apps/catalog-service\n",
+    } as never);
+    mockExeca.mockResolvedValueOnce({
+      stdout: workloadJson(1, 1, {
+        available: 0,
+        generation: 2,
+        observedGeneration: 1,
+      }),
+    } as never);
+
+    await expect(
+      getRolloutReadyStatus(
+        "catalog-service",
+        "apps",
+        "app.kubernetes.io/instance=catalog-service",
+      ),
+    ).resolves.toBe("1/1·settle");
+  });
+
+  it("labels full ready status as settling during a rolling update with old ready pods", async () => {
+    mockExeca.mockResolvedValueOnce({
+      stdout: "deployment.apps/identity\n",
+    } as never);
+    mockExeca.mockResolvedValueOnce({
+      stdout: workloadJson(1, 1, { available: 1, updated: 0 }),
+    } as never);
+
+    await expect(
+      getRolloutReadyStatus(
+        "identity",
+        "auth",
+        "app.kubernetes.io/instance=identity",
+      ),
+    ).resolves.toBe("1/1·settle");
+  });
+
+  it("labels full ready StatefulSet status as settling until revisions match", async () => {
+    mockExeca.mockResolvedValueOnce({
+      stdout: "statefulset.apps/catalog-db\n",
+    } as never);
+    mockExeca.mockResolvedValueOnce({
+      stdout: workloadJson(1, 1, {
+        currentRevision: "catalog-db-abc",
+        updated: 1,
+        updateRevision: "catalog-db-def",
+      }),
+    } as never);
+
+    await expect(
+      getRolloutReadyStatus(
+        "catalog-db",
+        "apps",
+        "app.kubernetes.io/instance=catalog-db",
+      ),
+    ).resolves.toBe("1/1·settle");
+  });
+
+  it("returns null when workloads are not created yet", async () => {
+    mockExeca.mockResolvedValueOnce({ stdout: "" } as never);
+
+    await expect(
+      getRolloutReadyStatus("missing", "apps", "app=missing"),
+    ).resolves.toBeNull();
   });
 });
 
@@ -255,6 +371,66 @@ describe("detectHelmHookStatus", () => {
       message:
         "waiting for postgres at postgres.platform.svc.cluster.local:5432 ...",
     });
+  });
+
+  it("returns status for every observed Helm hook job", async () => {
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({
+        items: [
+          {
+            metadata: {
+              name: "cloud-manager-app-catalog-service-pgboot",
+              annotations: { "helm.sh/hook": "pre-install" },
+            },
+            status: { active: 1 },
+          },
+          {
+            metadata: {
+              name: "cloud-manager-app-settings-service-pgboot",
+              annotations: { "helm.sh/hook": "pre-install" },
+            },
+            status: { active: 1 },
+          },
+        ],
+      }),
+    } as never);
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({
+        items: [
+          {
+            metadata: { name: "catalog-pod" },
+            status: { containerStatuses: [{ state: { running: {} } }] },
+          },
+        ],
+      }),
+    } as never);
+    mockExeca.mockResolvedValueOnce({ stdout: "catalog waiting\n" } as never);
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({
+        items: [
+          {
+            metadata: { name: "settings-pod" },
+            status: { containerStatuses: [{ state: { running: {} } }] },
+          },
+        ],
+      }),
+    } as never);
+    mockExeca.mockResolvedValueOnce({ stdout: "settings waiting\n" } as never);
+
+    await expect(
+      detectHelmHookStatuses("apps", "cloud-manager-app"),
+    ).resolves.toEqual([
+      {
+        jobName: "cloud-manager-app-catalog-service-pgboot",
+        phase: "running",
+        message: "catalog waiting",
+      },
+      {
+        jobName: "cloud-manager-app-settings-service-pgboot",
+        phase: "running",
+        message: "settings waiting",
+      },
+    ]);
   });
 });
 

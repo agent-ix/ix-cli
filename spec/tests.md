@@ -83,7 +83,10 @@ Tests fall into four types:
 | auth | ix-cli-auth-CON-3: all `kubectlRaw` calls target `IX_AUTH_NAMESPACE` | TC-088 | ❌ Missing (static) |
 | auth | ix-cli-auth-CON-4: no namespace string literals (covered by TC-085) | TC-085 | ❌ Missing (static) |
 | auth | ix-cli-auth-CON-5: Deployable registry — identity/auth-service/permission-service declare `namespace: IX_AUTH_NAMESPACE`; up-image/up-source honor `deployable.namespace` | TC-089 | ❌ Missing (integration) |
+| FR-031 | AC-6: unmatched umbrella install failure marks final table failed with umbrella error | TC-280c | ✅ Complete (static) |
+| FR-031 | AC-8: full ready workload stays settling when controller revision/update is incomplete | TC-095, TC-110, TC-111 | ✅ Complete |
 | FR-031 | AC-13: waitForRollout enriches status with `·label` when readyReplicas=0 | TC-109 | ✅ Complete |
+| FR-031 | AC-14: state-labeled `1/1·settle` remains active until plain `1/1` | TC-112 | ✅ Complete |
 | FR-033 | AC-1: loadSecretContractFromTgz exported, uses tar, cleans up | TC-100, TC-106, TC-107 | ⚠️ Partial (static; cleanup unit missing) |
 | FR-033 | AC-2: findSecretContractDir not called from up-image | TC-101 | ✅ Complete (static) |
 | FR-033 | AC-3: runImageModeUp has no devDir param | TC-102 | ✅ Complete (static) |
@@ -263,6 +266,9 @@ Tests fall into four types:
 | TC-094 | Umbrella path issues `helm pull` against the app OCI ref, not per-subchart | Static | P1 | FR-031-AC-2 | ✅ Complete |
 | TC-095 | Rollout status appends settling marker when ready but not reconciled | Static | P1 | FR-031-AC-8 | ✅ Complete |
 | TC-109 | waitForRollout enriches onStatus with ·start label when readyReplicas=0 | Unit | P1 | FR-031-AC-13 | ✅ Complete |
+| TC-110 | getRolloutReadyStatus returns `1/1·settle` when old ready Deployment pods exist but updatedReplicas is incomplete | Unit | P1 | FR-031-AC-8 | ✅ Complete |
+| TC-111 | getRolloutReadyStatus returns `1/1·settle` while StatefulSet revisions differ | Unit | P1 | FR-031-AC-8 | ✅ Complete |
+| TC-112 | AppInstallRows keeps `1/1·settle` active, then completes on plain `1/1` | Unit | P1 | FR-031-AC-14 | ✅ Complete |
 | TC-096 | runDown uninstalls the umbrella release first for role=app | Static | P1 | FR-031-AC-11 | ✅ Complete |
 | TC-097 | runDown deduplicates releases via a seen set | Static | P1 | FR-031-AC-11 | ✅ Complete |
 | TC-098 | local-secrets exports ensureGhcrCredsInNamespace producing dockerconfigjson | Static | P1 | FR-032-AC-1, FR-032-AC-2 | ✅ Complete |
@@ -279,6 +285,7 @@ Tests fall into four types:
 | TC-274 | App-mode bundled subcharts may be directories or tgzs; up-image supports both | Static | P1 | FR-033-AC-5, FR-033-AC-9 | ✅ Complete |
 | TC-275 | App-mode bundled subchart directory path imports and calls loadSecretContract | Static | P1 | FR-033-AC-5, FR-033-AC-10 | ✅ Complete |
 | TC-276 | App umbrella install polls detectHelmHookFailure and aborts helm on hook failure | Static + Unit | P1 | FR-033-AC-13 | ✅ Complete |
+| TC-280c | unmatched umbrella install failures pass failed final state to PhaseTable | Static | P1 | FR-031-AC-6 | ✅ Complete |
 | TC-277 | Published chart artifact contains `ix-local.secrets.yaml` only when the source chart places it inside the packaged chart tree | Artifact inspection | P1 | FR-033-AC-11 | ❌ Missing |
 | TC-278 | A chart whose rendered manifests reference a materialized Secret but whose published artifact lacks the contract is flagged as an artifact defect | Artifact + manifest inspection | P1 | FR-033-AC-12 | ❌ Missing |
 

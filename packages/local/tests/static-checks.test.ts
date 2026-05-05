@@ -277,8 +277,9 @@ describe("FR-031: umbrella install + settling indicator", () => {
   it("TC-095: rollout status appends settling marker when ready but not reconciled", () => {
     const src = readSrc("rollout.ts");
     expect(src).toMatch(/settling/);
-    // Suffix marker `·` is appended to the count when settling.
-    expect(src).toMatch(/`\$\{base\}·`/);
+    // Suffix marker and human label are appended to the count when settling.
+    expect(src).toMatch(/`\$\{base\}·settle`/);
+    expect(src).toMatch(/updatedReplicas/);
   });
 
   it("TC-096: runDown uninstalls the umbrella release first for role=app", () => {
@@ -342,9 +343,16 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
     expect(src).not.toMatch(/runImageModeUp[\s\S]{0,200}devDir/);
   });
 
-  it("TC-103: UP_PHASES has pull before secrets (pull → secrets → install → ready)", () => {
+  it("TC-103: app display uses child service rows with pull → secrets → install → ready", () => {
     const src = readSrc("commands/up-image.ts");
-    expect(src).toMatch(/"pull"[\s\S]{0,50}"secrets"/);
+    const phases = readSrc("phases.ts");
+    expect(phases).toMatch(/\["pull", "secrets", "install", "ready"\]/);
+    expect(src).toMatch(/new PhaseTable<Phase>/);
+    expect(src).toMatch(/phases: PHASES/);
+    expect(src).toMatch(/phaseLabels: PHASE_LABELS/);
+    expect(src).not.toMatch(/const APP_ROW/);
+    expect(src).not.toMatch(/\[APP_ROW,/);
+    expect(src).not.toMatch(/hidePendingRows:\s*true/);
   });
 
   it("TC-104: up-image.ts imports loadSecretContractFromTgz from local-secrets", () => {
@@ -366,7 +374,7 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
 
   it("TC-276: app umbrella install polls hook status and aborts helm on hook failure", () => {
     const src = readSrc("commands/up-image.ts");
-    expect(src).toMatch(/detectHelmHookStatus/);
+    expect(src).toMatch(/detectHelmHookStatuses/);
     expect(src).toMatch(/subprocess\.kill\(\)/);
     expect(src).toMatch(/hook .* failed:/);
   });
@@ -406,5 +414,40 @@ describe("FR-033: image-mode secrets contract from published chart", () => {
       /installs\.forEach\(\(i\) => display\.transition\(i\.name, "install", "failed"\)\)/,
     );
     expect(src).toMatch(/findInstallForHookJob\(installs, status\.jobName\)/);
+    expect(src).toMatch(/detectHelmHookStatuses/);
+    expect(src).toMatch(/AppInstallRows/);
+    expect(src).toMatch(/appRows\.updateHook\(install\.name, status\)/);
+  });
+
+  it("TC-280b: app install polls Kubernetes readiness during Helm install", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/getRolloutReadyStatus/);
+    expect(src).toMatch(/appRows\.updateK8sInstallStatus/);
+    expect(src).toMatch(/reconcileActiveInstallHooks/);
+  });
+
+  it("TC-280a: late Helm job failures are routed to the matching child row", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/parseHookFailureMessage/);
+    expect(src).toMatch(/\\bjob\\s\+\(\\S\+\)\\s\+failed:/);
+    expect(src).toMatch(
+      /findInstallForHookJob\(installs, hookFailure\.jobName\)/,
+    );
+    expect(src).toMatch(/appRows\.failInstall\(/);
+  });
+
+  it("TC-280c: unmatched umbrella failures force an overall failed final table", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(/finalDisplayError/);
+    expect(src).toMatch(/failed:\s*true/);
+    expect(src).toMatch(/error:\s*finalDisplayError/);
+  });
+
+  it("TC-281: secret apply output is not written into service status rows", () => {
+    const src = readSrc("commands/up-image.ts");
+    expect(src).toMatch(
+      /await applySecretContract\(contract, install\.namespace\);/,
+    );
+    expect(src).not.toMatch(/display\.setPodStatus\(install\.name, line\)/);
   });
 });

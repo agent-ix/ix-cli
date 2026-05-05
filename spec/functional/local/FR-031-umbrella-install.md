@@ -25,11 +25,12 @@ stream live status into each row.
 
 ### Phase mapping in umbrella mode
 
-- **secrets** — per-subchart, parallel (unchanged from FR-013).
 - **pull** — single `helm pull` of the umbrella OCI ref. All rows transition
   `running → done` together when the tarball lands.
+- **secrets** — per-subchart, parallel (unchanged from FR-013).
 - **install** — single `helm upgrade --install` against the pulled umbrella
-  tarball. All rows transition `running → done` together when helm returns.
+  tarball. Rows remain visible but inactive unless their own Helm hook or
+  Kubernetes workload status is active.
   No `--wait` / `--atomic` — opaque waits would defeat the per-subchart
   watcher visibility.
 - **ready** — per-subchart, parallel. Each row's watcher polls
@@ -41,9 +42,11 @@ stream live status into each row.
 `ready/desired` count when pods are at `ready === desired` but the
 Deployment has not finished reconciling — specifically when
 `status.observedGeneration < metadata.generation` or
-`status.availableReplicas < .spec.replicas`. This explains the "1/1 but
-clock keeps ticking" case to the operator: pods are ready, the Deployment
-controller hasn't acknowledged it yet.
+`status.availableReplicas < .spec.replicas` or
+`status.updatedReplicas < .spec.replicas`. StatefulSets also remain
+settling while `currentRevision !== updateRevision`. This explains the
+"1/1 but clock keeps ticking" case to the operator: pods can be ready while
+the controller is still converging the current revision.
 
 ### Pod ready label
 
@@ -86,15 +89,16 @@ renders the label in dim text alongside a yellow `0` — never red — because
 - **FR-031-AC-5**: When `helm pull` of the umbrella fails, all subchart
   rows show `pull failed` with the umbrella error message; the install
   short-circuits.
-- **FR-031-AC-6**: When the umbrella `helm upgrade --install` fails, all
-  subchart rows show `install failed` with the helm error message; rollout
-  watchers are not started.
+- **FR-031-AC-6**: When the umbrella `helm upgrade --install` fails without
+  a child-row hook match, the final `PhaseTable` frame is marked failed and
+  shows the umbrella error at the bottom; rollout watchers are not started.
 - **FR-031-AC-7**: When a subchart's rollout fails, only that row shows
   `ready failed`; sibling watchers continue to completion (FR-021-AC-5).
-- **FR-031-AC-8**: `getDeploymentStatus` returns a `ready/desired·` string
-  (with trailing `·`) when at least one workload reports
-  `ready === desired` AND
-  (`observedGeneration < generation` OR `availableReplicas < replicas`).
+- **FR-031-AC-8**: `getDeploymentStatus` returns a `ready/desired·settle`
+  string when at least one workload reports `ready === desired` AND
+  (`observedGeneration < generation` OR `availableReplicas < replicas` OR
+  `updatedReplicas < replicas` OR StatefulSet `currentRevision !=
+  updateRevision`).
 - **FR-031-AC-9**: A `helm history <app-name>` command shows a single
   unified release history for the whole umbrella.
 - **FR-031-AC-10**: A `helm list` shows exactly one row per app instead of
@@ -111,3 +115,6 @@ renders the label in dim text alongside a yellow `0` — never red — because
   of `sched`, `init`, or `start` depending on pod container state. When
   `readyReplicas > 0` or `getPodReadyLabel` returns `null`, the bare
   `"ready/total"` string is passed unchanged.
+- **FR-031-AC-14**: A row with `"1/1·settle"` or any other state-labeled
+  ready count remains active until the state label disappears and the row
+  receives plain `"1/1"`.

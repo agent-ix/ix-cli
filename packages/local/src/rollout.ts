@@ -301,8 +301,10 @@ export async function detectHelmHookFailure(
   namespace: string,
   releaseName: string,
 ): Promise<HookFailure | null> {
-  const status = await detectHelmHookStatus(namespace, releaseName);
-  if (status?.phase === "failed") {
+  const status = (await detectHelmHookStatuses(namespace, releaseName)).find(
+    (s) => s.phase === "failed",
+  );
+  if (status) {
     return { jobName: status.jobName, message: status.message };
   }
   return null;
@@ -328,6 +330,14 @@ export async function detectHelmHookStatus(
   namespace: string,
   releaseName: string,
 ): Promise<HookStatus | null> {
+  return (await detectHelmHookStatuses(namespace, releaseName))[0] ?? null;
+}
+
+export async function detectHelmHookStatuses(
+  namespace: string,
+  releaseName: string,
+): Promise<HookStatus[]> {
+  const statuses: HookStatus[] = [];
   try {
     const { stdout } = await execa(
       "kubectl",
@@ -394,37 +404,44 @@ export async function detectHelmHookStatus(
         for (const cs of pod.status.containerStatuses ?? []) {
           const waiting = cs.state.waiting;
           if (waiting?.reason && TERMINAL_WAITING_REASONS.has(waiting.reason)) {
-            return {
+            statuses.push({
               jobName: job.metadata.name,
               phase: "failed",
               message: summarizeWaitingFailure(waiting.reason, waiting.message),
-            };
+            });
+            continue;
           }
           const terminated = cs.state.terminated;
           if (terminated?.reason && terminated.reason !== "Completed") {
-            return {
+            statuses.push({
               jobName: job.metadata.name,
               phase: "failed",
               message: `${terminated.reason} (exit ${terminated.exitCode ?? "?"})`,
-            };
+            });
+            continue;
           }
         }
+      }
+      if (statuses.some((status) => status.jobName === job.metadata.name)) {
+        continue;
       }
 
       const failed = job.status?.conditions?.find(
         (c) => c.type === "Failed" && c.status === "True",
       );
       if (failed) {
-        return {
+        statuses.push({
           jobName: job.metadata.name,
           phase: "failed",
           message:
             failed.message?.trim() ||
             failed.reason?.trim() ||
             "Helm hook job failed",
-        };
+        });
+        continue;
       }
 
+      let runningStatus: HookStatus | null = null;
       for (const pod of pods) {
         const hasRunningContainer = (pod.status.containerStatuses ?? []).some(
           (cs) => cs.state.running,
@@ -436,45 +453,94 @@ export async function detectHelmHookStatus(
             ["logs", pod.metadata.name, "-n", namespace, "--tail=20"],
             { all: true },
           );
-          return {
+          runningStatus = {
             jobName: job.metadata.name,
             phase: "running",
             message: latestNonEmptyLine(logs) ?? "hook running",
           };
+          break;
         } catch {
-          return {
+          runningStatus = {
             jobName: job.metadata.name,
             phase: "running",
             message: "hook running",
           };
+          break;
         }
       }
 
+      if (runningStatus) {
+        statuses.push(runningStatus);
+        continue;
+      }
+
       if ((job.status?.active ?? 0) > 0 || pods.length > 0) {
-        return {
+        statuses.push({
           jobName: job.metadata.name,
           phase: "running",
           message: "hook running",
-        };
+        });
       }
     }
   } catch {
     // Ignore transient API errors; caller will continue normal helm/watch flow.
   }
 
-  return null;
+  return statuses;
+}
+
+interface WorkloadJson {
+  kind?: string;
+  metadata?: {
+    generation?: number;
+  };
+  spec?: {
+    replicas?: number;
+  };
+  status?: {
+    availableReplicas?: number;
+    currentRevision?: string;
+    observedGeneration?: number;
+    readyReplicas?: number;
+    replicas?: number;
+    updatedReplicas?: number;
+    updateRevision?: string;
+  };
+}
+
+function workloadReplicaStatus(workload: WorkloadJson): {
+  ready: number;
+  total: number;
+  settling: boolean;
+} {
+  const total = workload.spec?.replicas ?? workload.status?.replicas ?? 1;
+  const ready = workload.status?.readyReplicas ?? 0;
+  const available = workload.status?.availableReplicas;
+  const updated = workload.status?.updatedReplicas;
+  const observed = workload.status?.observedGeneration ?? 0;
+  const generation = workload.metadata?.generation ?? 0;
+  const currentRevision = workload.status?.currentRevision;
+  const updateRevision = workload.status?.updateRevision;
+  const revisionMismatch =
+    currentRevision != null &&
+    updateRevision != null &&
+    currentRevision !== updateRevision;
+  const settling =
+    ready === total &&
+    (observed < generation ||
+      (available != null && available < total) ||
+      (updated != null && updated < total) ||
+      revisionMismatch);
+
+  return { ready, total, settling };
 }
 
 /**
  * Reads ready/desired replica counts directly from the workload resource.
- * Works for both Deployments and StatefulSets — both expose
- * .status.readyReplicas and .spec.replicas.
- *
- * FR-031: when pods are at ready=desired but the controller has not yet
- * reconciled (observedGeneration < metadata.generation, or available <
- * replicas), append a settling marker "·" so the operator sees that the
- * rollout is not actually complete yet — explains the "1/1 but clock keeps
- * ticking" puzzle.
+ * Works for both Deployments and StatefulSets. A full ready count is still
+ * marked as settling until the controller has observed the latest generation,
+ * made desired replicas available, and updated desired replicas to the new
+ * revision.
  */
 async function getDeploymentStatus(
   deployments: string[],
@@ -487,25 +553,18 @@ async function getDeploymentStatus(
     try {
       const { stdout } = await execa(
         "kubectl",
-        [
-          "get",
-          dep,
-          "-n",
-          namespace,
-          "-o",
-          "jsonpath={.status.readyReplicas}/{.spec.replicas}/{.status.observedGeneration}/{.metadata.generation}/{.status.availableReplicas}",
-        ],
+        ["get", dep, "-n", namespace, "-o", "json"],
         { all: true },
       );
-      const [r, t, observed, generation, available] = stdout.split("/");
-      const ready = parseInt(r) || 0;
-      const total = parseInt(t) || 1;
+      const workload = JSON.parse(stdout) as WorkloadJson;
+      const {
+        ready,
+        total,
+        settling: workloadSettling,
+      } = workloadReplicaStatus(workload);
       readySum += ready;
       totalSum += total;
-      const obs = parseInt(observed) || 0;
-      const gen = parseInt(generation) || 0;
-      const avail = parseInt(available) || 0;
-      if (ready === total && (obs < gen || avail < total)) {
+      if (workloadSettling) {
         settling = true;
       }
     } catch {
@@ -513,7 +572,50 @@ async function getDeploymentStatus(
     }
   }
   const base = `${readySum}/${totalSum}`;
-  return settling ? `${base}·` : base;
+  if (settling) return `${base}·settle`;
+  return base;
+}
+
+export async function getRolloutReadyStatus(
+  svc: string,
+  namespace: string,
+  labelSelector?: string,
+): Promise<string | null> {
+  try {
+    const deployments = labelSelector
+      ? (
+          await execa(
+            "kubectl",
+            [
+              "get",
+              "deployments,statefulsets",
+              "-n",
+              namespace,
+              "-l",
+              labelSelector,
+              "-o",
+              "name",
+            ],
+            { all: true },
+          )
+        ).stdout
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+      : [`deployment/${svc}`];
+
+    if (deployments.length === 0) return null;
+
+    const pollSelector = labelSelector ?? `app=${svc}`;
+    const base = await getDeploymentStatus(deployments, namespace);
+    if (parseInt(base, 10) === 0) {
+      const label = await getPodReadyLabel(pollSelector, namespace);
+      return label ? `${base}·${label}` : base;
+    }
+    return base;
+  } catch {
+    return null;
+  }
 }
 
 /**

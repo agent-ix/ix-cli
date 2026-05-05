@@ -27,7 +27,8 @@ import {
   cleanupFailedHelmHookJobs,
   waitForRollout,
   diagnosePodFailure,
-  detectHelmHookStatus,
+  detectHelmHookStatuses,
+  getRolloutReadyStatus,
   type HookStatus,
 } from "../rollout.js";
 import {
@@ -43,21 +44,9 @@ import {
   startListing,
   type Listing,
 } from "@agent-ix/ix-ui-cli";
-import type { Phase } from "../phases.js";
+import { PHASES, PHASE_LABELS, type Phase } from "../phases.js";
+import { AppInstallRows } from "../app-row-state.js";
 import { loadConcurrencyConfig, createPools } from "../pool.js";
-
-const UP_PHASES = [
-  "pull",
-  "secrets",
-  "install",
-  "ready",
-] as const satisfies readonly Phase[];
-const UP_PHASE_LABELS: Partial<Record<Phase, string>> = {
-  secrets: "secrets",
-  pull: "pulling",
-  install: "installing",
-  ready: "ready",
-};
 
 export interface ChildInstall {
   /** Helm release name == chart name (FR-013-AC-3) */
@@ -179,6 +168,43 @@ function findInstallForHookJob(
           jobName.endsWith(`-${install.name}`),
       )
       .sort((a, b) => b.name.length - a.name.length)[0] ?? null
+  );
+}
+
+function parseHookFailureMessage(
+  rawMsg: string,
+): { jobName: string; message: string } | null {
+  const directHookMatch = rawMsg.match(/^hook ([^ ]+) failed: (.+)$/);
+  if (directHookMatch) {
+    return { jobName: directHookMatch[1], message: directHookMatch[2] };
+  }
+
+  const helmJobMatch = rawMsg.match(/\bjob\s+(\S+)\s+failed:\s*(.+)$/);
+  if (helmJobMatch) {
+    return { jobName: helmJobMatch[1], message: helmJobMatch[2] };
+  }
+
+  return null;
+}
+
+function finishPhaseTable(
+  display: PhaseTable<Phase>,
+  baseDomain: string | undefined,
+  finalDisplayError: string | null,
+): void {
+  (
+    display.finish as unknown as (
+      entry?: string | null,
+      baseDomain?: string,
+      tail?: string,
+      finalState?: { failed?: boolean; error?: string },
+    ) => void
+  ).call(
+    display,
+    null,
+    baseDomain,
+    undefined,
+    finalDisplayError ? { failed: true, error: finalDisplayError } : undefined,
   );
 }
 
@@ -386,31 +412,28 @@ export async function runImageModeUp(
   // FR-033: contractsByName is built after the umbrella pull (from tgz).
   const contractsByName = new Map<string, SecretContract>();
 
-  const APP_ROW = deployable.name;
-  const serviceLabels: Record<string, string> = {
-    [APP_ROW]: `${deployable.name} ${pc.dim(deployable.version)}`,
-  };
+  const serviceLabels: Record<string, string> = {};
   for (const install of installs) {
     serviceLabels[install.name] =
       `${install.name} ${pc.dim(install.chartVersion)}`;
   }
   const display = new PhaseTable<Phase>(
-    [APP_ROW, ...installs.map((i) => i.name)],
+    installs.map((i) => i.name),
     {
-      phases: UP_PHASES,
-      phaseLabels: UP_PHASE_LABELS,
+      phases: PHASES,
+      phaseLabels: PHASE_LABELS,
       header: headerText,
       initialLineCount: 0,
-      hidePendingRows: true,
       serviceLabels,
     },
   );
 
   preflightList!.stop();
-  display.entry(`${deployable.name} ${pc.dim(deployable.version)}`);
   display.start();
+  const appRows = new AppInstallRows(display, installs);
 
   const failures: string[] = [];
+  let finalDisplayError: string | null = null;
 
   // mkdtempSync failure after display.start() would leak the ticker; handle it
   // explicitly so display.finish() still clears the interval.
@@ -431,7 +454,7 @@ export async function runImageModeUp(
     const umbrellaRef = `oci://${config.helmChartRegistry}/${deployable.chartRepository}/${deployable.name}`;
     const umbrellaDir = path.join(tmpDir, deployable.name);
     fs.mkdirSync(umbrellaDir, { recursive: true });
-    installs.forEach((i) => display.transition(i.name, "pull", "running"));
+    installs.forEach((i) => appRows.transition(i.name, "pull", "running"));
     let umbrellaTgzPath: string;
     try {
       await execa(
@@ -455,14 +478,13 @@ export async function runImageModeUp(
         );
       }
       umbrellaTgzPath = path.join(umbrellaDir, tgzFiles[0]);
-      installs.forEach((i) => display.transition(i.name, "pull", "done"));
+      installs.forEach((i) => appRows.transition(i.name, "pull", "done"));
     } catch (err) {
-      display.transition(APP_ROW, "pull", "failed");
-      installs.forEach((i) => display.transition(i.name, "pull", "failed"));
+      installs.forEach((i) => appRows.transition(i.name, "pull", "failed"));
       const msg = err instanceof Error ? err.message : String(err);
       const failureMsg = `pull (umbrella): ${msg}`;
-      display.setError(APP_ROW, failureMsg);
-      failures.push(`${APP_ROW}: ${failureMsg}`);
+      installs.forEach((i) => appRows.setError(i.name, failureMsg));
+      failures.push(`${deployable.name}: ${failureMsg}`);
       throw new Error(
         `App '${deployable.name}' failed: ${failures.join("; ")}`,
       );
@@ -498,22 +520,25 @@ export async function runImageModeUp(
       installs.map(async (install) => {
         const contract = contractsByName.get(install.name);
         if (contract) {
-          display.transition(install.name, "secrets", "running");
           const secretNames = contract.secrets.map((s) => s.name).join(", ");
-          display.setPodStatus(install.name, `creating: ${secretNames}`);
+          appRows.transition(
+            install.name,
+            "secrets",
+            "running",
+            "secrets",
+            `creating: ${secretNames}`,
+          );
           try {
-            await applySecretContract(contract, install.namespace, (line) => {
-              display.setPodStatus(install.name, line);
-            });
-            display.transition(install.name, "secrets", "done");
+            await applySecretContract(contract, install.namespace);
+            appRows.transition(install.name, "secrets", "done");
           } catch (err) {
-            display.transition(install.name, "secrets", "failed");
             const msg = err instanceof Error ? err.message : String(err);
-            display.setError(install.name, `secrets: ${msg}`);
+            appRows.transition(install.name, "secrets", "failed");
+            appRows.setError(install.name, `secrets: ${msg}`);
             failures.push(`${install.name}: secrets: ${msg}`);
           }
         } else {
-          display.transition(install.name, "secrets", "done");
+          appRows.transition(install.name, "secrets", "done");
         }
       }),
     );
@@ -522,7 +547,7 @@ export async function runImageModeUp(
     // No --wait/--atomic: we want per-subchart rollout watchers below to
     // stream live status into the table instead of one opaque spinner.
     const umbrellaNamespace = resolveDeployableNamespace(deployable);
-    display.transition(APP_ROW, "install", "running");
+    installs.forEach((i) => appRows.transition(i.name, "install", "pending"));
     try {
       await cleanupFailedHelmHookJobs(umbrellaNamespace, deployable.name);
       const args = buildUmbrellaInstallArgs(
@@ -536,34 +561,44 @@ export async function runImageModeUp(
       const hookFailureRef: {
         current: HookStatus | null;
       } = { current: null };
-      const observedHookRows = new Set<string>();
       const subprocess = execa("helm", args, { all: true });
       const checkHookStatus = () => {
-        void detectHelmHookStatus(umbrellaNamespace, deployable.name).then(
-          (status) => {
-            if (!status) return;
-            const install = findInstallForHookJob(installs, status.jobName);
-            if (install) {
-              if (!observedHookRows.has(install.name)) {
-                display.transition(install.name, "install", status.phase);
-                observedHookRows.add(install.name);
-              } else if (status.phase === "failed") {
-                display.transition(install.name, "install", "failed");
+        void detectHelmHookStatuses(umbrellaNamespace, deployable.name).then(
+          (statuses) => {
+            const activeHookRows = new Set<string>();
+            for (const status of statuses) {
+              const install = findInstallForHookJob(installs, status.jobName);
+              if (install) {
+                appRows.updateHook(install.name, status);
+                activeHookRows.add(install.name);
               }
-              display.setPodStatus(
-                install.name,
-                `hook ${status.jobName}: ${status.message}`,
-              );
+              if (status.phase === "failed" && !hookFailureRef.current) {
+                hookFailureRef.current = status;
+                subprocess.kill();
+              }
             }
-            if (status.phase === "failed" && !hookFailureRef.current) {
-              hookFailureRef.current = status;
-              subprocess.kill();
-            }
+            appRows.reconcileActiveInstallHooks(activeHookRows);
           },
         );
       };
-      checkHookStatus();
-      const poller = setInterval(checkHookStatus, 1000);
+      const checkK8sStatus = () => {
+        void Promise.all(
+          installs.map(async (install) => {
+            const status = await getRolloutReadyStatus(
+              install.name,
+              install.namespace,
+              `app.kubernetes.io/instance=${install.name}`,
+            );
+            if (status) appRows.updateK8sInstallStatus(install.name, status);
+          }),
+        );
+      };
+      const checkInstallStatus = () => {
+        checkHookStatus();
+        checkK8sStatus();
+      };
+      checkInstallStatus();
+      const poller = setInterval(checkInstallStatus, 1000);
       try {
         await subprocess;
       } catch (err) {
@@ -575,10 +610,8 @@ export async function runImageModeUp(
       } finally {
         clearInterval(poller);
       }
-      display.transition(APP_ROW, "install", "done");
-      installs.forEach((i) => display.transition(i.name, "install", "done"));
+      installs.forEach((i) => appRows.completeInstall(i.name));
     } catch (err) {
-      display.transition(APP_ROW, "install", "failed");
       const execaErr = err as {
         stderr?: string;
         all?: string;
@@ -590,20 +623,27 @@ export async function runImageModeUp(
           .split("\n")
           .filter(Boolean)
           .pop() ?? String(err);
-      const hookMatch = rawMsg.match(/^hook ([^ ]+) failed: (.+)$/);
-      if (hookMatch) {
-        const install = findInstallForHookJob(installs, hookMatch[1]);
+      const hookFailure = parseHookFailureMessage(rawMsg);
+      let matchedHookRow = false;
+      if (hookFailure) {
+        const install = findInstallForHookJob(installs, hookFailure.jobName);
         if (install) {
-          display.transition(install.name, "install", "failed");
-          display.setError(
+          matchedHookRow = true;
+          appRows.failInstall(
             install.name,
-            `install: hook ${hookMatch[1]} failed: ${hookMatch[2]}`,
+            hookFailure.message,
+            `install: hook ${hookFailure.jobName} failed: ${hookFailure.message}`,
+          );
+          failures.push(
+            `${install.name}: install: hook ${hookFailure.jobName} failed: ${hookFailure.message}`,
           );
         }
       }
       const failureMsg = `install (umbrella): ${rawMsg}`;
-      display.setError(APP_ROW, failureMsg);
-      failures.push(`${APP_ROW}: ${failureMsg}`);
+      if (!matchedHookRow) {
+        finalDisplayError = failureMsg;
+        failures.push(`${deployable.name}: ${failureMsg}`);
+      }
       throw new Error(
         `App '${deployable.name}' failed: ${failures.join("; ")}`,
       );
@@ -613,7 +653,7 @@ export async function runImageModeUp(
     await Promise.all(
       installs.map((install) =>
         pools.kubectlWatch.run(async () => {
-          display.transition(install.name, "ready", "running");
+          appRows.startReady(install.name);
           try {
             const rolloutSink = {
               output: "",
@@ -624,11 +664,10 @@ export async function runImageModeUp(
               config.rolloutTimeoutSeconds,
               rolloutSink,
               `app.kubernetes.io/instance=${install.name}`,
-              (status) => display.setPodStatus(install.name, status),
+              (status) => appRows.updateReadyStatus(install.name, status),
             );
-            display.transition(install.name, "ready", "done");
+            appRows.completeReady(install.name);
           } catch (err) {
-            display.transition(install.name, "ready", "failed");
             const execaErr = err as {
               stderr?: string;
               all?: string;
@@ -651,7 +690,7 @@ export async function runImageModeUp(
               install.namespace,
             );
             if (diagnosis) displayMsg = `ready: ${diagnosis}`;
-            display.setError(install.name, displayMsg);
+            appRows.failReady(install.name, "rollout failed", displayMsg);
             failures.push(`${install.name}: ${displayMsg}`);
           }
         }),
@@ -660,7 +699,7 @@ export async function runImageModeUp(
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
     // Always freeze the display — clears the ticker regardless of outcome.
-    display.finish(null, config.internalBaseDomain);
+    finishPhaseTable(display, config.internalBaseDomain, finalDisplayError);
   }
 
   // FR-021-AC-6: exit 1 whenever any child failed, regardless of --continue-on-error.
