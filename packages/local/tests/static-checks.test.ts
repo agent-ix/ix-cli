@@ -254,6 +254,32 @@ describe("FR-030: --refresh flag is wired end-to-end", () => {
 });
 
 // ---------------------------------------------------------------------------
+// FR-034: ix local refresh emits per-chart diff rows via Listing.item
+// TC-300 through TC-302
+// ---------------------------------------------------------------------------
+describe("FR-034: ix local refresh diff output", () => {
+  it("TC-300: runRefresh snapshots prior cache before refreshing", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(
+      /readCachedDeployables\(config\.org\)[\s\S]*?loadRegistry\(\{[\s\S]*?refresh:\s*true/,
+    );
+  });
+
+  it("TC-301: runRefresh emits diff rows via list.item", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(
+      /diffRegistry\(prior,\s*reg\)[\s\S]*?list\.item\(formatRefreshChange/,
+    );
+  });
+
+  it("TC-302: refresh-diff format module is the single source of row text", () => {
+    const src = readSrc("refresh-diff.ts");
+    expect(src).toMatch(/\(new\)\s*\$\{c\.newVersion\}/);
+    expect(src).toMatch(/\$\{c\.oldVersion\}\s*->\s*\$\{c\.newVersion\}/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // FR-031: Umbrella install — single helm upgrade per app, parallel rollout
 // watchers per subchart drive PhaseTable rows. Settling marker on rollout
 // status when pods are Ready but the Deployment hasn't reconciled.

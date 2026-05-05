@@ -8,8 +8,13 @@ import { loadConfig } from "./config.js";
 import { resolveDeployableNamespace } from "./discovery.js";
 import { runImageModeUp } from "./commands/up-image.js";
 import { runSourceModeUp } from "./commands/up-source.js";
-import { loadRegistry, findDeployable } from "./registry.js";
+import {
+  loadRegistry,
+  findDeployable,
+  readCachedDeployables,
+} from "./registry.js";
 import { resolveGhcrToken } from "./credentials.js";
+import { diffRegistry, formatRefreshChange } from "./refresh-diff.js";
 
 // Schema + plugin metadata (consumed by apps/ix init hook).
 export {
@@ -383,12 +388,21 @@ export async function runRefresh(
   list.commit();
   try {
     const token = await resolveGhcrToken(false);
+    const prior = readCachedDeployables(config.org);
     const reg = await loadRegistry({
       org: config.org,
       githubToken: token,
       refresh: true,
     });
-    list.success(`Refreshed registry: ${reg.length} deployable(s).`);
+    const changes = diffRegistry(prior, reg);
+    for (const change of changes) {
+      list.item(formatRefreshChange(change));
+    }
+    if (changes.length === 0) {
+      list.success(`Registry up to date · ${reg.length} deployable(s).`);
+    } else {
+      list.success(`Refreshed: ${changes.length} chart(s) updated.`);
+    }
   } catch (err) {
     list.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
     throw err;

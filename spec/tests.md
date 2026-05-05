@@ -28,7 +28,7 @@ Tests fall into four types:
 | Stakeholder Req | Trace to US/FR                       | Test/Validation                        | Coverage Status |
 |-----------------|--------------------------------------|----------------------------------------|-----------------|
 | StR-001         | US-001 → FR-001, FR-002, FR-003      | TC-001–TC-010 (static/unit)            | ✅ Partial (static + unit; integration pending) |
-| StR-002         | US-002 → NFR-001, FR-002             | TC-007–TC-010 (static)                 | ✅ Partial (static; integration pending) |
+| StR-002         | US-002 → NFR-001, FR-002; US-007 → FR-034 | TC-007–TC-010, TC-300–TC-308 (static + unit) | ✅ Partial (static + unit; integration pending) |
 | StR-003         | US-003/004/005 → FR-004–007, NFR-002 | TC-022–TC-043 (unit)                   | ✅ Complete (unit) |
 | StR-004         | US-006 → FR-008, FR-009              | TC-022–TC-031 (unit)                   | ✅ Complete (unit) |
 
@@ -42,6 +42,7 @@ Tests fall into four types:
 | US-004 | Cluster down: confirmation guard, idempotent | TC-032–TC-038 | ✅ Complete (unit) |
 | US-005 | Cluster status: node/pod health tables | TC-039–TC-043 | ✅ Complete (unit) |
 | US-006 | ClusterConfig parsed from config.yaml | TC-022–TC-024 | ✅ Complete (unit) |
+| US-007 | `ix local refresh` shows per-chart diff rows for changed/new charts | TC-300–TC-308 | ✅ Complete (static + unit) |
 
 ### Functional Requirement Coverage
 
@@ -100,6 +101,12 @@ Tests fall into four types:
 | FR-033 | AC-11: image-mode secret contracts must live inside the packaged chart source tree | TC-277 | ❌ Missing (artifact inspection) |
 | FR-033 | AC-12: missing packaged contract for a Secret-referencing chart is an artifact defect | TC-278 | ❌ Missing (artifact + manifest inspection) |
 | FR-033 | AC-13: app umbrella install polls Helm hook failures and aborts early | TC-276 | ✅ Complete (static + unit hook detection) |
+| FR-034 | AC-1: per-chart rows emitted via `Listing.item()` (not note/raw) | TC-301 | ✅ Complete (static) |
+| FR-034 | AC-2: row text matches `role:name old -> new` and `role:name (new) ver` | TC-302, TC-307, TC-308 | ✅ Complete (static + unit) |
+| FR-034 | AC-3: cache snapshot read before `loadRegistry({refresh:true})` | TC-300 | ✅ Complete (static) |
+| FR-034 | AC-4: missing/foreign-org cache → all entries treated as added | TC-303 | ✅ Complete (unit) |
+| FR-034 | AC-5: zero changes → no `item()` calls, only `success()` | TC-304, TC-305 | ✅ Complete (unit) |
+| FR-034 | AC-6: registry-discovery errors still rethrow | — | Review |
 
 ### Non-Functional Requirement Coverage
 

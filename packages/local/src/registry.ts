@@ -80,6 +80,19 @@ export async function loadRegistry(
   return deployables;
 }
 
+/**
+ * Read the cached deployables for `org` without triggering discovery.
+ *
+ * Returns null when the cache file is missing, unreadable, or recorded
+ * against a different org. Bypasses the TTL check — callers that want
+ * "is this still fresh" semantics should use {@link loadRegistry} instead.
+ */
+export function readCachedDeployables(org: string): Deployable[] | null {
+  const cached = readCache();
+  if (!cached || cached.org !== org) return null;
+  return cached.deployables;
+}
+
 export class DeployableNotFoundError extends Error {
   constructor(name: string, known: string[]) {
     super(
