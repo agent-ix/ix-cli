@@ -6,6 +6,7 @@
 import { ConfigService } from "@agent-ix/ix-cli-core";
 
 import {
+  isValidBaseDomain,
   LocalConfigSchema,
   LocalEnvBindings,
   LOCAL_PLUGIN_ID,
@@ -48,6 +49,17 @@ export function loadClusterConfig(): ClusterConfig {
 }
 
 export interface IxConfig {
+  /**
+   * Full ingress host suffix list. Length >= 1. Every service
+   * publishes one ingress host per entry (e.g. `identity.dev.ix`,
+   * `identity.luna.ix`). The first entry is canonical.
+   */
+  hosts: string[];
+  /**
+   * Canonical (first) host. Alias for `hosts[0]`. Single-host call
+   * sites (admin email, login URL, display banners) read this and
+   * are unaffected by multi-host config.
+   */
   internalBaseDomain: string;
   externalBaseDomain: string | null;
   enableExternalHost: boolean;
@@ -98,14 +110,23 @@ function parsePositiveInt(name: string, raw: string, fallback: number): number {
  * Image-tag handling is intentionally NOT included here because each
  * call site sets the tag differently (always vs. only-when-overridden,
  * and `global.imageTag` vs. `ix-service.image.tag`).
+ *
+ * The first host is sent as `global.internalBaseDomain` (unchanged
+ * contract for charts that only know the singular value). Any
+ * additional hosts are sent as an indexed `global.extraBaseDomains`
+ * array, which the `ix-service` chart fans out into one ingress host
+ * per (service, suffix) pair.
  */
 export function buildGlobalSetArgs(config: IxConfig): string[] {
   const args = [
     "--set-string",
     `global.imageRegistry=${config.imageRegistry}`,
     "--set-string",
-    `global.internalBaseDomain=${config.internalBaseDomain}`,
+    `global.internalBaseDomain=${config.hosts[0]}`,
   ];
+  config.hosts.slice(1).forEach((host, i) => {
+    args.push("--set-string", `global.extraBaseDomains[${i}]=${host}`);
+  });
   if (config.enableExternalHost && config.externalBaseDomain) {
     args.push(
       "--set-string",
@@ -121,45 +142,84 @@ export function buildGlobalSetArgs(config: IxConfig): string[] {
 }
 
 /**
+ * Parse `IX_INTERNAL_BASE_DOMAINS` (plural, comma-separated) into a
+ * trimmed list. Empty string / unset → null (no override).
+ */
+function parseHostsEnv(raw: string | undefined): string[] | null {
+  if (raw === undefined) return null;
+  const list = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  return list.length > 0 ? list : null;
+}
+
+/**
  * Load and validate environment-based configuration.
  * Throws ConfigValidationError on any validation failure (FR-006-AC-6).
  */
 export function loadConfig(): IxConfig {
-  // FR-006-AC-1: default dev.ix — defined exactly once (CON-1)
-  const internalBaseDomain = process.env.IX_INTERNAL_BASE_DOMAIN ?? "dev.ix";
+  const cfg = ConfigService.forPlugin(LOCAL_PLUGIN_ID, LocalConfigSchema, {
+    envBindings: LocalEnvBindings,
+  });
+  const domain = cfg.get().domain;
 
-  // FR-006-AC-5: must have at least two non-empty dot-separated labels.
-  // Rejects "", ".", ".com", "foo.", "ix" — accepts "dev.ix", "foo.bar.baz".
-  const labels = internalBaseDomain.split(".").filter((l) => l.length > 0);
-  if (labels.length < 2 || /\s/.test(internalBaseDomain)) {
+  // Env-var overrides for domain.* (see schema.ts comment for why
+  // these are applied here rather than via the generic env layer).
+  let hosts = domain.hosts;
+  const pluralEnv = parseHostsEnv(process.env.IX_INTERNAL_BASE_DOMAINS);
+  if (pluralEnv) {
+    hosts = pluralEnv;
+  }
+  // Back-compat: legacy singular env var still wins as a one-shot
+  // override and pins the list to a single entry.
+  const singularEnv = process.env.IX_INTERNAL_BASE_DOMAIN;
+  if (singularEnv !== undefined && singularEnv !== "") {
+    hosts = [singularEnv];
+  }
+  for (const h of hosts) {
+    if (!isValidBaseDomain(h)) {
+      throw new ConfigValidationError(
+        `domain host ${JSON.stringify(h)} must be a fully-qualified domain with at least two labels (e.g. dev.ix)`,
+      );
+    }
+  }
+  if (hosts.length === 0) {
     throw new ConfigValidationError(
-      "IX_INTERNAL_BASE_DOMAIN must be a fully-qualified domain with at least two labels (e.g. dev.ix)",
+      "domain.hosts must contain at least one entry",
     );
   }
 
   const enableExternalHost =
-    (process.env.IX_ENABLE_EXTERNAL_HOST ?? "false").toLowerCase() === "true";
+    process.env.IX_ENABLE_EXTERNAL_HOST !== undefined
+      ? process.env.IX_ENABLE_EXTERNAL_HOST.toLowerCase() === "true"
+      : domain.enableExternal;
 
-  // FR-006-AC-3: external domain required when external host enabled
-  const externalBaseDomain = process.env.IX_EXTERNAL_BASE_DOMAIN ?? null;
+  const externalBaseDomain =
+    process.env.IX_EXTERNAL_BASE_DOMAIN ?? domain.external;
   if (enableExternalHost && !externalBaseDomain) {
     throw new ConfigValidationError(
-      "IX_ENABLE_EXTERNAL_HOST=true requires IX_EXTERNAL_BASE_DOMAIN to be set",
+      "enableExternalHost=true requires externalBaseDomain to be set (env IX_EXTERNAL_BASE_DOMAIN or config domain.external)",
+    );
+  }
+
+  const publicBaseUrlEnv = process.env.IX_PUBLIC_BASE_URL?.trim();
+  const publicBaseUrl =
+    publicBaseUrlEnv !== undefined
+      ? publicBaseUrlEnv || null
+      : domain.publicBaseUrl;
+  if (publicBaseUrl && !/^https?:\/\//.test(publicBaseUrl)) {
+    throw new ConfigValidationError(
+      "publicBaseUrl must start with http:// or https://",
     );
   }
 
   // FR-006-AC-2: default latest
   const imageTag = process.env.IX_IMAGE_TAG ?? "latest";
 
-  const publicBaseUrl = process.env.IX_PUBLIC_BASE_URL?.trim() || null;
-  if (publicBaseUrl && !/^https?:\/\//.test(publicBaseUrl)) {
-    throw new ConfigValidationError(
-      "IX_PUBLIC_BASE_URL must start with http:// or https://",
-    );
-  }
-
   return {
-    internalBaseDomain,
+    hosts,
+    internalBaseDomain: hosts[0],
     externalBaseDomain,
     enableExternalHost,
     publicBaseUrl,

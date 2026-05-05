@@ -194,7 +194,8 @@ spec:
     secretName: ix-ca-secret
 `.trim();
 
-function wildcardCertYaml(domain: string): string {
+function wildcardCertYaml(hosts: string[]): string {
+  const sans = hosts.map((h) => `    - "*.${h}"`).join("\n");
   return `
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -204,7 +205,7 @@ metadata:
 spec:
   secretName: ix-dev-wildcard-tls
   dnsNames:
-    - "*.${domain}"
+${sans}
   issuerRef:
     name: ix-local-issuer
     kind: ClusterIssuer
@@ -218,10 +219,12 @@ const INGRESS_NGINX_URL = (version: string) =>
 /**
  * Default-SSL Certificate for the ingress-nginx controller. Issued by the
  * ix-local-issuer (CA chain established in step 3) and consumed via the
- * controller's --default-ssl-certificate flag so any HTTPS request to *.{domain}
- * gets a trusted cert without per-Ingress TLS blocks.
+ * controller's --default-ssl-certificate flag so any HTTPS request to
+ * *.<host> for any configured host gets a trusted cert without per-Ingress
+ * TLS blocks.
  */
-function ingressTlsCertYaml(domain: string): string {
+function ingressTlsCertYaml(hosts: string[]): string {
+  const sans = hosts.map((h) => `    - "*.${h}"`).join("\n");
   return `
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -231,7 +234,7 @@ metadata:
 spec:
   secretName: ix-tls
   dnsNames:
-    - "*.${domain}"
+${sans}
   issuerRef:
     name: ix-local-issuer
     kind: ClusterIssuer
@@ -485,7 +488,7 @@ export async function runInitCluster(
     // Step 5: issue wildcard TLS certificate for default ns (FR-007-AC-3)
     await run("wildcard cert", async () => {
       await execa("kubectl", ["apply", "-f", "-"], {
-        input: wildcardCertYaml(config.internalBaseDomain),
+        input: wildcardCertYaml(config.hosts),
         all: true,
       });
     });
@@ -497,7 +500,7 @@ export async function runInitCluster(
     // *.{domain} hosts (e.g. npm.ix) keep working.
     await run("ingress tls", async () => {
       await execa("kubectl", ["apply", "-f", "-"], {
-        input: ingressTlsCertYaml(config.internalBaseDomain),
+        input: ingressTlsCertYaml(config.hosts),
         all: true,
       });
 
@@ -640,7 +643,9 @@ export async function runInitCluster(
     });
 
     const dnsTail = clusterIp
-      ? `DNS: add  address=/.${config.internalBaseDomain}/${clusterIp}  to /etc/dnsmasq.conf`
+      ? `DNS: add  ${config.hosts
+          .map((h) => `address=/.${h}/${clusterIp}`)
+          .join("  ")}  to /etc/dnsmasq.conf`
       : undefined;
     display.finish(null, undefined, dnsTail);
   } catch (err) {

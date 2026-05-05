@@ -72,6 +72,97 @@ describe("loadClusterConfig", () => {
   });
 });
 
+describe("loadConfig — domain.hosts", () => {
+  beforeEach(() => {
+    delete process.env.IX_INTERNAL_BASE_DOMAIN;
+    delete process.env.IX_INTERNAL_BASE_DOMAINS;
+  });
+
+  it("defaults to a single-entry list of dev.ix when nothing is set", async () => {
+    const { loadConfig } = await import("../src/config.js");
+    const cfg = loadConfig();
+    expect(cfg.hosts).toEqual(["dev.ix"]);
+    expect(cfg.internalBaseDomain).toBe("dev.ix");
+  });
+
+  it("reads multi-entry hosts from the persisted YAML", async () => {
+    seedLocalYaml("domain:\n  hosts: [dev.ix, luna.ix, agent-ix.dev]\n");
+    const { loadConfig } = await import("../src/config.js");
+    const cfg = loadConfig();
+    expect(cfg.hosts).toEqual(["dev.ix", "luna.ix", "agent-ix.dev"]);
+    expect(cfg.internalBaseDomain).toBe("dev.ix");
+  });
+
+  it("IX_INTERNAL_BASE_DOMAINS env var (plural) overrides file", async () => {
+    seedLocalYaml("domain:\n  hosts: [dev.ix]\n");
+    process.env.IX_INTERNAL_BASE_DOMAINS = "luna.ix, agent-ix.dev";
+    try {
+      const { loadConfig } = await import("../src/config.js");
+      const cfg = loadConfig();
+      expect(cfg.hosts).toEqual(["luna.ix", "agent-ix.dev"]);
+    } finally {
+      delete process.env.IX_INTERNAL_BASE_DOMAINS;
+    }
+  });
+
+  it("legacy IX_INTERNAL_BASE_DOMAIN (singular) wins and pins to one entry", async () => {
+    seedLocalYaml("domain:\n  hosts: [dev.ix, luna.ix]\n");
+    process.env.IX_INTERNAL_BASE_DOMAIN = "ci.ix";
+    try {
+      const { loadConfig } = await import("../src/config.js");
+      const cfg = loadConfig();
+      expect(cfg.hosts).toEqual(["ci.ix"]);
+      expect(cfg.internalBaseDomain).toBe("ci.ix");
+    } finally {
+      delete process.env.IX_INTERNAL_BASE_DOMAIN;
+    }
+  });
+
+  it("rejects single-label entries", async () => {
+    process.env.IX_INTERNAL_BASE_DOMAIN = "ix";
+    try {
+      const { loadConfig, ConfigValidationError } =
+        await import("../src/config.js");
+      expect(() => loadConfig()).toThrow(ConfigValidationError);
+    } finally {
+      delete process.env.IX_INTERNAL_BASE_DOMAIN;
+    }
+  });
+});
+
+describe("buildGlobalSetArgs — extraBaseDomains", () => {
+  it("emits global.internalBaseDomain for hosts[0] only when single host", async () => {
+    const { buildGlobalSetArgs } = await import("../src/config.js");
+    const args = buildGlobalSetArgs({
+      hosts: ["dev.ix"],
+      internalBaseDomain: "dev.ix",
+      externalBaseDomain: null,
+      enableExternalHost: false,
+      publicBaseUrl: null,
+      imageRegistry: "ghcr.io/agent-ix",
+    } as never);
+    expect(args).toContain("global.internalBaseDomain=dev.ix");
+    expect(
+      args.find((a) => a.startsWith("global.extraBaseDomains")),
+    ).toBeUndefined();
+  });
+
+  it("emits indexed global.extraBaseDomains for hosts[1:]", async () => {
+    const { buildGlobalSetArgs } = await import("../src/config.js");
+    const args = buildGlobalSetArgs({
+      hosts: ["dev.ix", "luna.ix", "agent-ix.dev"],
+      internalBaseDomain: "dev.ix",
+      externalBaseDomain: null,
+      enableExternalHost: false,
+      publicBaseUrl: null,
+      imageRegistry: "ghcr.io/agent-ix",
+    } as never);
+    expect(args).toContain("global.internalBaseDomain=dev.ix");
+    expect(args).toContain("global.extraBaseDomains[0]=luna.ix");
+    expect(args).toContain("global.extraBaseDomains[1]=agent-ix.dev");
+  });
+});
+
 describe("computeEffectiveDeploySet", () => {
   const makeApp = (name: string, tags: string[]) => ({
     name,
