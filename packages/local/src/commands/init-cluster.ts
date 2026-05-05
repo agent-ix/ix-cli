@@ -338,16 +338,13 @@ export async function runInitCluster(
   try {
     // Step 1: create kind cluster if absent (FR-007-AC-2)
     await run("kind cluster", async () => {
+      let alreadyExists = false;
       try {
         const { stdout } = await execa("kind", ["get", "clusters"]);
-        if (
-          stdout
-            .split("\n")
-            .map((s) => s.trim())
-            .includes(config.kindClusterName)
-        ) {
-          return; // idempotent — already exists
-        }
+        alreadyExists = stdout
+          .split("\n")
+          .map((s) => s.trim())
+          .includes(config.kindClusterName);
       } catch (err: unknown) {
         // FR-007-AC-6: kind not in PATH
         if (
@@ -360,19 +357,31 @@ export async function runInitCluster(
         }
         throw err;
       }
-      try {
-        const mounts = resolveCatalog(HOST_MOUNT_CATALOG);
-        const kindConfig = buildKindConfig(config.kindClusterName, mounts);
-        await execa("kind", ["create", "cluster", "--config", "-"], {
-          input: kindConfig,
-          all: true,
-        });
-      } catch (err) {
-        const detail = err instanceof Error ? err.message : String(err);
-        throw new Error(
-          `Failed to create kind cluster '${config.kindClusterName}': ${detail}`,
-        );
+      if (!alreadyExists) {
+        try {
+          const mounts = resolveCatalog(HOST_MOUNT_CATALOG);
+          const kindConfig = buildKindConfig(config.kindClusterName, mounts);
+          await execa("kind", ["create", "cluster", "--config", "-"], {
+            input: kindConfig,
+            all: true,
+          });
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : String(err);
+          throw new Error(
+            `Failed to create kind cluster '${config.kindClusterName}': ${detail}`,
+          );
+        }
       }
+      // Always point kubectl at this cluster — `kind create` does this on
+      // creation, but on the idempotent path the user's current context may
+      // be unset or pointing elsewhere, which makes subsequent kubectl calls
+      // fall back to localhost:8080.
+      await execa("kind", [
+        "export",
+        "kubeconfig",
+        "--name",
+        config.kindClusterName,
+      ]);
     });
 
     // Step 2: install cert-manager
@@ -422,6 +431,26 @@ export async function runInitCluster(
     // kind node). Apps that ship Ingress resources rely on this controller
     // being present cluster-wide.
     await run("ingress-nginx", async () => {
+      // The upstream manifest ships two one-shot Jobs
+      // (ingress-nginx-admission-create / -patch) that generate the
+      // admission webhook TLS Secret. Job spec.template is immutable, so
+      // `kubectl apply` fails on a second init if the Jobs are still
+      // around (e.g. partial teardown). Delete them first — they're
+      // bootstrap-only; the controller depends on the Secret they produce,
+      // not on the Job objects, and re-applying recreates and re-runs them.
+      await execa(
+        "kubectl",
+        [
+          "-n",
+          "ingress-nginx",
+          "delete",
+          "job",
+          "ingress-nginx-admission-create",
+          "ingress-nginx-admission-patch",
+          "--ignore-not-found",
+        ],
+        { all: true, reject: false },
+      );
       await execa(
         "kubectl",
         ["apply", "-f", INGRESS_NGINX_URL(config.ingressNginxVersion)],
