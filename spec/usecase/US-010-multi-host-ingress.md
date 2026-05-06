@@ -62,3 +62,14 @@ env var (singular, pins to one entry) and the new
 - **US-010-AC-6**: `IX_INTERNAL_BASE_DOMAIN=ci.ix ix local up` overrides
   the persisted list with a single-entry `["ci.ix"]` for that
   invocation only; the persisted file is not mutated.
+
+## Test Coverage
+
+| AC | Verified by |
+|---|---|
+| US-010-AC-1 | Inherits FR-013 (persistent schema) + FR-018 (`ix config set`); covered by TC-037 (write-time rejection round-trip). |
+| US-010-AC-2 | Inherits FR-018 generic round-trip semantics. |
+| US-010-AC-3 | Integration: `helm template charts/ix-service` against multi-host config — `helm-charts` repo `helm lint` + manual `helm template` recipe in this FR's verification. |
+| US-010-AC-4 | Integration: inspect `kubectl get cert ix-tls -n ingress-nginx -o yaml` after `ix local init`. |
+| US-010-AC-5 | TC-036 (load-time rejection of single-label entries) + TC-037 (write-time rejection by `ix config set`). |
+| US-010-AC-6 | TC-035 (legacy singular env var pins the list). |

@@ -1,6 +1,8 @@
 /**
  * TC-022–TC-031: loadClusterConfig() and computeEffectiveDeploySet()
- * FR-009 (cluster defaults), FR-005 (deploy set algorithm).
+ *   FR-009 (cluster defaults), FR-005 (deploy set algorithm).
+ * TC-032–TC-040: loadConfig() + buildGlobalSetArgs()
+ *   FR-037 (multi-host ingress config).
  *
  * After slice 9: loadClusterConfig() routes through the shared
  * ConfigService; the legacy `~/.ix/config.yaml` path is gone. Tests
@@ -72,20 +74,27 @@ describe("loadClusterConfig", () => {
   });
 });
 
-describe("loadConfig — domain.hosts", () => {
+/**
+ * TC-032..TC-038: FR-037 Multi-Host Ingress Config.
+ * Each test docstring carries `Trace: FR-037-AC-N` so spec-to-test
+ * mapping is greppable.
+ */
+describe("loadConfig — domain.hosts (FR-037)", () => {
   beforeEach(() => {
     delete process.env.IX_INTERNAL_BASE_DOMAIN;
     delete process.env.IX_INTERNAL_BASE_DOMAINS;
+    delete process.env.IX_ENABLE_EXTERNAL_HOST;
+    delete process.env.IX_EXTERNAL_BASE_DOMAIN;
   });
 
-  it("defaults to a single-entry list of dev.ix when nothing is set", async () => {
+  it("TC-032: defaults to single-entry [dev.ix] (Trace: FR-037-AC-1)", async () => {
     const { loadConfig } = await import("../src/config.js");
     const cfg = loadConfig();
     expect(cfg.hosts).toEqual(["dev.ix"]);
     expect(cfg.internalBaseDomain).toBe("dev.ix");
   });
 
-  it("reads multi-entry hosts from the persisted YAML", async () => {
+  it("TC-033: reads multi-entry hosts from persisted YAML (Trace: FR-037-AC-2)", async () => {
     seedLocalYaml("domain:\n  hosts: [dev.ix, luna.ix, agent-ix.dev]\n");
     const { loadConfig } = await import("../src/config.js");
     const cfg = loadConfig();
@@ -93,45 +102,57 @@ describe("loadConfig — domain.hosts", () => {
     expect(cfg.internalBaseDomain).toBe("dev.ix");
   });
 
-  it("IX_INTERNAL_BASE_DOMAINS env var (plural) overrides file", async () => {
+  it("TC-034: IX_INTERNAL_BASE_DOMAINS (plural) overrides file (Trace: FR-037-AC-3)", async () => {
     seedLocalYaml("domain:\n  hosts: [dev.ix]\n");
     process.env.IX_INTERNAL_BASE_DOMAINS = "luna.ix, agent-ix.dev";
-    try {
-      const { loadConfig } = await import("../src/config.js");
-      const cfg = loadConfig();
-      expect(cfg.hosts).toEqual(["luna.ix", "agent-ix.dev"]);
-    } finally {
-      delete process.env.IX_INTERNAL_BASE_DOMAINS;
-    }
+    const { loadConfig } = await import("../src/config.js");
+    const cfg = loadConfig();
+    expect(cfg.hosts).toEqual(["luna.ix", "agent-ix.dev"]);
   });
 
-  it("legacy IX_INTERNAL_BASE_DOMAIN (singular) wins and pins to one entry", async () => {
+  it("TC-035: legacy IX_INTERNAL_BASE_DOMAIN (singular) wins over plural + file (Trace: FR-037-AC-4)", async () => {
     seedLocalYaml("domain:\n  hosts: [dev.ix, luna.ix]\n");
+    process.env.IX_INTERNAL_BASE_DOMAINS = "should-be-ignored.ix";
     process.env.IX_INTERNAL_BASE_DOMAIN = "ci.ix";
-    try {
-      const { loadConfig } = await import("../src/config.js");
-      const cfg = loadConfig();
-      expect(cfg.hosts).toEqual(["ci.ix"]);
-      expect(cfg.internalBaseDomain).toBe("ci.ix");
-    } finally {
-      delete process.env.IX_INTERNAL_BASE_DOMAIN;
+    const { loadConfig } = await import("../src/config.js");
+    const cfg = loadConfig();
+    expect(cfg.hosts).toEqual(["ci.ix"]);
+    expect(cfg.internalBaseDomain).toBe("ci.ix");
+  });
+
+  it("TC-036: rejects single-label entries at load time (Trace: FR-037-AC-5)", async () => {
+    process.env.IX_INTERNAL_BASE_DOMAIN = "ix";
+    const { loadConfig, ConfigValidationError } =
+      await import("../src/config.js");
+    expect(() => loadConfig()).toThrow(ConfigValidationError);
+  });
+
+  it("TC-037: rejects single-label entries at write time via schema (Trace: FR-037-AC-5, US-010-AC-5)", async () => {
+    const { LocalConfigSchema } = await import("../src/schema.js");
+    const result = LocalConfigSchema.safeParse({
+      domain: { hosts: ["ix"] },
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const msg = result.error.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join("\n");
+      expect(msg).toMatch(/hosts/);
+      expect(msg).toMatch(/at least two labels/);
     }
   });
 
-  it("rejects single-label entries", async () => {
-    process.env.IX_INTERNAL_BASE_DOMAIN = "ix";
-    try {
-      const { loadConfig, ConfigValidationError } =
-        await import("../src/config.js");
-      expect(() => loadConfig()).toThrow(ConfigValidationError);
-    } finally {
-      delete process.env.IX_INTERNAL_BASE_DOMAIN;
-    }
+  it("TC-038: enableExternal=true without external throws (Trace: FR-037-CON-3)", async () => {
+    process.env.IX_ENABLE_EXTERNAL_HOST = "true";
+    // Deliberately leave IX_EXTERNAL_BASE_DOMAIN unset.
+    const { loadConfig, ConfigValidationError } =
+      await import("../src/config.js");
+    expect(() => loadConfig()).toThrow(ConfigValidationError);
   });
 });
 
-describe("buildGlobalSetArgs — extraBaseDomains", () => {
-  it("emits global.internalBaseDomain for hosts[0] only when single host", async () => {
+describe("buildGlobalSetArgs — extraBaseDomains (FR-037)", () => {
+  it("TC-039: single host → no extraBaseDomains flag (Trace: FR-037-AC-6)", async () => {
     const { buildGlobalSetArgs } = await import("../src/config.js");
     const args = buildGlobalSetArgs({
       hosts: ["dev.ix"],
@@ -147,7 +168,7 @@ describe("buildGlobalSetArgs — extraBaseDomains", () => {
     ).toBeUndefined();
   });
 
-  it("emits indexed global.extraBaseDomains for hosts[1:]", async () => {
+  it("TC-040: multi-host → indexed extraBaseDomains for hosts[1:] (Trace: FR-037-AC-6)", async () => {
     const { buildGlobalSetArgs } = await import("../src/config.js");
     const args = buildGlobalSetArgs({
       hosts: ["dev.ix", "luna.ix", "agent-ix.dev"],

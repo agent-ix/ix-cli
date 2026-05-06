@@ -131,3 +131,19 @@ joined into a single line.
   fail loudly at `loadConfig()` time. This cross-field rule is
   enforced in `loadConfig` (not in the Zod schema) because Zod
   sibling-field validation is awkward for the shape involved.
+
+## Security
+
+The `ingress.exposeExtraHosts: false` chart default is a deliberate
+security boundary, not just an ergonomic switch. Backend services
+that do not opt in MUST NOT have ingress hosts emitted under any
+entry beyond the canonical primary suffix. This means a backend
+addressable as `identity.dev.ix` from inside the cluster's DNS view
+remains UNREACHABLE under the public suffix `identity.agent-ix.dev`,
+even when `agent-ix.dev` is a configured entry in `domain.hosts`.
+
+External traffic for backend services MUST instead be funneled
+through an opted-in gateway service's `apiGateway.routes` (e.g.
+`cloud-manager-ui.agent-ix.dev/g/identity/...`). Operators who flip
+`exposeExtraHosts: true` on a chart are accepting that the service's
+backing pod becomes directly reachable on every external suffix.

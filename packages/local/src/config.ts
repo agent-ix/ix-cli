@@ -1,5 +1,5 @@
 /**
- * FR-006 — Hostname and Scope Configuration
+ * FR-037 — Multi-Host Ingress Config
  * Validated configuration model for all commands that render or apply manifests.
  */
 
@@ -156,7 +156,8 @@ function parseHostsEnv(raw: string | undefined): string[] | null {
 
 /**
  * Load and validate environment-based configuration.
- * Throws ConfigValidationError on any validation failure (FR-006-AC-6).
+ * Throws ConfigValidationError on any validation failure (FR-037-AC-5,
+ * FR-037-CON-3).
  */
 export function loadConfig(): IxConfig {
   const cfg = ConfigService.forPlugin(LOCAL_PLUGIN_ID, LocalConfigSchema, {
@@ -197,6 +198,9 @@ export function loadConfig(): IxConfig {
 
   const externalBaseDomain =
     process.env.IX_EXTERNAL_BASE_DOMAIN ?? domain.external;
+  // FR-037-CON-3: cross-field rule enforced here rather than in Zod
+  // because sibling-field validation across the domain group is
+  // awkward to express in the schema.
   if (enableExternalHost && !externalBaseDomain) {
     throw new ConfigValidationError(
       "enableExternalHost=true requires externalBaseDomain to be set (env IX_EXTERNAL_BASE_DOMAIN or config domain.external)",
@@ -214,7 +218,7 @@ export function loadConfig(): IxConfig {
     );
   }
 
-  // FR-006-AC-2: default latest
+  // image tag — defaults to "latest"; per-invocation override via env
   const imageTag = process.env.IX_IMAGE_TAG ?? "latest";
 
   return {

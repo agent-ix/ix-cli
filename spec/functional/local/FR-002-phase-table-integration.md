@@ -18,6 +18,9 @@ relationships:
   - target: "ix://agent-ix/ix-cli/spec/usecase/US-002"
     type: "implements"
     cardinality: "1:1"
+  - target: "ix://agent-ix/ix-cli/spec/functional/local/FR-037"
+    type: "requires"
+    cardinality: "1:1"
 ---
 
 ## Description
