@@ -248,7 +248,7 @@ export async function runUp(
     );
   }
   const config = loadConfig();
-  await ensureCertOrLog(config.hosts);
+  await ensureCertOrLog(config);
   const registry = await loadRegistryForCommand(config);
   for (const svc of services) {
     const deployable = findDeployable(registry, svc);
