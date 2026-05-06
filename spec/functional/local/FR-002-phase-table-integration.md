@@ -85,8 +85,11 @@ registry appears only in preflight, followed by the deploy target kind:
 ```
 
 The ingress URLs shown in the final section SHALL come from the rendered Helm
-manifest for the installed release. `packages/local` SHALL NOT synthesize a
-URL from the release name plus `config.internalBaseDomain`.
+manifest for the installed release. `packages/local` SHALL NOT synthesize URLs
+from the release name plus `config.hosts` — under multi-host configs (FR-037)
+a single release renders one ingress host per entry in `domain.hosts`, and the
+display section MUST reflect what was actually rendered, not what could be
+inferred from the suffix list.
 
 ## Constraints
 

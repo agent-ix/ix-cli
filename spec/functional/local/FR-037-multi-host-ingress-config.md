@@ -1,0 +1,133 @@
+---
+id: FR-037
+title: "Multi-Host Ingress Config — domain.hosts + extraBaseDomains Fanout"
+artifact_type: FR
+object: configuration
+relationships:
+  - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-007"
+    type: "implements"
+    cardinality: "1:1"
+  - target: "ix://agent-ix/ix-cli/spec/usecase/US-010"
+    type: "implements"
+    cardinality: "1:1"
+  - target: "ix://agent-ix/ix-cli/spec/functional/core/FR-013"
+    type: "requires"
+    cardinality: "1:1"
+  - target: "ix://agent-ix/ix-cli/spec/functional/core/FR-018"
+    type: "requires"
+    cardinality: "1:1"
+---
+
+## Behavior
+
+### Schema (persistent, `local` plugin)
+
+The `local` plugin's `LocalConfigSchema` (FR-013) carries a `domain`
+group:
+
+```typescript
+domain: {
+  hosts: string[];          // length >= 1; default ["dev.ix"]; each entry must
+                            // have >= 2 non-empty dot-separated labels and no whitespace
+  enableExternal: boolean;  // default false
+  external: string | null;  // default null
+  publicBaseUrl: string | null; // default null; must start with http:// or https://
+}
+```
+
+Persisted at `~/.config/ix/config.d/local.yaml`. `ix config get/set
+local domain.<key>` operates through the standard FR-018 surface.
+
+### IxConfig contract
+
+`loadConfig()` returns `IxConfig.hosts: string[]` (the full list) and
+`IxConfig.internalBaseDomain: string` (an alias for `hosts[0]`). The
+alias keeps single-host call sites — admin email construction, login
+URL banners, dnsmasq hint output — source-compatible without
+multi-host awareness.
+
+### Env var precedence (highest first)
+
+1. `IX_INTERNAL_BASE_DOMAIN` (singular, legacy back-compat) — when set
+   and non-empty, overrides `hosts` to a one-entry list `[value]`.
+2. `IX_INTERNAL_BASE_DOMAINS` (plural, comma-separated) — when set and
+   parses to a non-empty list, overrides `hosts`.
+3. The persisted `domain.hosts` from `~/.config/ix/config.d/local.yaml`.
+4. Schema default `["dev.ix"]`.
+
+The legacy singular env var takes priority over the plural one to
+preserve existing CI invocations that pin `IX_INTERNAL_BASE_DOMAIN=ci.ix`.
+
+### Helm value plumbing (`buildGlobalSetArgs`)
+
+For every Helm install path, the loader emits:
+
+- `--set-string global.internalBaseDomain=<hosts[0]>` — unchanged
+  contract for charts that only know the singular value.
+- `--set-string global.extraBaseDomains[i]=<hosts[i]>` for `i ∈ [1,N)`
+  — empty when the list has one entry.
+
+The shared `ix-service` chart MUST expose
+`ingress.exposeExtraHosts: false` as a per-service default. When `true`,
+the chart fans out one ingress host per `(fullname, baseDomain)` pair
+across both the primary ingress block and the apiGateway block. When
+`false`, only the canonical primary host is rendered.
+
+### Wildcard TLS
+
+`init-cluster` issues both the namespace-default wildcard cert and the
+ingress-nginx default-SSL cert with one `*.<host>` SAN per entry in
+`config.hosts`.
+
+### dnsmasq hint output
+
+The post-`init-cluster` operator hint emits one
+`address=/.<host>/<clusterIp>` directive per entry in `config.hosts`,
+joined into a single line.
+
+## Acceptance
+
+- **FR-037-AC-1**: A missing `domain` group in the persisted YAML
+  yields `hosts: ["dev.ix"]` plus the documented defaults for the
+  other fields without error (FR-011-AC-1 pattern).
+- **FR-037-AC-2**: A YAML `domain.hosts: [dev.ix, luna.ix, agent-ix.dev]`
+  round-trips through `loadConfig()` as a three-entry list with
+  `internalBaseDomain == "dev.ix"`.
+- **FR-037-AC-3**: `IX_INTERNAL_BASE_DOMAINS="luna.ix, agent-ix.dev"`
+  with no singular env var present overrides the persisted list.
+- **FR-037-AC-4**: `IX_INTERNAL_BASE_DOMAIN=ci.ix` set alongside the
+  plural env var overrides both file and plural env to
+  `hosts: ["ci.ix"]`.
+- **FR-037-AC-5**: A persisted entry that fails the base-domain rule
+  (single label, contains whitespace) causes `loadConfig()` to throw
+  `ConfigValidationError` naming the offending entry. `ix config set
+  local domain.hosts '["ix"]'` is rejected at write time by the
+  schema.
+- **FR-037-AC-6**: `buildGlobalSetArgs` with `hosts: ["dev.ix"]` emits
+  `global.internalBaseDomain=dev.ix` and no `extraBaseDomains` flag.
+  With `hosts: ["dev.ix","luna.ix","agent-ix.dev"]` it additionally
+  emits `global.extraBaseDomains[0]=luna.ix` and
+  `global.extraBaseDomains[1]=agent-ix.dev`.
+- **FR-037-AC-7**: For a service chart with default
+  `ingress.exposeExtraHosts: false`, `helm template` against a
+  multi-host config renders a single `host:` entry (the canonical
+  primary). With `exposeExtraHosts: true`, it renders one `host:`
+  entry per `(fullname, baseDomain)` pair plus per-service literal
+  `ingress.extraHosts`.
+- **FR-037-AC-8**: The wildcard TLS cert created by `init-cluster`
+  contains one `*.<host>` SAN per entry in `config.hosts`.
+
+## Constraints
+
+- **FR-037-CON-1**: `publicBaseUrl` is single-valued by design — it
+  appears in user-facing emails (invites, password reset) where one
+  canonical URL is required. It is independent of `hosts` and is NOT
+  derived from `hosts[0]`.
+- **FR-037-CON-2**: `IxConfig.internalBaseDomain` MUST always equal
+  `hosts[0]`. Code that needs the canonical host MUST read this alias
+  rather than picking out `hosts[0]` directly, so future renames can
+  happen in one place.
+- **FR-037-CON-3**: `enableExternalHost && !externalBaseDomain` MUST
+  fail loudly at `loadConfig()` time. This cross-field rule is
+  enforced in `loadConfig` (not in the Zod schema) because Zod
+  sibling-field validation is awkward for the shape involved.
