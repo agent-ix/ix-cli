@@ -32,10 +32,10 @@ The local package defines the `Phase` type in `src/phases.ts`:
 export type Phase = "secrets" | "pull" | "install" | "ready";
 export const PHASES: readonly Phase[] = ["secrets", "pull", "install", "ready"];
 export const PHASE_LABELS: Record<Phase, string> = {
-  secrets:  "secrets",
-  pull:     "pulling",
-  install:  "installing",
-  ready:    "ready",
+  secrets: "secrets",
+  pull: "pulling",
+  install: "installing",
+  ready: "ready",
 };
 ```
 
@@ -43,9 +43,9 @@ export const PHASE_LABELS: Record<Phase, string> = {
 
 ```ts
 const display = new PhaseTable<Phase>(serviceNames, {
-  phases:      PHASES,
+  phases: PHASES,
   phaseLabels: PHASE_LABELS,
-  header:      `ix up · ${app.name} · ${registry}`,
+  header: `ix local up · ${app.name}`,
   initialLineCount: appHeaderText && process.stdout.isTTY ? 1 : 0,
 });
 ```
@@ -55,9 +55,38 @@ const display = new PhaseTable<Phase>(serviceNames, {
 All display behaviors specified in ix-local-cli FR-022 are satisfied by delegating to `PhaseTable`. No display logic is duplicated in `packages/local`.
 
 The `PhaseTable` component handles:
+
 - TTY: cursor-up redraws at 80 ms, braille spinners, synchronized output markers
 - Non-TTY: one `[T+Xs] service: phase state` line per transition
-- `finish(entry?, baseDomain?)`: frozen summary with optional app URL
+- Frozen summary with optional ingress URL section supplied by `tailIngressUrls`
+
+## Screen Contract
+
+`ix up <app|service>` SHALL keep registry information out of the header. The
+registry appears only in preflight, followed by the deploy target kind:
+
+```
+ ⊙  [ ix local up · auth ]
+ └──┐
+    • Loading Helm charts from ghcr.io
+    • Starting App: auth
+    |
+
+    • auth-service 0.9.3        1/1                           12.1s
+    • identity 0.10.2           1/1                           12.1s
+    • permission-service 0.4.9  1/1                           12.1s
+
+    • elapsed 12.1s · 3/3 ready
+    |
+
+    ◎ Ingress
+    └─→  https://auth.dev.ix
+    └─→  https://auth.luna.ix
+```
+
+The ingress URLs shown in the final section SHALL come from the rendered Helm
+manifest for the installed release. `packages/local` SHALL NOT synthesize a
+URL from the release name plus `config.internalBaseDomain`.
 
 ## Constraints
 
@@ -70,3 +99,5 @@ The `PhaseTable` component handles:
 - **FR-002-AC-2**: All acceptance criteria from ix-local-cli FR-022 are satisfied via the `PhaseTable` component.
 - **FR-002-AC-3**: `grep -r "AppDisplay" packages/local/src/` returns zero matches.
 - **FR-002-AC-4**: The `Phase` type and `PHASES` constant are defined in `src/phases.ts` and not duplicated elsewhere in the package.
+- **FR-002-AC-5**: The header for `ix up <target>` is `ix local up · <target>` and SHALL NOT include the Helm registry.
+- **FR-002-AC-6**: The success frame passes all rendered ingress URLs to `PhaseTable` via `tailIngressUrls`; if no Ingress exists, no ingress section is rendered.

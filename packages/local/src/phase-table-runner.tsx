@@ -14,6 +14,7 @@ export interface PhaseTableFinalFrame {
   status?: FrameStatus;
   tail?: React.ReactNode;
   tailVariant?: TailVariant;
+  tailIngressUrls?: string[];
   tailEntry?: { name: string; baseDomain: string };
 }
 
@@ -21,6 +22,7 @@ export interface RenderPhaseTableRunOptions<P extends string, R> {
   header: string;
   phases: readonly P[];
   phaseLabels?: Partial<Record<P, string>>;
+  preflight?: React.ReactNode;
   initialServices: ServiceRow<P>[];
   controller: (emit: (services: ServiceRow<P>[]) => void) => Promise<R>;
   frameForSuccess: (result: R) => PhaseTableFinalFrame;
@@ -37,6 +39,7 @@ export async function renderPhaseTableRun<P extends string, R>({
   header,
   phases,
   phaseLabels,
+  preflight,
   initialServices,
   controller,
   frameForSuccess,
@@ -80,10 +83,12 @@ export async function renderPhaseTableRun<P extends string, R>({
         header={header}
         phases={phases}
         phaseLabels={phaseLabels}
+        preflight={preflight}
         services={services}
         status={finalFrame?.status}
         tail={finalFrame?.tail}
         tailVariant={finalFrame?.tailVariant}
+        tailIngressUrls={finalFrame?.tailIngressUrls}
         tailEntry={finalFrame?.tailEntry}
       />
     );

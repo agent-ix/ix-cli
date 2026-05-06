@@ -54,24 +54,28 @@ the controller is still converging the current revision.
 human-readable label when `readyReplicas === 0`. The label is determined by
 `getPodReadyLabel` which polls pod container states:
 
-| Label | Condition |
-|-------|-----------|
-| `sched` | No pods scheduled yet |
-| `init` | Any init container not ready, or waiting reason `PodInitializing` |
-| `start` | Waiting reason `ContainerCreating` |
+| Label   | Condition                                                         |
+| ------- | ----------------------------------------------------------------- |
+| `sched` | No pods scheduled yet                                             |
+| `init`  | Any init container not ready, or waiting reason `PodInitializing` |
+| `start` | Waiting reason `ContainerCreating`                                |
 
 The enriched format is `"0/N·label"` (e.g. `"0/1·init"`). The `PhaseTable`
 renders the label in dim text alongside a yellow `0` — never red — because
 `0/N` during normal startup is transient, not a failure.
 
 ```
- ⊚  [ ix local up · auth · ghcr.io ]
+ ⊚  [ ix local up · auth ]
  └──┐
+    • Loading Helm charts from ghcr.io
+    • Starting App: auth
+    |
+
     ⠦ auth-service        0/1·init       2.1s
     ⠦ identity            0/1·start      2.4s
     ⠦ permission-service  1/3            3.0s
     • vault               1/1            4.2s
-  elapsed 4.2s · 1/4 ready
+    • elapsed 4.2s · 1/4 ready
 ```
 
 ## Acceptance
@@ -98,7 +102,7 @@ renders the label in dim text alongside a yellow `0` — never red — because
   string when at least one workload reports `ready === desired` AND
   (`observedGeneration < generation` OR `availableReplicas < replicas` OR
   `updatedReplicas < replicas` OR StatefulSet `currentRevision !=
-  updateRevision`).
+updateRevision`).
 - **FR-031-AC-9**: A `helm history <app-name>` command shows a single
   unified release history for the whole umbrella.
 - **FR-031-AC-10**: A `helm list` shows exactly one row per app instead of
@@ -118,3 +122,12 @@ renders the label in dim text alongside a yellow `0` — never red — because
 - **FR-031-AC-14**: A row with `"1/1·settle"` or any other state-labeled
   ready count remains active until the state label disappears and the row
   receives plain `"1/1"`.
+- **FR-031-AC-15**: On successful umbrella app install, ix-cli reads final
+  ingress URLs from `helm get manifest <app-name> -n <namespace>` and passes
+  every rendered Ingress host to the PhaseTable ingress section. TLS-covered
+  hosts render with `https://`; non-TLS hosts render with `http://`.
+- **FR-031-AC-16**: When the rendered umbrella manifest contains multiple
+  configured ingress hostnames, all are shown in chart-rendered order (for
+  example `https://auth.dev.ix` and `https://auth.luna.ix`).
+- **FR-031-AC-17**: If the rendered manifest contains no Ingress hosts,
+  ix-cli SHALL NOT synthesize a fallback URL from `<release>.<domain>`.

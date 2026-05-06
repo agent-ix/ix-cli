@@ -5,6 +5,7 @@
  * FR-022 — App Startup Display
  */
 
+import { Text, blue, colors, GLYPH_DIM_DOT } from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "../config.js";
 import type { Deployable } from "../discovery.js";
 import { PHASES, PHASE_LABELS, type Phase } from "../phases.js";
@@ -38,8 +39,20 @@ export async function runImageModeUp(
   expandApp: AppExpander = defaultExpandApp,
   opts: UpImageOptions = {},
 ): Promise<void> {
-  const header = `ix local up · ${deployable.name} · ${config.helmChartRegistry}`;
+  const header = `ix local up · ${deployable.name}`;
   const plan = await planImageModeUp(deployable, config, expandApp, opts);
+  const preflight = (
+    <>
+      <Text>
+        {`    ${GLYPH_DIM_DOT} ${colors.dim("Loading Helm charts from")} ${blue(config.helmChartRegistry)}`}
+      </Text>
+      <Text>
+        {`    ${GLYPH_DIM_DOT} ${colors.dim(
+          deployable.role === "app" ? "Starting App:" : "Starting Service:",
+        )} ${blue(deployable.name)}`}
+      </Text>
+    </>
+  );
 
   if (plan.mode === "service") {
     const result = await renderPhaseTableRun<Phase, ImageInstallPipelineResult>(
@@ -47,6 +60,7 @@ export async function runImageModeUp(
         header,
         phases: PHASES,
         phaseLabels: PHASE_LABELS,
+        preflight,
         initialServices: initialImageRows([plan.install]),
         controller: (emit) =>
           runSingleServicePipeline(
@@ -59,7 +73,7 @@ export async function runImageModeUp(
             },
             emit,
           ),
-        frameForSuccess: ({ failures }) =>
+        frameForSuccess: ({ failures, ingressUrls }) =>
           failures.length > 0
             ? {
                 status: "passed",
@@ -68,8 +82,7 @@ export async function runImageModeUp(
               }
             : {
                 status: "passed",
-                tail: `${deployable.name} deployed.`,
-                tailVariant: "success",
+                tailIngressUrls: ingressUrls,
               },
         frameForError: (err) => ({
           status: "failed",
@@ -92,6 +105,7 @@ export async function runImageModeUp(
     header,
     phases: PHASES,
     phaseLabels: PHASE_LABELS,
+    preflight,
     initialServices: initialImageRows(plan.installs),
     controller: (emit) => {
       const appRows = new AppInstallRows(appRowServices(plan.installs), emit);
@@ -104,7 +118,7 @@ export async function runImageModeUp(
         appRows,
       });
     },
-    frameForSuccess: ({ failures }) =>
+    frameForSuccess: ({ failures, ingressUrls }) =>
       failures.length > 0
         ? {
             status: "failed",
@@ -113,10 +127,7 @@ export async function runImageModeUp(
           }
         : {
             status: "passed",
-            tailEntry: {
-              name: deployable.name,
-              baseDomain: config.internalBaseDomain,
-            },
+            tailIngressUrls: ingressUrls,
           },
     frameForError: (err) => ({
       status: "failed",

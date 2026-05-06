@@ -11,6 +11,7 @@ import type { Deployable } from "./discovery.js";
 import { resolveDeployableNamespace } from "./discovery.js";
 import { resolveGhcrToken } from "./credentials.js";
 import { buildHelmSetArgs, resolveCatalog } from "./host-mounts.js";
+import { getReleaseIngressUrls } from "./ingress.js";
 import {
   applySecretContract,
   ensureGhcrCredsInNamespace,
@@ -311,6 +312,7 @@ export interface SingleServicePipelineOptions {
 export interface ImageInstallPipelineResult {
   failures: string[];
   finalDisplayError: string | null;
+  ingressUrls: string[];
 }
 
 export class ImageInstallPipelineError extends Error {
@@ -421,7 +423,14 @@ export async function runSingleServicePipeline(
       failures.push(`${install.name}: ${msg}`);
     }
 
-    return { failures, finalDisplayError: null };
+    return {
+      failures,
+      finalDisplayError: null,
+      ingressUrls:
+        failures.length === 0
+          ? await getReleaseIngressUrls(install.name, install.namespace)
+          : [],
+    };
   } catch (err) {
     const cause = err instanceof Error ? err : new Error(String(err));
     throw new ImageInstallPipelineError(cause, failures, cause.message);
@@ -545,6 +554,7 @@ export async function runAppInstallPipeline({
 
     const umbrellaNamespace = resolveDeployableNamespace(deployable);
     installs.forEach((i) => appRows.transition(i.name, "install", "pending"));
+    let ingressUrls: string[] = [];
     try {
       await cleanupFailedHelmHookJobs(umbrellaNamespace, deployable.name);
       const args = buildUmbrellaInstallArgs(
@@ -606,6 +616,10 @@ export async function runAppInstallPipeline({
         clearInterval(poller);
       }
       installs.forEach((i) => appRows.completeInstall(i.name));
+      ingressUrls = await getReleaseIngressUrls(
+        deployable.name,
+        umbrellaNamespace,
+      );
     } catch (err) {
       const execaErr = err as {
         stderr?: string;
@@ -688,7 +702,7 @@ export async function runAppInstallPipeline({
       ),
     );
 
-    return { failures, finalDisplayError };
+    return { failures, finalDisplayError, ingressUrls };
   } catch (err) {
     const cause = err instanceof Error ? err : new Error(String(err));
     throw new ImageInstallPipelineError(cause, failures, finalDisplayError);

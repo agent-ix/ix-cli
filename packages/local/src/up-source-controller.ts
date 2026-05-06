@@ -13,6 +13,7 @@ import {
   resolveCatalog,
   resolveProfile,
 } from "./host-mounts.js";
+import { getReleaseIngressUrls } from "./ingress.js";
 import {
   SECRETS_FILENAME,
   applySecretContract,
@@ -64,7 +65,7 @@ export const SOURCE_PHASE_LABELS: Record<SourcePhase, string> = {
 
 export interface SourceModeResult {
   failures: string[];
-  urls: string[];
+  ingressUrls: string[];
 }
 
 interface RawDependency {
@@ -418,6 +419,7 @@ export async function runSourceModePipeline(
     emit,
   );
   const failures: string[] = [];
+  const ingressUrls: string[] = [];
   const installNamespaces = [...new Set(plan.installs.map((i) => i.namespace))];
 
   for (const ns of installNamespaces) await ensureNamespace(ns);
@@ -519,6 +521,9 @@ export async function runSourceModePipeline(
         (status) => rows.setPhase(install.name, "ready", "running", status),
       );
       rows.setPhase(install.name, "ready", "done", "ready");
+      ingressUrls.push(
+        ...(await getReleaseIngressUrls(install.name, install.namespace)),
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       rows.setError(install.name, phase, msg);
@@ -530,8 +535,6 @@ export async function runSourceModePipeline(
 
   return {
     failures,
-    urls: plan.installs.map(
-      (install) => `https://${install.name}.${config.internalBaseDomain}`,
-    ),
+    ingressUrls,
   };
 }
