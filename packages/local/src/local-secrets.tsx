@@ -2,9 +2,43 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type React from "react";
 import { execa } from "execa";
-import { password, isCancel } from "@agent-ix/ix-ui-cli";
+import {
+  PasswordPrompt,
+  render,
+  useEffect,
+  useRenderResult,
+  useState,
+} from "@agent-ix/ix-ui-cli";
 import { parse as parseYaml } from "yaml";
+
+async function promptForSecret(message: string): Promise<string | null> {
+  let captured: string | null = null;
+  let cancelled = false;
+  const Capture: React.FC = () => {
+    const { exit } = useRenderResult();
+    const [done, setDone] = useState(false);
+    useEffect(() => {
+      if (done) {
+        const t = setTimeout(exit, 0);
+        return () => clearTimeout(t);
+      }
+    }, [done, exit]);
+    return (
+      <PasswordPrompt
+        message={message}
+        onSubmit={(r) => {
+          if (r.ok) captured = r.value;
+          else cancelled = true;
+          setDone(true);
+        }}
+      />
+    );
+  };
+  await render(<Capture />);
+  return cancelled ? null : captured;
+}
 
 export const SECRETS_FILENAME = "ix-local.secrets.yaml";
 
@@ -176,11 +210,11 @@ async function resolveSecretKey(
     typeof raw.prompt === "string" && raw.prompt.trim() !== ""
       ? raw.prompt
       : `Enter value for ${raw.secretKey}`;
-  const value = await password({ message: prompt, mask: "*" });
-  if (isCancel(value)) {
+  const value = await promptForSecret(prompt);
+  if (value === null) {
     throw new Error("Secret prompt cancelled");
   }
-  const trimmed = String(value).trim();
+  const trimmed = value.trim();
   if (!trimmed) {
     throw new Error(`No value provided for required secret '${raw.secretKey}'`);
   }

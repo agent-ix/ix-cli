@@ -2,7 +2,7 @@ import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
 import { execa } from "execa";
-import { startListing } from "@agent-ix/ix-ui-cli";
+import { Listing, renderStatic } from "@agent-ix/ix-ui-cli";
 import { resolveElementByType } from "./registry/resolver.js";
 
 export interface ScaffoldOptions {
@@ -17,7 +17,7 @@ export async function runElementsInit(
   projectName: string,
   opts: ScaffoldOptions = {},
 ): Promise<void> {
-  const list = startListing(`ix elements init ${type} ${projectName}`);
+  const header = `ix elements init ${type} ${projectName}`;
   try {
     const element = await resolveElementByType(type);
     const outputDir = opts.outputDir ?? process.cwd();
@@ -32,9 +32,9 @@ export async function runElementsInit(
       element.name,
     );
 
-    // Subprocesses inherit stdio — commit the header so their output lands as body.
-    list.commit();
-
+    // Subprocesses below inherit stdio (cookiecutter, gh) so their output
+    // streams directly to the user's terminal. We render a final-state
+    // listing afterward to summarize.
     await cloneOrUpdate(element.repoUrl, cacheDir);
     await runCookiecutter(cacheDir, outputDir, projectName, org);
 
@@ -48,11 +48,23 @@ export async function runElementsInit(
       await createGithubRepo(projectDir, org, toSlug(projectName));
     }
 
-    list.success(
-      `Scaffolded ${type} project '${toSlug(projectName)}' in ${projectDir}`,
+    await renderStatic(
+      <Listing
+        header={header}
+        status="passed"
+        tail={`Scaffolded ${type} project '${toSlug(projectName)}' in ${projectDir}`}
+      />,
     );
   } catch (err) {
-    list.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header={header}
+        status="failed"
+        tail={`Failed: ${msg}`}
+        tailVariant="error"
+      />,
+    );
     throw err;
   }
 }

@@ -7,7 +7,7 @@ import type { IxConfig } from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { loadRegistry } from "../registry.js";
 import type { Deployable } from "../discovery.js";
-import { startListing } from "@agent-ix/ix-ui-cli";
+import { Box, Group, Listing, Text, renderStatic } from "@agent-ix/ix-ui-cli";
 
 export interface ListOptions {
   refresh?: boolean;
@@ -33,8 +33,6 @@ export async function runList(
   config: IxConfig,
   opts: ListOptions,
 ): Promise<void> {
-  const list = startListing("ix local list");
-
   const token = await resolveGhcrToken(false);
 
   const deployables = await loadRegistry({
@@ -50,25 +48,48 @@ export async function runList(
   if (opts.tag) filtered = filtered.filter((d) => d.tags.includes(opts.tag!));
 
   if (filtered.length === 0) {
-    list.warn("No deployables found.");
+    await renderStatic(
+      <Listing
+        header="ix local list"
+        status="passed"
+        tail="No deployables found."
+        tailVariant="warn"
+      />,
+    );
     return;
   }
 
   const grouped = group(filtered);
   const categories = [...grouped.keys()].sort();
 
-  for (const cat of categories) {
-    list.group(cat);
-    list.commit();
-    const table = new Table({
-      head: ["name", "type", "version", "title", "tags"],
-      style: { head: ["dim"] },
-    });
-    for (const d of grouped.get(cat)!) {
-      table.push([d.name, d.role, d.version, d.title ?? "", d.tags.join(",")]);
-    }
-    list.raw(table.toString());
-  }
-
-  list.success(`${filtered.length} deployable(s)`);
+  await renderStatic(
+    <Listing
+      header="ix local list"
+      status="passed"
+      tail={`${filtered.length} deployable(s)`}
+    >
+      {categories.map((cat) => {
+        const table = new Table({
+          head: ["name", "type", "version", "title", "tags"],
+          style: { head: ["dim"] },
+        });
+        for (const d of grouped.get(cat)!) {
+          table.push([
+            d.name,
+            d.role,
+            d.version,
+            d.title ?? "",
+            d.tags.join(","),
+          ]);
+        }
+        return (
+          <Group key={cat} name={cat}>
+            <Box flexDirection="column">
+              <Text>{table.toString()}</Text>
+            </Box>
+          </Group>
+        );
+      })}
+    </Listing>,
+  );
 }

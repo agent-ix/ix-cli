@@ -25,15 +25,17 @@
   },
   "dependencies": {
     "@agent-ix/ix-cli-core": "workspace:*",
-    "@agent-ix/ix-ui-cli": ">=0.3.6-0",
+    "@agent-ix/ix-ui-cli": "link:../../../ix-ui/packages/cli",
     "@clack/prompts": ">=1.1.0",
     "execa": ">=9.6.1",
     "picocolors": ">=1.1.1",
-    "yaml": ">=2.8.3"
+    "yaml": ">=2.8.3",
+    "react": ">=18.3.1"
   },
   "devDependencies": {
     "vite": ">=6.3.4",
     "vite-plugin-dts": ">=4.5.3",
-    "vitest": ">=3.1.2"
+    "vitest": ">=3.1.2",
+    "@types/react": ">=18.3.12"
   }
 }

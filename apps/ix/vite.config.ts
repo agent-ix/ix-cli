@@ -45,7 +45,7 @@ export default defineConfig({
           "src/commands/local/auth/config/registration/set.ts",
         "commands/local/auth/config/registration/show":
           "src/commands/local/auth/config/registration/show.ts",
-        "commands/update": "src/commands/update.ts",
+        "commands/update": "src/commands/update.tsx",
         "commands/elements/list": "src/commands/elements/list.ts",
         "commands/elements/init": "src/commands/elements/init.ts",
         "commands/elements/new": "src/commands/elements/new.ts",
@@ -66,6 +66,7 @@ export default defineConfig({
     },
     rollupOptions: {
       external: [
+        /^react($|\/)/,
         "@agent-ix/ix-cli-local",
         "@agent-ix/ix-cli-core",
         "@agent-ix/ix-cli-elements",

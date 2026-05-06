@@ -47,6 +47,8 @@ ix-ui-cli is the design system. Centralizing visual decisions there means a sing
 - **NFR-001-AC-3**: Multi-service progress uses `PhaseTable` imported from `@agent-ix/ix-ui-cli`, not a locally defined display class.
 - **NFR-001-AC-4**: A static grep for the deprecated framing API (`introCommand|outroSuccess|outroError|outroWarning|outroInfo|runTaskList`) across `packages/*/src/` and `apps/*/src/` returns zero matches.
 - **NFR-001-AC-5**: A static grep for inline ANSI escape sequences (`\\x1b\[`, `\\u001b\[`) and inline box-drawing connectors (`└──┐`, `└──•`, `└──`) across `packages/*/src/` and `apps/*/src/` returns zero matches outside test files. (All such tokens come from `@agent-ix/ix-ui-cli`.)
+- **NFR-001-AC-6**: Live Ink command wrappers delegate Helm, Kubernetes, and long-running process orchestration to controller modules; React components own rendering state only.
+- **NFR-001-AC-7**: Shared phase-row state is modeled outside command wrappers and emits immutable snapshots for live Ink renderers.
 
 ## Verification
 

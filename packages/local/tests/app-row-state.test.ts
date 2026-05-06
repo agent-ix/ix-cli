@@ -1,103 +1,93 @@
 import { describe, expect, it } from "vitest";
-import type { PhaseState, PhaseTable } from "@agent-ix/ix-ui-cli";
+import type { ServiceRow } from "@agent-ix/ix-ui-cli";
 import { AppInstallRows } from "../src/app-row-state.js";
 import type { Phase } from "../src/phases.js";
 
-interface TransitionCall {
-  service: string;
-  phase: Phase;
-  state: PhaseState;
-}
-
-class FakePhaseTable {
-  transitions: TransitionCall[] = [];
-  statuses: Array<{ service: string; status: string }> = [];
-  errors: Array<{ service: string; error: string }> = [];
-
-  transition(service: string, phase: Phase, state: PhaseState): void {
-    this.transitions.push({ service, phase, state });
-  }
-
-  setPodStatus(service: string, status: string): void {
-    this.statuses.push({ service, status });
-  }
-
-  setError(service: string, error: string): void {
-    this.errors.push({ service, error });
-  }
-}
-
 function makeRows(): {
-  fake: FakePhaseTable;
   rows: AppInstallRows;
+  latest: () => ServiceRow<Phase>[];
+  emitCount: () => number;
 } {
-  const fake = new FakePhaseTable();
-  const rows = new AppInstallRows(fake as unknown as PhaseTable<Phase>, [
-    { name: "identity" },
-    { name: "catalog-service" },
-  ]);
-  return { fake, rows };
+  let snapshot: ServiceRow<Phase>[] = [];
+  let count = 0;
+  const rows = new AppInstallRows(
+    [{ name: "identity" }, { name: "catalog-service" }],
+    (rs) => {
+      snapshot = rs;
+      count += 1;
+    },
+  );
+  return {
+    rows,
+    latest: () => snapshot,
+    emitCount: () => count,
+  };
+}
+
+function rowFor(
+  snapshot: ServiceRow<Phase>[],
+  name: string,
+): ServiceRow<Phase> {
+  const row = snapshot.find((r) => r.name === name);
+  if (!row) throw new Error(`row not found: ${name}`);
+  return row;
 }
 
 describe("AppInstallRows", () => {
+  it("emits queued phase state for rows waiting on a pool slot", () => {
+    const { rows, latest } = makeRows();
+
+    rows.transition("identity", "pull", "queued", "pull", "waiting for pull");
+
+    const row = rowFor(latest(), "identity");
+    expect(row.phases.pull).toBe("queued");
+    expect(row.status).toBe("waiting for pull");
+  });
+
   it("does not restart running state on repeated Kubernetes readiness polls", () => {
-    const { fake, rows } = makeRows();
+    const { rows, latest, emitCount } = makeRows();
     rows.transition("identity", "install", "pending");
 
     rows.updateK8sInstallStatus("identity", "0/1·start");
+    const beforeRepeat = emitCount();
     rows.updateK8sInstallStatus("identity", "0/1·start");
+    expect(emitCount()).toBe(beforeRepeat);
 
-    expect(fake.transitions).toEqual([
-      { service: "identity", phase: "install", state: "pending" },
-      { service: "identity", phase: "install", state: "done" },
-      { service: "identity", phase: "ready", state: "running" },
-    ]);
-    expect(fake.statuses).toEqual([
-      { service: "identity", status: "0/1·start" },
-    ]);
+    const row = rowFor(latest(), "identity");
+    expect(row.phases.install).toBe("done");
+    expect(row.phases.ready).toBe("running");
+    expect(row.status).toBe("0/1·start");
   });
 
   it("marks plain full readiness done so spinner and timer can stop", () => {
-    const { fake, rows } = makeRows();
+    const { rows, latest } = makeRows();
     rows.transition("identity", "install", "pending");
     rows.updateK8sInstallStatus("identity", "0/1·start");
-
-    rows.updateK8sInstallStatus("identity", "1/1");
     rows.updateK8sInstallStatus("identity", "1/1");
 
-    expect(fake.transitions).toEqual([
-      { service: "identity", phase: "install", state: "pending" },
-      { service: "identity", phase: "install", state: "done" },
-      { service: "identity", phase: "ready", state: "running" },
-      { service: "identity", phase: "ready", state: "done" },
-    ]);
-    expect(fake.statuses).toEqual([
-      { service: "identity", status: "0/1·start" },
-      { service: "identity", status: "1/1" },
-    ]);
+    const row = rowFor(latest(), "identity");
+    expect(row.phases.install).toBe("done");
+    expect(row.phases.ready).toBe("done");
+    expect(row.status).toBe("1/1");
   });
 
   it("keeps settling readiness active until the settling marker disappears", () => {
-    const { fake, rows } = makeRows();
+    const { rows, latest } = makeRows();
     rows.transition("identity", "install", "pending");
 
     rows.updateK8sInstallStatus("identity", "1/1·settle");
-    rows.updateK8sInstallStatus("identity", "1/1");
+    let row = rowFor(latest(), "identity");
+    expect(row.phases.ready).toBe("running");
+    expect(row.status).toBe("1/1·settle");
 
-    expect(fake.transitions).toEqual([
-      { service: "identity", phase: "install", state: "pending" },
-      { service: "identity", phase: "install", state: "done" },
-      { service: "identity", phase: "ready", state: "running" },
-      { service: "identity", phase: "ready", state: "done" },
-    ]);
-    expect(fake.statuses).toEqual([
-      { service: "identity", status: "1/1·settle" },
-      { service: "identity", status: "1/1" },
-    ]);
+    rows.updateK8sInstallStatus("identity", "1/1");
+    row = rowFor(latest(), "identity");
+    expect(row.phases.ready).toBe("done");
+    expect(row.status).toBe("1/1");
   });
 
   it("lets an active hook own its row while preserving Kubernetes readiness", () => {
-    const { fake, rows } = makeRows();
+    const { rows, latest } = makeRows();
     rows.transition("catalog-service", "install", "pending");
 
     rows.updateHook("catalog-service", {
@@ -105,24 +95,26 @@ describe("AppInstallRows", () => {
       phase: "running",
       message: "waiting for postgres",
     });
-    rows.updateK8sInstallStatus("catalog-service", "1/1");
-    rows.reconcileActiveInstallHooks(new Set());
+    let row = rowFor(latest(), "catalog-service");
+    expect(row.phases.install).toBe("running");
+    expect(row.status).toBe("waiting for postgres");
 
-    expect(fake.transitions).toEqual([
-      { service: "catalog-service", phase: "install", state: "pending" },
-      { service: "catalog-service", phase: "install", state: "running" },
-      { service: "catalog-service", phase: "install", state: "done" },
-      { service: "catalog-service", phase: "ready", state: "done" },
-    ]);
-    expect(fake.statuses).toEqual([
-      { service: "catalog-service", status: "waiting for postgres" },
-      { service: "catalog-service", status: "1/1 · waiting for postgres" },
-      { service: "catalog-service", status: "1/1" },
-    ]);
+    rows.updateK8sInstallStatus("catalog-service", "1/1");
+    row = rowFor(latest(), "catalog-service");
+    // Hook still running, so install row owns it; status combines readiness + hook.
+    expect(row.phases.install).toBe("running");
+    expect(row.status).toBe("1/1 · waiting for postgres");
+
+    rows.reconcileActiveInstallHooks(new Set());
+    row = rowFor(latest(), "catalog-service");
+    // Hook drained → k8s readiness already satisfied → row reaches ready/done.
+    expect(row.phases.install).toBe("done");
+    expect(row.phases.ready).toBe("done");
+    expect(row.status).toBe("1/1");
   });
 
   it("hook failure overrides Kubernetes readiness and freezes the row failed", () => {
-    const { fake, rows } = makeRows();
+    const { rows, latest } = makeRows();
     rows.transition("catalog-service", "install", "pending");
     rows.updateK8sInstallStatus("catalog-service", "1/1");
 
@@ -131,38 +123,28 @@ describe("AppInstallRows", () => {
       phase: "failed",
       message: "DeadlineExceeded",
     });
+
+    // Subsequent k8s polls must not unfreeze the row.
     rows.updateK8sInstallStatus("catalog-service", "1/1");
 
-    expect(fake.transitions).toEqual([
-      { service: "catalog-service", phase: "install", state: "pending" },
-      { service: "catalog-service", phase: "install", state: "done" },
-      { service: "catalog-service", phase: "ready", state: "done" },
-      { service: "catalog-service", phase: "install", state: "failed" },
-    ]);
-    expect(fake.statuses).toEqual([
-      { service: "catalog-service", status: "1/1" },
-      { service: "catalog-service", status: "DeadlineExceeded" },
-    ]);
-    expect(fake.errors).toEqual([
-      {
-        service: "catalog-service",
-        error:
-          "install: hook app-catalog-service-pgboot failed: DeadlineExceeded",
-      },
-    ]);
+    const row = rowFor(latest(), "catalog-service");
+    expect(row.phases.install).toBe("failed");
+    expect(row.status).toBe("DeadlineExceeded");
+    expect(row.error).toBe(
+      "install: hook app-catalog-service-pgboot failed: DeadlineExceeded",
+    );
   });
 
   it("ignores updates for unknown rows", () => {
-    const { fake, rows } = makeRows();
+    const { rows, latest, emitCount } = makeRows();
+    const before = emitCount();
     rows.updateK8sInstallStatus("missing", "1/1");
     rows.updateHook("missing", {
       jobName: "missing-hook",
       phase: "running",
       message: "waiting",
     });
-
-    expect(fake.transitions).toEqual([]);
-    expect(fake.statuses).toEqual([]);
-    expect(fake.errors).toEqual([]);
+    expect(emitCount()).toBe(before);
+    expect(latest().find((r) => r.name === "missing")).toBeUndefined();
   });
 });

@@ -14,6 +14,7 @@ export default defineConfig({
     rollupOptions: {
       external: [
         /^node:/,
+        /^react($|\/)/,
         "@agent-ix/ix-ui-cli",
         "@agent-ix/ix-cli-core",
         "@clack/prompts",
@@ -26,5 +27,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    env: {
+      HOME: "/tmp/ix-cli-elements-home",
+    },
   },
 });

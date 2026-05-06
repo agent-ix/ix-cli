@@ -1,28 +1,27 @@
-/**
- * FR-008 — Image-Mode Deployable Installation
- * FR-013 — Composable App Expansion
- * FR-021 — Concurrent Service Startup with Rate Control
- * FR-022 — App Startup Display
- *
- * For role=service, install one chart as a Helm release via Listr2.
- * For role=app, expand the chart's `dependencies` and run each child
- * pipeline concurrently behind Pool-gated semaphores, displaying progress
- * in the phase-column table (PhaseTable from @agent-ix/ix-ui-cli).
- */
-
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execa } from "execa";
-import type { ListrTaskWrapper } from "listr2";
 import pc from "picocolors";
 import { parse as parseYaml } from "yaml";
-import type { IxConfig } from "../config.js";
-import { buildGlobalSetArgs } from "../config.js";
-import type { Deployable } from "../discovery.js";
-import { resolveDeployableNamespace } from "../discovery.js";
-import { resolveGhcrToken } from "../credentials.js";
-import { buildHelmSetArgs, resolveCatalog } from "../host-mounts.js";
+import type { ServiceRow } from "@agent-ix/ix-ui-cli";
+import type { IxConfig } from "./config.js";
+import { buildGlobalSetArgs } from "./config.js";
+import type { Deployable } from "./discovery.js";
+import { resolveDeployableNamespace } from "./discovery.js";
+import { resolveGhcrToken } from "./credentials.js";
+import { buildHelmSetArgs, resolveCatalog } from "./host-mounts.js";
+import {
+  applySecretContract,
+  ensureGhcrCredsInNamespace,
+  loadSecretContract,
+  loadSecretContractFromTgz,
+  type SecretContract,
+} from "./local-secrets.js";
+import { ensureNamespace } from "./namespaces.js";
+import { PhaseRows, createPhaseRows } from "./phase-rows.js";
+import { PHASES, type Phase } from "./phases.js";
+import { loadConcurrencyConfig, createPools } from "./pool.js";
 import {
   cleanupFailedHelmHookJobs,
   waitForRollout,
@@ -30,44 +29,18 @@ import {
   detectHelmHookStatuses,
   getRolloutReadyStatus,
   type HookStatus,
-} from "../rollout.js";
-import {
-  applySecretContract,
-  ensureGhcrCredsInNamespace,
-  loadSecretContract,
-  loadSecretContractFromTgz,
-  type SecretContract,
-} from "../local-secrets.js";
-import { ensureNamespace } from "../namespaces.js";
-import {
-  PhaseTable,
-  makeListr,
-  startListing,
-  type Listing,
-} from "@agent-ix/ix-ui-cli";
-import { PHASES, PHASE_LABELS, type Phase } from "../phases.js";
-import { AppInstallRows } from "../app-row-state.js";
-import { loadConcurrencyConfig, createPools } from "../pool.js";
+} from "./rollout.js";
+import { AppInstallRows } from "./app-row-state.js";
 
 export interface ChildInstall {
-  /** Helm release name == chart name (FR-013-AC-3) */
   name: string;
-  /** Full OCI ref including chart name */
   chartRef: string;
-  /** Chart version to pull */
   chartVersion: string;
-  /**
-   * Target Kubernetes namespace. Resolved by the caller from the parent
-   * Deployable's namespace (`resolveDeployableNamespace`). Children inherit
-   * the parent's namespace; per-child namespaces require chart-side support
-   * via `org.agent-ix.namespace` on the child chart.
-   */
   namespace: string;
 }
 
 export interface UpImageOptions {
   continueOnError?: boolean;
-  /** Deploy-time namespace override; wins over chart annotation. */
   namespaceOverride?: string;
 }
 
@@ -81,12 +54,6 @@ interface ChartShow {
   dependencies?: RawDependency[];
 }
 
-/**
- * FR-013-AC-1: parse `helm show chart` YAML to discover the app's
- * subcharts. Each entry's `repository` is expected to be an `oci://...`
- * URL pointing at the chart's OCI namespace (the chart name is appended
- * by the caller to form the full chartRef).
- */
 export function parseChartDependencies(
   chartYaml: string,
   namespace: string,
@@ -112,10 +79,6 @@ export interface AppExpander {
   (deployable: Deployable, config: IxConfig): Promise<ChildInstall[]>;
 }
 
-/**
- * Default app expander — runs `helm show chart` against the OCI registry.
- * Test seam: callers can inject a stub.
- */
 export const defaultExpandApp: AppExpander = async (deployable, config) => {
   const chartRef = `oci://${config.helmChartRegistry}/${deployable.chartRepository}/${deployable.name}`;
   const { stdout } = await execa("helm", [
@@ -188,27 +151,6 @@ function parseHookFailureMessage(
   return null;
 }
 
-function finishPhaseTable(
-  display: PhaseTable<Phase>,
-  baseDomain: string | undefined,
-  finalDisplayError: string | null,
-): void {
-  (
-    display.finish as unknown as (
-      entry?: string | null,
-      baseDomain?: string,
-      tail?: string,
-      finalState?: { failed?: boolean; error?: string },
-    ) => void
-  ).call(
-    display,
-    null,
-    baseDomain,
-    undefined,
-    finalDisplayError ? { failed: true, error: finalDisplayError } : undefined,
-  );
-}
-
 function buildHelmInstallArgs(
   install: ChildInstall,
   config: IxConfig,
@@ -241,13 +183,6 @@ function shouldForceImagePull(imageTagOverride: string | null): boolean {
   return imageTagOverride === null || imageTagOverride === "latest";
 }
 
-/**
- * FR-031: Build helm args for installing an umbrella chart as a single
- * Helm release. The umbrella's Chart.yaml deps describe the subcharts;
- * Helm itself topologically installs them. We deliberately omit --wait
- * and --atomic so per-subchart rollout watchers (running in parallel)
- * can stream live status to the PhaseTable.
- */
 function buildUmbrellaInstallArgs(
   releaseName: string,
   tgzPath: string,
@@ -300,163 +235,228 @@ async function authenticateHelmRegistry(
   );
 }
 
-export async function runImageModeUp(
+export type ImageModePlan =
+  | { mode: "service"; install: ChildInstall }
+  | {
+      mode: "app";
+      installs: ChildInstall[];
+      pools: ReturnType<typeof createPools>;
+    };
+
+export async function planImageModeUp(
   deployable: Deployable,
   config: IxConfig,
-  tagOverride: string | null,
-  expandApp: AppExpander = defaultExpandApp,
-  opts: UpImageOptions = {},
-): Promise<void> {
-  const headerText = `ix local up · ${deployable.name} · ${config.helmChartRegistry}`;
-
-  let installs: ChildInstall[];
-  let serviceList: Listing | null = null;
-  let preflightList: Listing | null = null;
+  expandApp: AppExpander,
+  opts: UpImageOptions,
+): Promise<ImageModePlan> {
   const ghcrToken = await resolveGhcrToken(false);
 
-  if (deployable.role === "app") {
-    preflightList = startListing(headerText);
+  if (deployable.role !== "app") {
+    const install: ChildInstall = {
+      name: deployable.name,
+      chartRef: `oci://${config.helmChartRegistry}/${deployable.chartRepository}/${deployable.name}`,
+      chartVersion: deployable.version,
+      namespace:
+        opts.namespaceOverride?.trim() ||
+        resolveDeployableNamespace(deployable),
+    };
+    await ensureNamespace(install.namespace);
+    await ensureGhcrCredsInNamespace(install.namespace, ghcrToken);
     await authenticateHelmRegistry(config, ghcrToken);
-    const deps = await expandApp(deployable, config);
-    if (deps.length === 0) {
-      preflightList.stop();
-      // FR-013-AC-6
-      throw new Error(
-        `App '${deployable.name}' has no chart dependencies to install.`,
-      );
-    }
-    installs = opts.namespaceOverride?.trim()
-      ? deps.map((d) => ({ ...d, namespace: opts.namespaceOverride!.trim() }))
-      : deps;
-  } else {
-    installs = [
-      {
-        name: deployable.name,
-        chartRef: `oci://${config.helmChartRegistry}/${deployable.chartRepository}/${deployable.name}`,
-        chartVersion: deployable.version,
-        namespace:
-          opts.namespaceOverride?.trim() ||
-          resolveDeployableNamespace(deployable),
-      },
-    ];
-    serviceList = startListing(headerText);
-    serviceList.commit();
+    return { mode: "service", install };
   }
 
-  // FR-032: ensure ghcr-creds exists in every install namespace BEFORE helm
-  // install runs, so the kubelet can pull images. Image-mode pods reference
-  // images on ghcr.io; without this secret pulls fail when images aren't
-  // already cached on the kind node.
+  const concurrencyConfig = loadConcurrencyConfig();
+  const pools = createPools(concurrencyConfig);
+  await authenticateHelmRegistry(config, ghcrToken);
+  const deps = await expandApp(deployable, config);
+  if (deps.length === 0) {
+    throw new Error(
+      `App '${deployable.name}' has no chart dependencies to install.`,
+    );
+  }
+  const installs: ChildInstall[] = opts.namespaceOverride?.trim()
+    ? deps.map((d) => ({ ...d, namespace: opts.namespaceOverride!.trim() }))
+    : deps;
+
   const installNamespaces = new Set(installs.map((i) => i.namespace));
   for (const ns of installNamespaces) {
     await ensureNamespace(ns);
     await ensureGhcrCredsInNamespace(ns, ghcrToken);
   }
 
-  if (deployable.role !== "app") {
-    // Single-service: Listr2 path (FR-022-CON-1, FR-021-CON-1)
-    // FR-033: pull the chart tgz to extract its secret contract, then install
-    // from the local tgz to avoid a second OCI fetch.
-    const svcTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-local-svc-"));
+  return { mode: "app", installs, pools };
+}
+
+export function initialImageRows(
+  installs: ChildInstall[],
+): ServiceRow<Phase>[] {
+  return createPhaseRows(
+    installs.map((install) => ({
+      name: install.name,
+      displayName: `${install.name} ${pc.dim(install.chartVersion)}`,
+    })),
+    PHASES,
+  );
+}
+
+export interface SingleServicePipelineOptions {
+  install: ChildInstall;
+  deployable: Deployable;
+  config: IxConfig;
+  tagOverride: string | null;
+  opts: UpImageOptions;
+}
+
+export interface ImageInstallPipelineResult {
+  failures: string[];
+  finalDisplayError: string | null;
+}
+
+export class ImageInstallPipelineError extends Error {
+  constructor(
+    cause: Error,
+    readonly failures: string[],
+    readonly finalDisplayError: string | null,
+  ) {
+    super(cause.message);
+    this.name = "ImageInstallPipelineError";
+    this.cause = cause;
+  }
+}
+
+export async function runSingleServicePipeline(
+  {
+    install,
+    deployable,
+    config,
+    tagOverride,
+    opts,
+  }: SingleServicePipelineOptions,
+  emit: (services: ServiceRow<Phase>[]) => void,
+): Promise<ImageInstallPipelineResult> {
+  const rows = new PhaseRows(
+    [
+      {
+        name: install.name,
+        displayName: `${install.name} ${pc.dim(install.chartVersion)}`,
+      },
+    ],
+    PHASES,
+    emit,
+  );
+  const failures: string[] = [];
+  const svcTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-local-svc-"));
+  let chartRef = install.chartRef;
+  let phase: Phase = "pull";
+
+  try {
+    rows.setPhase(install.name, "pull", "running", "helm pull");
+    await execa(
+      "helm",
+      [
+        "pull",
+        install.chartRef,
+        "--version",
+        install.chartVersion,
+        "--destination",
+        svcTmpDir,
+      ],
+      { all: true },
+    );
+    const tgzFiles = fs
+      .readdirSync(svcTmpDir)
+      .filter((f) => f.endsWith(".tgz"));
     const contracts: SecretContract[] = [];
-    let svcTgzPath = installs[0].chartRef;
-    try {
-      await authenticateHelmRegistry(config, ghcrToken);
-      await execa(
-        "helm",
-        [
-          "pull",
-          installs[0].chartRef,
-          "--version",
-          installs[0].chartVersion,
-          "--destination",
-          svcTmpDir,
-        ],
-        { all: true },
+    if (tgzFiles.length === 1) {
+      chartRef = path.join(svcTmpDir, tgzFiles[0]);
+      const contract = await loadSecretContractFromTgz(
+        chartRef,
+        deployable.name,
       );
-      const tgzFiles = fs
-        .readdirSync(svcTmpDir)
-        .filter((f) => f.endsWith(".tgz"));
-      if (tgzFiles.length === 1) {
-        svcTgzPath = path.join(svcTmpDir, tgzFiles[0]);
-        const contract = await loadSecretContractFromTgz(
-          svcTgzPath,
-          deployable.name,
-        );
-        if (contract && contract.secrets.length > 0) contracts.push(contract);
+      if (contract && contract.secrets.length > 0) contracts.push(contract);
+    }
+    rows.setPhase(install.name, "pull", "done");
+
+    phase = "secrets";
+    rows.setPhase(install.name, "secrets", "running", "checking secrets");
+    try {
+      for (const contract of contracts) {
+        await applySecretContract(contract, install.namespace);
       }
     } catch (err) {
-      fs.rmSync(svcTmpDir, { recursive: true, force: true });
+      const msg = err instanceof Error ? err.message : String(err);
+      rows.setError(install.name, "secrets", msg);
       throw err;
     }
-    await runSingleServiceListr(
-      serviceList!,
-      { ...installs[0], chartRef: svcTgzPath },
-      deployable,
-      config,
-      tagOverride,
-      ghcrToken,
-      contracts,
-      opts,
-      true,
-      svcTmpDir,
-    );
-    return;
+    rows.setPhase(install.name, "secrets", "done");
+
+    try {
+      phase = "install";
+      rows.setPhase(install.name, "install", "running", "helm upgrade");
+      const args = buildHelmInstallArgs(
+        { ...install, chartRef },
+        config,
+        tagOverride,
+      );
+      await execa("helm", args, { all: true });
+      rows.setPhase(install.name, "install", "done");
+
+      phase = "ready";
+      rows.setPhase(install.name, "ready", "running", "checking rollout");
+      await waitForRollout(
+        install.name,
+        install.namespace,
+        config.rolloutTimeoutSeconds,
+        undefined,
+        `app.kubernetes.io/instance=${install.name}`,
+        (status) => rows.setPhase(install.name, "ready", "running", status),
+      );
+      rows.setPhase(install.name, "ready", "done", "ready");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      rows.setError(install.name, phase, msg);
+      rows.finishPending(install.name, phase);
+      if (!opts.continueOnError) throw err;
+      failures.push(`${install.name}: ${msg}`);
+    }
+
+    return { failures, finalDisplayError: null };
+  } catch (err) {
+    const cause = err instanceof Error ? err : new Error(String(err));
+    throw new ImageInstallPipelineError(cause, failures, cause.message);
+  } finally {
+    fs.rmSync(svcTmpDir, { recursive: true, force: true });
   }
+}
 
-  // Multi-service app: concurrent phase-column display (FR-021, FR-022)
+interface AppInstallPipelineOptions {
+  deployable: Deployable;
+  installs: ChildInstall[];
+  config: IxConfig;
+  tagOverride: string | null;
+  pools: ReturnType<typeof createPools>;
+  appRows: AppInstallRows;
+}
 
-  // Validate concurrency config before any I/O — fail fast per FR-021-AC-7.
-  // Must happen before display.start() so a bad config never leaves the ticker running.
-  const concurrencyConfig = loadConcurrencyConfig();
-  const pools = createPools(concurrencyConfig);
-
-  // FR-033: contractsByName is built after the umbrella pull (from tgz).
-  const contractsByName = new Map<string, SecretContract>();
-
-  const serviceLabels: Record<string, string> = {};
-  for (const install of installs) {
-    serviceLabels[install.name] =
-      `${install.name} ${pc.dim(install.chartVersion)}`;
-  }
-  const display = new PhaseTable<Phase>(
-    installs.map((i) => i.name),
-    {
-      phases: PHASES,
-      phaseLabels: PHASE_LABELS,
-      header: headerText,
-      initialLineCount: 0,
-      serviceLabels,
-    },
-  );
-
-  preflightList!.stop();
-  display.start();
-  const appRows = new AppInstallRows(display, installs);
-
+export async function runAppInstallPipeline({
+  deployable,
+  installs,
+  config,
+  tagOverride,
+  pools,
+  appRows,
+}: AppInstallPipelineOptions): Promise<ImageInstallPipelineResult> {
   const failures: string[] = [];
   let finalDisplayError: string | null = null;
-
-  // mkdtempSync failure after display.start() would leak the ticker; handle it
-  // explicitly so display.finish() still clears the interval.
-  let tmpDir: string;
-  try {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-helm-"));
-  } catch (err) {
-    display.finish(null, config.internalBaseDomain);
-    throw err;
-  }
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-helm-"));
 
   try {
-    // FR-031: install the umbrella as a single Helm release.
-    // FR-033: phase order is pull → secrets → install → ready.
-    // Pull happens first so the tgz is available for secret contract extraction.
-
-    // --- pull phase (single umbrella pull) ---
     const umbrellaRef = `oci://${config.helmChartRegistry}/${deployable.chartRepository}/${deployable.name}`;
     const umbrellaDir = path.join(tmpDir, deployable.name);
     fs.mkdirSync(umbrellaDir, { recursive: true });
     installs.forEach((i) => appRows.transition(i.name, "pull", "running"));
+
     let umbrellaTgzPath: string;
     try {
       await execa(
@@ -492,8 +492,7 @@ export async function runImageModeUp(
       );
     }
 
-    // FR-033: extract secret contracts from subcharts bundled inside the
-    // umbrella. Published charts may vendor subcharts as directories or tgzs.
+    const contractsByName = new Map<string, SecretContract>();
     const umbrellaExtractDir = path.join(tmpDir, "umbrella-extracted");
     fs.mkdirSync(umbrellaExtractDir, { recursive: true });
     try {
@@ -513,41 +512,37 @@ export async function runImageModeUp(
         }
       }
     } catch {
-      // Secret contract extraction is best-effort; non-required secrets are
-      // skipped gracefully, required ones fail in the secrets phase below.
+      // Secret contracts in bundled subcharts are best effort.
     }
 
-    // --- secrets phase (per-subchart, parallel) ---
     await Promise.all(
       installs.map(async (install) => {
         const contract = contractsByName.get(install.name);
-        if (contract) {
-          const secretNames = contract.secrets.map((s) => s.name).join(", ");
-          appRows.transition(
-            install.name,
-            "secrets",
-            "running",
-            "secrets",
-            `creating: ${secretNames}`,
-          );
-          try {
-            await applySecretContract(contract, install.namespace);
-            appRows.transition(install.name, "secrets", "done");
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            appRows.transition(install.name, "secrets", "failed");
-            appRows.setError(install.name, `secrets: ${msg}`);
-            failures.push(`${install.name}: secrets: ${msg}`);
-          }
-        } else {
+        if (!contract) {
           appRows.transition(install.name, "secrets", "done");
+          return;
+        }
+
+        const secretNames = contract.secrets.map((s) => s.name).join(", ");
+        appRows.transition(
+          install.name,
+          "secrets",
+          "running",
+          "secrets",
+          `creating: ${secretNames}`,
+        );
+        try {
+          await applySecretContract(contract, install.namespace);
+          appRows.transition(install.name, "secrets", "done");
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          appRows.transition(install.name, "secrets", "failed");
+          appRows.setError(install.name, `secrets: ${msg}`);
+          failures.push(`${install.name}: secrets: ${msg}`);
         }
       }),
     );
 
-    // --- install phase (single umbrella `helm upgrade --install`) ---
-    // No --wait/--atomic: we want per-subchart rollout watchers below to
-    // stream live status into the table instead of one opaque spinner.
     const umbrellaNamespace = resolveDeployableNamespace(deployable);
     installs.forEach((i) => appRows.transition(i.name, "install", "pending"));
     try {
@@ -560,9 +555,7 @@ export async function runImageModeUp(
         tagOverride,
         installs,
       );
-      const hookFailureRef: {
-        current: HookStatus | null;
-      } = { current: null };
+      const hookFailureRef: { current: HookStatus | null } = { current: null };
       const subprocess = execa("helm", args, { all: true });
       const checkHookStatus = () => {
         void detectHelmHookStatuses(umbrellaNamespace, deployable.name).then(
@@ -651,20 +644,16 @@ export async function runImageModeUp(
       );
     }
 
-    // --- ready phase (per-subchart rollout watchers, parallel) ---
     await Promise.all(
       installs.map((install) =>
         pools.kubectlWatch.run(async () => {
           appRows.startReady(install.name);
           try {
-            const rolloutSink = {
-              output: "",
-            } as unknown as ListrTaskWrapper<unknown, never, never>;
             await waitForRollout(
               install.name,
               install.namespace,
               config.rolloutTimeoutSeconds,
-              rolloutSink,
+              undefined,
               `app.kubernetes.io/instance=${install.name}`,
               (status) => appRows.updateReadyStatus(install.name, status),
             );
@@ -698,121 +687,22 @@ export async function runImageModeUp(
         }),
       ),
     );
+
+    return { failures, finalDisplayError };
+  } catch (err) {
+    const cause = err instanceof Error ? err : new Error(String(err));
+    throw new ImageInstallPipelineError(cause, failures, finalDisplayError);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
-    // Always freeze the display — clears the ticker regardless of outcome.
-    finishPhaseTable(display, config.internalBaseDomain, finalDisplayError);
-  }
-
-  // FR-021-AC-6: exit 1 whenever any child failed, regardless of --continue-on-error.
-  // (All siblings already ran to completion per AC-5.)
-  if (failures.length > 0) {
-    throw new Error(`App '${deployable.name}' failed: ${failures.join("; ")}`);
   }
 }
 
-async function runSingleServiceListr(
-  list: Listing,
-  install: ChildInstall,
-  deployable: Deployable,
-  config: IxConfig,
-  tagOverride: string | null,
-  ghcrToken: string,
-  contracts: SecretContract[],
-  opts: UpImageOptions,
-  skipHelmAuth = false,
-  tmpDir?: string,
-): Promise<void> {
-  const failures: string[] = [];
-
-  const tasks = makeListr(
-    [
-      ...(skipHelmAuth
-        ? []
-        : [
-            {
-              title: `Authenticate Helm registry`,
-              task: async (_ctx: unknown, task: { output: string }) => {
-                const subprocess = execa(
-                  "helm",
-                  [
-                    "registry",
-                    "login",
-                    config.helmChartRegistry,
-                    "-u",
-                    "_token",
-                    "--password-stdin",
-                  ],
-                  { input: ghcrToken, all: true },
-                );
-                subprocess.all?.on("data", (chunk: unknown) => {
-                  const line = String(chunk).trim();
-                  if (line) task.output = line;
-                });
-                await subprocess;
-              },
-            },
-          ]),
-
-      ...contracts.map((contract) => {
-        const chartName = path.basename(contract.repoDir);
-        const secretNames = contract.secrets.map((s) => s.name).join(", ");
-        return {
-          title: `Apply secrets [${pc.cyan(secretNames)}] from ${chartName}`,
-          task: async (_ctx: unknown, task: { output: string }) => {
-            await applySecretContract(contract, install.namespace, (line) => {
-              task.output = line;
-            });
-          },
-        };
-      }),
-
-      {
-        title: `Install ${pc.cyan(install.name)}`,
-        task: async (_ctx: unknown, task: { output: string }) => {
-          try {
-            const args = buildHelmInstallArgs(install, config, tagOverride);
-            await execa("helm", args, { all: true });
-            const nullSink = {
-              output: "",
-            } as unknown as ListrTaskWrapper<unknown, never, never>;
-            await waitForRollout(
-              install.name,
-              install.namespace,
-              config.rolloutTimeoutSeconds,
-              nullSink,
-              `app.kubernetes.io/instance=${install.name}`,
-            );
-          } catch (err) {
-            if (!opts.continueOnError) throw err;
-            const msg = err instanceof Error ? err.message : String(err);
-            failures.push(`${install.name}: ${msg}`);
-            task.output = pc.yellow(`Skipped after failure: ${msg}`);
-          }
-        },
-      },
-    ],
-    {
-      concurrent: false,
-      exitOnError: !opts.continueOnError,
-    },
-  );
-
-  try {
-    await tasks.run();
-    if (failures.length > 0) {
-      list.warn(
-        `Deployed ${deployable.name} with failures: ${failures.join("; ")}`,
-      );
-    } else {
-      list.success(`${deployable.name} deployed.`);
-    }
-  } catch (err) {
-    list.error(
-      `Failed to deploy ${deployable.name}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-    throw err;
-  } finally {
-    if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
+export function appRowServices(installs: ChildInstall[]): {
+  name: string;
+  displayName: string;
+}[] {
+  return installs.map((i) => ({
+    name: i.name,
+    displayName: `${i.name} ${pc.dim(i.chartVersion)}`,
+  }));
 }

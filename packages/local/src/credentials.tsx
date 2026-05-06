@@ -13,7 +13,17 @@
  *      backend (no plaintext file).
  */
 
-import { isCancel, log, password } from "@agent-ix/ix-ui-cli";
+import type React from "react";
+import {
+  Listing,
+  Note,
+  PasswordPrompt,
+  render,
+  renderStatic,
+  useEffect,
+  useRenderResult,
+  useState,
+} from "@agent-ix/ix-ui-cli";
 import { defaultSecretsService } from "@agent-ix/ix-cli-core";
 
 const FALLBACK_ENV_NAMES = [
@@ -40,6 +50,53 @@ function resolveFallbackEnvToken(): string | null {
   return null;
 }
 
+async function promptForToken(activeBackend: string): Promise<string | null> {
+  // FR-011: explanatory note + prompt. Render the note as a final-state
+  // listing so it lands above the prompt, then drive the prompt.
+  await renderStatic(
+    <Listing
+      header="ix local: GHCR token required"
+      status="passed"
+      tail={`The token will be stored via 'ix secrets' (active backend = ${activeBackend}).`}
+    >
+      <Note>
+        To pull charts and images from GHCR, a GitHub Personal Access Token
+      </Note>
+      <Note>with read:packages scope is required.</Note>
+      <Note>{` `}</Note>
+      <Note>Create one at: https://github.com/settings/tokens</Note>
+    </Listing>,
+  );
+
+  let captured: string | null = null;
+  let cancelled = false;
+  const Capture: React.FC = () => {
+    const { exit } = useRenderResult();
+    const [done, setDone] = useState(false);
+    useEffect(() => {
+      if (done) {
+        const t = setTimeout(exit, 0);
+        return () => clearTimeout(t);
+      }
+    }, [done, exit]);
+    return (
+      <PasswordPrompt
+        message="Paste your token:"
+        validate={(v) =>
+          !v || v.trim().length === 0 ? "Token cannot be empty" : null
+        }
+        onSubmit={(r) => {
+          if (r.ok) captured = r.value;
+          else cancelled = true;
+          setDone(true);
+        }}
+      />
+    );
+  };
+  await render(<Capture />);
+  return cancelled ? null : captured;
+}
+
 /**
  * Resolve the GHCR token. Per FR-011 / FR-014:
  *
@@ -59,46 +116,22 @@ export async function resolveGhcrToken(forcePrompt = false): Promise<string> {
   const svc = defaultSecretsService();
 
   if (!forcePrompt) {
-    // 1. Canonical IX_GHCR_TOKEN (highest precedence, regardless of
-    //    backend state).
     const ix = process.env.IX_GHCR_TOKEN?.trim();
     if (ix) return ix;
 
-    // 2. Compatibility env vars before the backend — explicit settings
-    //    beat implicit persisted state.
     const fallback = resolveFallbackEnvToken();
     if (fallback) return fallback;
 
-    // 3. Persisted-backend value (keyring or age-file).
     const stored = await svc.get(SECRET_ID);
     if (stored) return stored;
   }
 
-  log.info(
-    [
-      "To pull charts and images from GHCR, a GitHub Personal Access Token",
-      "with read:packages scope is required.",
-      "",
-      "Create one at: https://github.com/settings/tokens",
-      "",
-      `The token will be stored via 'ix secrets' (active backend = ${await svc.activeBackendId()}).`,
-    ].join("\n"),
-  );
-  const token = await password({
-    message: "Paste your token:",
-    validate: (value) => {
-      if (!value || value.trim().length === 0) {
-        return "Token cannot be empty";
-      }
-      return undefined;
-    },
-  });
-
-  if (isCancel(token)) {
+  const token = await promptForToken(await svc.activeBackendId());
+  if (token === null) {
     throw new CredentialsError("Credential prompt cancelled");
   }
 
-  const trimmed = (token as string).trim();
+  const trimmed = token.trim();
   await svc.set(SECRET_ID, trimmed);
   return trimmed;
 }

@@ -4,26 +4,27 @@ import path from "node:path";
 import { execa } from "execa";
 import pc from "picocolors";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import type { IxConfig } from "../config.js";
-import { IX_APPS_NAMESPACE, buildGlobalSetArgs } from "../config.js";
-import { resolveGhcrToken } from "../credentials.js";
+import type { ServiceRow } from "@agent-ix/ix-ui-cli";
+import type { IxConfig } from "./config.js";
+import { IX_APPS_NAMESPACE, buildGlobalSetArgs } from "./config.js";
+import { resolveGhcrToken } from "./credentials.js";
 import {
   buildHelmSetArgs,
   resolveCatalog,
   resolveProfile,
-} from "../host-mounts.js";
+} from "./host-mounts.js";
 import {
   SECRETS_FILENAME,
   applySecretContract,
   loadSecretContract,
-} from "../local-secrets.js";
-import { ensureNamespace } from "../namespaces.js";
-import { waitForRollout } from "../rollout.js";
-import { startListing, makeListr } from "@agent-ix/ix-ui-cli";
+} from "./local-secrets.js";
+import { ensureNamespace } from "./namespaces.js";
+import { PhaseRows, createPhaseRows } from "./phase-rows.js";
+import { waitForRollout } from "./rollout.js";
 
 /**
  * Resolve the values overlay file for an app chart, profile-aware.
- * Lookup order: values-${IX_PROFILE}.yaml → values-local.yaml → values.yaml
+ * Lookup order: values-${IX_PROFILE}.yaml -> values-local.yaml -> values.yaml
  */
 export function resolveProfileValuesPath(chartPath: string): string {
   const profile = resolveProfile();
@@ -42,8 +43,28 @@ interface LocalInstall {
   secretContractDir: string;
   dependencyUpdate: boolean;
   tags: string[];
-  /** Target Kubernetes namespace, resolved via the four-tier name fallback. */
   namespace: string;
+}
+
+export type SourcePhase = "secrets" | "build" | "install" | "ready";
+
+export const SOURCE_PHASES: readonly SourcePhase[] = [
+  "secrets",
+  "build",
+  "install",
+  "ready",
+];
+
+export const SOURCE_PHASE_LABELS: Record<SourcePhase, string> = {
+  secrets: "secrets",
+  build: "building",
+  install: "installing",
+  ready: "ready",
+};
+
+export interface SourceModeResult {
+  failures: string[];
+  urls: string[];
 }
 
 interface RawDependency {
@@ -60,12 +81,7 @@ export interface UpFilterOptions {
   includeTag?: string;
   excludeTag?: string;
   continueOnError?: boolean;
-  /** Deploy-time namespace override; wins over chart annotation. */
   namespaceOverride?: string;
-  /**
-   * FR-030: when true, force `helm dependency update` for every install
-   * regardless of whether subcharts are already vendored locally.
-   */
   refresh?: boolean;
 }
 
@@ -84,39 +100,25 @@ function hasVendoredDependency(
   dep: { name: string; version?: unknown },
 ): boolean {
   const chartsDir = path.join(chartPath, "charts");
-  if (!fs.existsSync(chartsDir)) {
-    return false;
-  }
-
-  if (fs.existsSync(path.join(chartsDir, dep.name))) {
-    return true;
-  }
-
+  if (!fs.existsSync(chartsDir)) return false;
+  if (fs.existsSync(path.join(chartsDir, dep.name))) return true;
   if (typeof dep.version === "string" && dep.version.trim() !== "") {
     return fs.existsSync(
       path.join(chartsDir, `${dep.name}-${dep.version}.tgz`),
     );
   }
-
   return false;
 }
 
 function shouldDependencyUpdate(chartPath: string): boolean {
   const chartYamlPath = path.join(chartPath, "Chart.yaml");
-  if (!fs.existsSync(chartYamlPath)) {
-    return false;
-  }
-
+  if (!fs.existsSync(chartYamlPath)) return false;
   const parsed = readYamlFile(chartYamlPath) as ChartFile | null;
   const deps = (parsed?.dependencies ?? []).filter(
     (dep): dep is { name: string; version?: unknown } =>
       typeof dep.name === "string" && dep.name.trim() !== "",
   );
-
-  if (deps.length === 0) {
-    return false;
-  }
-
+  if (deps.length === 0) return false;
   return deps.some((dep) => !hasVendoredDependency(chartPath, dep));
 }
 
@@ -153,9 +155,7 @@ function matchesTagFilters(tags: string[], opts: UpFilterOptions): boolean {
 
 function makefileHasTargets(repoDir: string, targets: string[]): boolean {
   const makefilePath = path.join(repoDir, "Makefile");
-  if (!fs.existsSync(makefilePath)) {
-    return false;
-  }
+  if (!fs.existsSync(makefilePath)) return false;
   const contents = fs.readFileSync(makefilePath, "utf-8");
   return targets.every((target) =>
     new RegExp(`^${target}\\s*:`, "m").test(contents),
@@ -320,35 +320,46 @@ function buildLocalHelmArgs(
     "--take-ownership",
   ];
 
-  if (install.dependencyUpdate) {
-    args.push("--dependency-update");
-  }
-
-  for (const valuesFile of install.valuesFiles) {
-    args.push("-f", valuesFile);
-  }
-
+  if (install.dependencyUpdate) args.push("--dependency-update");
+  for (const valuesFile of install.valuesFiles) args.push("-f", valuesFile);
   args.push("--set-string", `global.imageTag=${imageTag}`);
   args.push(...buildGlobalSetArgs(config));
-  // FR-014: inject host-mount catalog on every install.
   args.push(...buildHelmSetArgs(resolveCatalog()));
-
   return args;
 }
 
-export async function runSourceModeUp(
+export function initialSourceRows(
+  installs: { name: string }[],
+): ServiceRow<SourcePhase>[] {
+  return createPhaseRows(
+    installs.map((install) => ({
+      name: install.name,
+      displayName: `${install.name} ${pc.dim("source")}`,
+    })),
+    SOURCE_PHASES,
+  );
+}
+
+export interface SourceModePlan {
+  installs: LocalInstall[];
+  secretContracts: NonNullable<
+    Awaited<ReturnType<typeof loadSecretContract>>
+  >[];
+  requiresRegistryAuth: boolean;
+  imageTag: string;
+  tmpDir: string;
+  dispose: () => void;
+}
+
+export async function planSourceModeUp(
   services: string[],
   config: IxConfig,
   tagOverride: string | null,
   devDir: string,
-  opts: UpFilterOptions = {},
-): Promise<void> {
-  const list = startListing(`ix local up · ${services.join(", ")} · source`);
-  list.commit();
-
+  opts: UpFilterOptions,
+): Promise<SourceModePlan> {
   const imageTag = tagOverride ?? config.imageTag;
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-local-source-"));
-
   try {
     const plans = services.map((service) =>
       resolveLocalInstalls(service, devDir, tmpDir, opts),
@@ -358,7 +369,6 @@ export async function runSourceModeUp(
     const namespaced = override
       ? rawInstalls.map((i) => ({ ...i, namespace: override }))
       : rawInstalls;
-    // FR-030: --refresh forces dependency update on every install.
     const installs = opts.refresh
       ? namespaced.map((i) => ({ ...i, dependencyUpdate: true }))
       : namespaced;
@@ -379,143 +389,149 @@ export async function runSourceModeUp(
       (contract): contract is NonNullable<typeof contract> => contract !== null,
     );
 
-    const failures: string[] = [];
-    const installNamespaces = [...new Set(installs.map((i) => i.namespace))];
-    const tasks = makeListr(
-      [
-        {
-          title: "Prepare namespaces",
-          task: async () => {
-            for (const ns of installNamespaces) {
-              await ensureNamespace(ns);
-            }
-          },
-        },
-        ...secretContracts.map((contract) => ({
-          title: `Apply repo secrets: ${pc.cyan(path.basename(contract.repoDir))}`,
-          task: async (_ctx: unknown, task: { output: string }) => {
-            const matched = installs.find(
-              (i) => i.secretContractDir === contract.repoDir,
-            );
-            const namespace = matched?.namespace ?? IX_APPS_NAMESPACE;
-            await applySecretContract(contract, namespace, (line) => {
-              task.output = line;
-            });
-          },
-        })),
-        ...(requiresRegistryAuth
-          ? [
-              {
-                title: "Authenticate Helm registry",
-                task: async (_ctx: unknown, task: { output: string }) => {
-                  const token = await resolveGhcrToken(false);
-                  const subprocess = execa(
-                    "helm",
-                    [
-                      "registry",
-                      "login",
-                      config.helmChartRegistry,
-                      "-u",
-                      "_token",
-                      "--password-stdin",
-                    ],
-                    { input: token, all: true },
-                  );
-                  subprocess.all?.on("data", (chunk) => {
-                    const line = chunk.toString().trim();
-                    if (line) task.output = line;
-                  });
-                  await subprocess;
-                },
-              },
-            ]
-          : []),
-        ...installs.map((install) => ({
-          title: `Deploy ${pc.cyan(install.name)} from local chart`,
-          task: async (_ctx: unknown, task: { output: string }) => {
-            try {
-              const canBuild = makefileHasTargets(install.repoDir, [
-                "build",
-                "kind-load",
-              ]);
-              if (canBuild) {
-                for (const target of ["build", "kind-load"]) {
-                  const subprocess = execa("make", [target], {
-                    cwd: install.repoDir,
-                    all: true,
-                  });
-                  subprocess.all?.on("data", (chunk) => {
-                    const line = chunk.toString().trim();
-                    if (line) task.output = line;
-                  });
-                  await subprocess;
-                }
-              }
-
-              const helmSubprocess = execa(
-                "helm",
-                buildLocalHelmArgs(install, config, imageTag),
-                { all: true },
-              );
-              helmSubprocess.all?.on("data", (chunk) => {
-                const line = chunk.toString().trim();
-                if (line) task.output = line;
-              });
-              await helmSubprocess;
-
-              const restartSubprocess = execa(
-                "kubectl",
-                [
-                  "rollout",
-                  "restart",
-                  `deployment/${install.name}`,
-                  "-n",
-                  install.namespace,
-                ],
-                { all: true },
-              );
-              restartSubprocess.all?.on("data", (chunk) => {
-                const line = chunk.toString().trim();
-                if (line) task.output = line;
-              });
-              await restartSubprocess;
-
-              await waitForRollout(
-                install.name,
-                install.namespace,
-                config.rolloutTimeoutSeconds,
-                task as Parameters<typeof waitForRollout>[3],
-                `app.kubernetes.io/part-of=${install.name}`,
-              );
-            } catch (err) {
-              if (!opts.continueOnError) throw err;
-              const msg = err instanceof Error ? err.message : String(err);
-              failures.push(`${install.name}: ${msg}`);
-              task.output = pc.yellow(`Skipped after failure: ${msg}`);
-            }
-          },
-        })),
-      ],
-      { concurrent: false, exitOnError: !opts.continueOnError },
-    );
-
-    await tasks.run();
-    const urls = installs.map(
-      (i) => `https://${i.name}.${config.internalBaseDomain}`,
-    );
-    if (failures.length > 0) {
-      list.warn(
-        `Deployed from local source with failures: ${failures.join("; ")}`,
-      );
-    } else {
-      for (const url of urls) list.note(url);
-    }
+    return {
+      installs,
+      secretContracts,
+      requiresRegistryAuth,
+      imageTag,
+      tmpDir,
+      dispose: () => fs.rmSync(tmpDir, { recursive: true, force: true }),
+    };
   } catch (err) {
-    list.error(
-      `Failed to deploy from local source: ${err instanceof Error ? err.message : String(err)}`,
-    );
-    throw err;
-  } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    throw err;
   }
+}
+
+export async function runSourceModePipeline(
+  plan: SourceModePlan,
+  config: IxConfig,
+  opts: UpFilterOptions,
+  emit: (services: ServiceRow<SourcePhase>[]) => void,
+): Promise<SourceModeResult> {
+  const rows = new PhaseRows(
+    plan.installs.map((install) => ({
+      name: install.name,
+      displayName: `${install.name} ${pc.dim("source")}`,
+    })),
+    SOURCE_PHASES,
+    emit,
+  );
+  const failures: string[] = [];
+  const installNamespaces = [...new Set(plan.installs.map((i) => i.namespace))];
+
+  for (const ns of installNamespaces) await ensureNamespace(ns);
+
+  for (const install of plan.installs) {
+    rows.setPhase(install.name, "secrets", "running", "checking secrets");
+  }
+  for (const contract of plan.secretContracts) {
+    const matched = plan.installs.find(
+      (i) => i.secretContractDir === contract.repoDir,
+    );
+    const namespace = matched?.namespace ?? IX_APPS_NAMESPACE;
+    try {
+      await applySecretContract(contract, namespace);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const failed = matched
+        ? [matched]
+        : plan.installs.filter((install) => install.namespace === namespace);
+      for (const install of failed) {
+        rows.setError(install.name, "secrets", msg);
+      }
+      throw err;
+    }
+  }
+  for (const install of plan.installs) {
+    rows.setPhase(install.name, "secrets", "done");
+  }
+
+  if (plan.requiresRegistryAuth) {
+    for (const install of plan.installs) {
+      rows.setPhase(install.name, "install", "queued", "helm registry login");
+    }
+    const token = await resolveGhcrToken(false);
+    await execa(
+      "helm",
+      [
+        "registry",
+        "login",
+        config.helmChartRegistry,
+        "-u",
+        "_token",
+        "--password-stdin",
+      ],
+      { input: token, all: true },
+    );
+    for (const install of plan.installs) {
+      if (install.dependencyUpdate) {
+        rows.setPhase(install.name, "install", "pending");
+      }
+    }
+  }
+
+  for (const install of plan.installs) {
+    let phase: SourcePhase = "build";
+    try {
+      const canBuild = makefileHasTargets(install.repoDir, [
+        "build",
+        "kind-load",
+      ]);
+      if (canBuild) {
+        rows.setPhase(install.name, "build", "running", "make build");
+        await execa("make", ["build"], { cwd: install.repoDir, all: true });
+        rows.setPhase(install.name, "build", "running", "make kind-load");
+        await execa("make", ["kind-load"], {
+          cwd: install.repoDir,
+          all: true,
+        });
+      }
+      rows.setPhase(install.name, "build", "done");
+
+      phase = "install";
+      rows.setPhase(install.name, "install", "running", "helm upgrade");
+      await execa("helm", buildLocalHelmArgs(install, config, plan.imageTag), {
+        all: true,
+      });
+      rows.setPhase(install.name, "install", "running", "rollout restart");
+      await execa(
+        "kubectl",
+        [
+          "rollout",
+          "restart",
+          `deployment/${install.name}`,
+          "-n",
+          install.namespace,
+        ],
+        { all: true },
+      );
+      rows.setPhase(install.name, "install", "done");
+
+      phase = "ready";
+      rows.setPhase(install.name, "ready", "running", "checking rollout");
+      await waitForRollout(
+        install.name,
+        install.namespace,
+        config.rolloutTimeoutSeconds,
+        undefined,
+        `app.kubernetes.io/part-of=${install.name}`,
+        (status) => rows.setPhase(install.name, "ready", "running", status),
+      );
+      rows.setPhase(install.name, "ready", "done", "ready");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      rows.setError(install.name, phase, msg);
+      rows.finishPending(install.name, phase);
+      if (!opts.continueOnError) throw err;
+      failures.push(`${install.name}: ${msg}`);
+    }
+  }
+
+  return {
+    failures,
+    urls: plan.installs.map(
+      (install) => `https://${install.name}.${config.internalBaseDomain}`,
+    ),
+  };
 }

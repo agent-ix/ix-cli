@@ -73,29 +73,29 @@ Tests fall into four types:
 | FR-009 | AC-1: absent file returns defaults | TC-022 | ✅ Complete (unit) |
 | FR-009 | AC-2: valid cluster key parsed | TC-023 | ✅ Complete (unit) |
 | FR-009 | AC-3: non-array throws ConfigValidationError | TC-024 | ✅ Complete (unit) |
-| auth | ix-cli-auth-AC-1: no HTTP transport in `auth-init.ts` / `auth-reset-admin.ts` | TC-080 | ❌ Missing (static) |
+| auth | ix-cli-auth-AC-1: no HTTP transport in `auth-init.ts` / `auth-reset-admin.ts` | TC-080 | ✅ Complete (static) |
 | auth | ix-cli-auth-AC-2: `system`, `auth`, `platform`, `apps` namespaces all present after `ix up` | TC-081 | ❌ Missing (integration) |
 | auth | ix-cli-auth-AC-3: bootstrap Secret at `system/admin-bootstrap` (not `auth/admin-bootstrap`) | TC-082 | ❌ Missing (integration) |
 | auth | ix-cli-auth-AC-4: identity deployment in `auth` namespace | TC-083 | ❌ Missing (integration) |
 | auth | ix-cli-auth-AC-5: `auth reset-user <admin>` surfaces clear "use reset-admin" message on 403 | TC-084 | ❌ Missing (integration) |
-| auth | ix-cli-auth-AC-6: no namespace string literals in `packages/local/src` outside `config.ts` | TC-085 | ❌ Missing (static) |
-| auth | ix-cli-auth-CON-1: `auth-init.ts` / `auth-reset-admin.ts` contain no `fetch`/`http`/`https`/`kubectlRaw`/`--raw` | TC-086 | ❌ Missing (static) |
-| auth | ix-cli-auth-CON-2: `auth-secret.ts` writes Secret to `IX_SYSTEM_NAMESPACE` only | TC-087 | ❌ Missing (static + integration) |
-| auth | ix-cli-auth-CON-3: all `kubectlRaw` calls target `IX_AUTH_NAMESPACE` | TC-088 | ❌ Missing (static) |
-| auth | ix-cli-auth-CON-4: no namespace string literals (covered by TC-085) | TC-085 | ❌ Missing (static) |
+| auth | ix-cli-auth-AC-6: no namespace string literals in `packages/local/src` outside `config.ts` | TC-085 | ✅ Complete (static) |
+| auth | ix-cli-auth-CON-1: `auth-init.ts` / `auth-reset-admin.ts` contain no `fetch`/`http`/`https`/`kubectlRaw`/`--raw` | TC-086 | ✅ Complete (static) |
+| auth | ix-cli-auth-CON-2: `auth-secret.ts` writes Secret to `IX_SYSTEM_NAMESPACE` only | TC-087 | ⚠️ Partial (static complete; integration pending) |
+| auth | ix-cli-auth-CON-3: all `kubectlRaw` calls target `IX_AUTH_NAMESPACE` | TC-088 | ✅ Complete (static) |
+| auth | ix-cli-auth-CON-4: no namespace string literals (covered by TC-085) | TC-085 | ✅ Complete (static) |
 | auth | ix-cli-auth-CON-5: Deployable registry — identity/auth-service/permission-service declare `namespace: IX_AUTH_NAMESPACE`; up-image/up-source honor `deployable.namespace` | TC-089 | ❌ Missing (integration) |
 | FR-031 | AC-6: unmatched umbrella install failure marks final table failed with umbrella error | TC-280c | ✅ Complete (static) |
 | FR-031 | AC-8: full ready workload stays settling when controller revision/update is incomplete | TC-095, TC-110, TC-111 | ✅ Complete |
 | FR-031 | AC-13: waitForRollout enriches status with `·label` when readyReplicas=0 | TC-109 | ✅ Complete |
 | FR-031 | AC-14: state-labeled `1/1·settle` remains active until plain `1/1` | TC-112 | ✅ Complete |
-| FR-033 | AC-1: loadSecretContractFromTgz exported, uses tar, cleans up | TC-100, TC-106, TC-107 | ⚠️ Partial (static; cleanup unit missing) |
+| FR-033 | AC-1: loadSecretContractFromTgz exported, uses tar, cleans up | TC-100, TC-106, TC-107 | ✅ Complete (static + unit) |
 | FR-033 | AC-2: findSecretContractDir not called from up-image | TC-101 | ✅ Complete (static) |
 | FR-033 | AC-3: runImageModeUp has no devDir param | TC-102 | ✅ Complete (static) |
 | FR-033 | AC-4: UP_PHASES pull before secrets | TC-103 | ✅ Complete (static) |
 | FR-033 | AC-5: contractsByName built from bundled subcharts after pull | TC-104, TC-274, TC-275 | ⚠️ Partial (static + directory-layout static; integration missing) |
-| FR-033 | AC-6: single-service pulls chart tgz before install | TC-108 | ❌ Missing |
-| FR-033 | AC-7: missing ix-local.secrets.yaml → graceful skip | TC-105 | ❌ Missing (unit) |
-| FR-033 | AC-8: tmpDir always deleted in finally | TC-107 | ❌ Missing (unit) |
+| FR-033 | AC-6: single-service pulls chart tgz before install | TC-108 | ✅ Complete (static) |
+| FR-033 | AC-7: missing ix-local.secrets.yaml → graceful skip | TC-105 | ✅ Complete (unit) |
+| FR-033 | AC-8: tmpDir always deleted in finally | TC-107 | ✅ Complete (unit) |
 | FR-033 | AC-9: app mode loads secret contracts from vendored subchart directories | TC-274 | ✅ Complete (static) |
 | FR-033 | AC-10: directory-based app-mode contract loading imports and calls `loadSecretContract` | TC-275 | ✅ Complete (static) |
 | FR-033 | AC-11: image-mode secret contracts must live inside the packaged chart source tree | TC-277 | ❌ Missing (artifact inspection) |
@@ -115,6 +115,9 @@ Tests fall into four types:
 | NFR-001-AC-1 | Static grep: no console.log/error/warn/process.stderr.write | TC-011, TC-012 | ✅ Complete (static) |
 | NFR-001-AC-2 | Static grep: introCommand/outroSuccess/outroError imported from @agent-ix/ix-ui-cli in every command that calls them | TC-013 | ✅ Complete (static) |
 | NFR-001-AC-3 | Static grep: PhaseTable imported from @agent-ix/ix-ui-cli | TC-010 | ✅ Complete (static) |
+| NFR-001-AC-6 | Static grep: live Ink command wrappers delegate process orchestration to controllers | TC-282, TC-283, TC-284 | ✅ Complete (static) |
+| NFR-001-AC-7 | Unit: shared phase row model emits cloned snapshots and preserves failure state | TC-285, TC-286, TC-287, TC-288 | ✅ Complete (unit) |
+| NFR-001-AC-7 | Unit: controller failures update the failed phase before final error rendering | TC-289, TC-290 | ✅ Complete (unit) |
 | NFR-002-AC-1 | Unit: prompt message contains cluster name | TC-038 | ✅ Complete (unit) |
 | NFR-002-AC-2 | Unit: decline/cancel exits 0 without destructive action | TC-033, TC-034 | ✅ Complete (unit) |
 | NFR-002-AC-3 | Unit: --yes bypasses prompt | TC-032 | ✅ Complete (unit) |
@@ -138,7 +141,7 @@ Tests fall into four types:
 | TC-011 | No console.log/error/warn/info calls in src | Static | P1 | NFR-001-AC-1 | ✅ Complete |
 | TC-012 | No process.stderr.write calls in src | Static | P1 | NFR-001-AC-1 | ✅ Complete |
 | TC-013 | Every command file using introCommand imports it from @agent-ix/ix-ui-cli | Static | P1 | NFR-001-AC-2 | ✅ Complete |
-| TC-014 | queued phase state signalled when pool slot unavailable | Integration | P1 | FR-003-AC-1 | ❌ Missing |
+| TC-014 | queued phase state signalled when pool slot unavailable | Unit | P1 | FR-003-AC-1 | ✅ Complete |
 | TC-015 | Child failure does not abort sibling concurrent pipelines | Integration | P1 | FR-003-AC-2 | ❌ Missing |
 | TC-016 | Exit code 0 iff all children succeeded; exit 1 if any failed | Integration | P1 | FR-003-AC-3 | ❌ Missing |
 | TC-017 | ix-local-cli FR-001–FR-020 ACs verified in implementation | Review | P2 | FR-001-AC-2 | Review |
@@ -170,15 +173,15 @@ Tests fall into four types:
 | TC-041 | runClusterStatus: unhealthy pod → pod table shown | Unit | P1 | FR-007-AC-5 | ✅ Complete |
 | TC-042 | runClusterStatus: kubectl failure throws descriptive error | Unit | P1 | FR-007-AC-6 | ✅ Complete |
 | TC-043 | runClusterStatus: picocolors mock strips ANSI codes | Unit | P2 | FR-007-AC-7 | ✅ Complete |
-| TC-080 | Static grep: `auth-init.ts` and `auth-reset-admin.ts` contain no `fetch\|http://\|https://\|kubectlRaw\|--raw` references | Static | P1 | ix-cli-auth-AC-1, ix-cli-auth-CON-1 | ❌ Missing |
+| TC-080 | Static grep: `auth-init.ts` and `auth-reset-admin.ts` contain no `fetch\|http://\|https://\|kubectlRaw\|--raw` references | Static | P1 | ix-cli-auth-AC-1, ix-cli-auth-CON-1 | ✅ Complete |
 | TC-081 | After `ix up`: `kubectl get ns system auth platform apps` returns all four | Integration | P1 | ix-cli-auth-AC-2 | ❌ Missing |
 | TC-082 | After `ix local init`: `kubectl get secret admin-bootstrap -n system` succeeds; `-n auth` returns NotFound | Integration | P1 | ix-cli-auth-AC-3, ix-cli-auth-CON-2 | ❌ Missing |
 | TC-083 | After `ix up`: `kubectl get deployment identity -n auth` returns the deployment | Integration | P1 | ix-cli-auth-AC-4, ix-cli-auth-CON-5 | ❌ Missing |
 | TC-084 | `ix local auth reset-user <admin-email>` displays "use `ix local auth reset-admin`" guidance and exits non-zero | Integration | P1 | ix-cli-auth-AC-5 | ❌ Missing |
-| TC-085 | Static grep: no namespace string literals (`"default"`, `"auth"`, `"system"`, `"platform"`, `"apps"`, `"ix-system"`) in `packages/local/src/` outside `config.ts` | Static | P1 | ix-cli-auth-AC-6, ix-cli-auth-CON-4 | ❌ Missing |
-| TC-086 | Static grep: `auth-init.ts` only uses `kubectlExecJson`/`kubectl` shell-out; `auth-reset-admin.ts` likewise; neither imports `fetch`/`undici` | Static | P1 | ix-cli-auth-CON-1 | ❌ Missing |
-| TC-087 | Static + integration: `auth-secret.ts` builds manifest with `metadata.namespace: ${IX_SYSTEM_NAMESPACE}`; applied Secret in `system`, never `auth` | Static + Integration | P1 | ix-cli-auth-CON-2 | ❌ Missing |
-| TC-088 | Static grep: every `kubectlRaw(...)` invocation in `packages/local/src/commands/auth-*.ts` passes `IX_AUTH_NAMESPACE` (or equivalent constant) as the namespace argument | Static | P1 | ix-cli-auth-CON-3 | ❌ Missing |
+| TC-085 | Static grep: no namespace string literals (`"default"`, `"auth"`, `"system"`, `"platform"`, `"apps"`, `"ix-system"`) in `packages/local/src/` outside `config.ts` | Static | P1 | ix-cli-auth-AC-6, ix-cli-auth-CON-4 | ✅ Complete |
+| TC-086 | Static grep: `auth-init.ts` only uses `kubectlExecJson`/`kubectl` shell-out; `auth-reset-admin.ts` likewise; neither imports `fetch`/`undici` | Static | P1 | ix-cli-auth-CON-1 | ✅ Complete |
+| TC-087 | Static + integration: `auth-secret.ts` builds manifest with `metadata.namespace: ${IX_SYSTEM_NAMESPACE}`; applied Secret in `system`, never `auth` | Static + Integration | P1 | ix-cli-auth-CON-2 | ⚠️ Partial (static complete; integration pending) |
+| TC-088 | Static grep: every `kubectlRaw(...)` invocation in `packages/local/src/commands/auth-*.ts` passes `IX_AUTH_NAMESPACE` (or equivalent constant) as the namespace argument | Static | P1 | ix-cli-auth-CON-3 | ✅ Complete |
 | TC-089 | Integration: Deployable entries for `identity`, `auth-service`, `permission-service` declare `namespace: IX_AUTH_NAMESPACE`; helm releases land in `auth` after `ix up` | Integration | P1 | ix-cli-auth-CON-5 | ❌ Missing |
 
 ---
@@ -285,14 +288,23 @@ Tests fall into four types:
 | TC-102 | runImageModeUp does not declare devDir parameter | Static | P1 | FR-033-AC-3 | ✅ Complete |
 | TC-103 | UP_PHASES has pull before secrets | Static | P1 | FR-033-AC-4 | ✅ Complete |
 | TC-104 | up-image.ts imports loadSecretContractFromTgz | Static | P1 | FR-033-AC-1, FR-033-AC-5 | ✅ Complete |
-| TC-105 | loadSecretContractFromTgz returns null when no ix-local.secrets.yaml in chart | Unit | P1 | FR-033-AC-7 | ❌ Missing |
+| TC-105 | loadSecretContractFromTgz returns null when no ix-local.secrets.yaml in chart | Unit | P1 | FR-033-AC-7 | ✅ Complete |
 | TC-106 | loadSecretContractFromTgz returns parsed contract when ix-local.secrets.yaml present | Unit | P1 | FR-033-AC-1 | ✅ Complete |
-| TC-107 | loadSecretContractFromTgz cleans up tmpDir on success and on error | Unit | P1 | FR-033-AC-8 | ❌ Missing |
-| TC-108 | Single-service: runImageModeUp pulls chart tgz before runSingleServiceListr | Static | P1 | FR-033-AC-6 | ❌ Missing |
+| TC-107 | loadSecretContractFromTgz cleans up tmpDir on success and on error | Unit | P1 | FR-033-AC-8 | ✅ Complete |
+| TC-108 | Single-service: runImageModeUp pulls chart tgz before install | Static | P1 | FR-033-AC-6 | ✅ Complete |
 | TC-274 | App-mode bundled subcharts may be directories or tgzs; up-image supports both | Static | P1 | FR-033-AC-5, FR-033-AC-9 | ✅ Complete |
 | TC-275 | App-mode bundled subchart directory path imports and calls loadSecretContract | Static | P1 | FR-033-AC-5, FR-033-AC-10 | ✅ Complete |
 | TC-276 | App umbrella install polls detectHelmHookFailure and aborts helm on hook failure | Static + Unit | P1 | FR-033-AC-13 | ✅ Complete |
 | TC-280c | unmatched umbrella install failures pass failed final state to PhaseTable | Static | P1 | FR-031-AC-6 | ✅ Complete |
+| TC-282 | Image command wrapper delegates Helm/Kubernetes orchestration to `up-image-controller` | Static | P1 | NFR-001-AC-6 | ✅ Complete |
+| TC-283 | Source command wrapper delegates process orchestration to `up-source-controller` | Static | P1 | NFR-001-AC-6 | ✅ Complete |
+| TC-284 | init-cluster command wrapper delegates bootstrap process orchestration to `init-cluster-controller` | Static | P1 | NFR-001-AC-6 | ✅ Complete |
+| TC-285 | PhaseRows creates pending rows for every service and phase | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
+| TC-286 | PhaseRows emits immutable snapshots when phases change | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
+| TC-287 | PhaseRows marks failures and finishes prior pending/running phases | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
+| TC-288 | PhaseRows snapshots clone row and phase maps | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
+| TC-289 | Single-service image mode marks Helm upgrade failures on the install phase | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
+| TC-290 | Source mode marks secret application failures on the secrets phase | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
 | TC-277 | Published chart artifact contains `ix-local.secrets.yaml` only when the source chart places it inside the packaged chart tree | Artifact inspection | P1 | FR-033-AC-11 | ❌ Missing |
 | TC-278 | A chart whose rendered manifests reference a materialized Secret but whose published artifact lacks the contract is flagged as an artifact defect | Artifact + manifest inspection | P1 | FR-033-AC-12 | ❌ Missing |
 

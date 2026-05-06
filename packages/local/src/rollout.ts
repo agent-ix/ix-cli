@@ -635,7 +635,7 @@ export async function waitForRollout(
   svc: string,
   namespace: string,
   timeoutSeconds: number,
-  task: ListrTaskWrapper<unknown, never, never>,
+  task: ListrTaskWrapper<unknown, never, never> | undefined,
   labelSelector?: string,
   onStatus?: (status: string) => void,
 ): Promise<void> {
@@ -699,7 +699,7 @@ export async function waitForRollout(
     subprocess.all?.on("data", (chunk) => {
       const line = chunk.toString().trim();
       if (line) {
-        task.output = line; // FR-010-AC-4
+        if (task) task.output = line; // FR-010-AC-4
         // Parse "N of M" from rollout status output for live updates.
         if (onStatus) {
           const match = line.match(/: (\d+) of (\d+)/);

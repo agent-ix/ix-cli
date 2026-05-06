@@ -1,25 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { makeListingMock, type ListingMockBag } from "./listing-helpers.js";
 
-vi.mock("@agent-ix/ix-ui-cli", () => {
-  const note = vi.fn();
-  const success = vi.fn();
-  const error = vi.fn();
-  return {
-    startListing: vi.fn(() => ({ commit: vi.fn(), note, success, error })),
-    makeListr: vi.fn(
-      (tasks: Array<{ task: (ctx: object, t: object) => Promise<void> }>) => ({
-        run: async () => {
-          for (const t of tasks) {
-            await t.task({}, { output: "" });
-          }
-        },
-      }),
-    ),
-    __note: note,
-    __success: success,
-    __error: error,
-  };
-});
+vi.mock("@agent-ix/ix-ui-cli", () => makeListingMock());
 
 vi.mock("../src/commands/auth-secret.js", () => ({
   writeAdminBootstrapSecret: vi.fn(),
@@ -30,13 +12,8 @@ import { writeAdminBootstrapSecret } from "../src/commands/auth-secret.js";
 import { KubectlExecError } from "../src/commands/auth-identity.js";
 import { runAuthInit } from "../src/commands/auth-init.js";
 
-type UiBag = typeof ui & {
-  __note: ReturnType<typeof vi.fn>;
-  __success: ReturnType<typeof vi.fn>;
-  __error: ReturnType<typeof vi.fn>;
-};
-const mockNote = (ui as unknown as UiBag).__note;
-const mockSuccess = (ui as unknown as UiBag).__success;
+const calls = (ui as unknown as ListingMockBag).__calls;
+const resetListings = (ui as unknown as ListingMockBag).__reset;
 const mockWriteSecret = vi.mocked(writeAdminBootstrapSecret);
 
 const mockConfig = { internalBaseDomain: "dev.ix" } as never;
@@ -47,6 +24,7 @@ function makeExecError(exitCode: number, stderr = ""): KubectlExecError {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetListings();
 });
 
 describe("runAuthInit — happy path", () => {
@@ -71,17 +49,20 @@ describe("runAuthInit — happy path", () => {
       userId: "u1",
       loginUrl: "https://identity.dev.ix/login",
     });
-    expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("admin"));
-    expect(mockNote).toHaveBeenCalledWith(expect.stringContaining("tmp-pass"));
-    expect(mockNote).toHaveBeenCalledWith(
-      expect.stringContaining("https://identity.dev.ix/login"),
-    );
-    expect(mockSuccess).toHaveBeenCalledWith("Admin account created.");
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].status).toBe("passed");
+    expect(calls[0].tail).toBe("Admin account created.");
+    expect(calls[0].notes.some((n) => n.includes("admin"))).toBe(true);
+    expect(calls[0].notes.some((n) => n.includes("tmp-pass"))).toBe(true);
+    expect(
+      calls[0].notes.some((n) => n.includes("https://identity.dev.ix/login")),
+    ).toBe(true);
   });
 });
 
 describe("runAuthInit — admin already exists (exit 2)", () => {
-  it("prints an already-exists note and does NOT write a secret", async () => {
+  it("prints an already-exists tail and does NOT write a secret", async () => {
     const mockExec = vi.fn().mockRejectedValueOnce(makeExecError(2));
 
     await runAuthInit(mockConfig, {
@@ -90,10 +71,9 @@ describe("runAuthInit — admin already exists (exit 2)", () => {
     });
 
     expect(mockWriteSecret).not.toHaveBeenCalled();
-    expect(mockNote).toHaveBeenCalledWith(
-      expect.stringContaining("reset-admin"),
-    );
-    expect(mockSuccess).not.toHaveBeenCalled();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].tail).toEqual(expect.stringContaining("reset-admin"));
+    expect(calls[0].tailVariant).toBe("warn");
   });
 });
 
@@ -139,7 +119,7 @@ describe("runAuthInit — identity deployment missing", () => {
       userId: "u1",
       loginUrl: "https://identity.dev.ix/login",
     });
-    expect(mockSuccess).toHaveBeenCalledWith("Admin account created.");
+    expect(calls.at(-1)?.tail).toBe("Admin account created.");
   });
 });
 

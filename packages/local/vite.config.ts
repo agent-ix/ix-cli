@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [dts({ rollupTypes: true, include: ["src"] })],
   build: {
     lib: {
-      entry: "src/index.ts",
+      entry: "src/index.tsx",
       fileName: () => "index.js",
       formats: ["es"],
     },
@@ -14,6 +14,7 @@ export default defineConfig({
     rollupOptions: {
       external: [
         /^node:/,
+        /^react($|\/)/,
         "@agent-ix/ix-ui-cli",
         "@agent-ix/ix-cli-core",
         "@clack/prompts",

@@ -1,6 +1,7 @@
-import type { PhaseState, PhaseTable } from "@agent-ix/ix-ui-cli";
+import type { PhaseState, ServiceRow } from "@agent-ix/ix-ui-cli";
 import type { HookStatus } from "./rollout.js";
 import type { Phase } from "./phases.js";
+import { PHASES } from "./phases.js";
 
 type RowSource = "none" | "pull" | "secrets" | "helm-hook" | "k8s-rollout";
 
@@ -22,20 +23,39 @@ interface RenderedRowState {
 
 interface AppRowAggregate {
   serviceName: string;
+  displayName: string | null;
   terminal: "failed" | null;
   pull: SourceActivity;
   secrets: SourceActivity;
   helmHook: SourceActivity;
   k8s: SourceActivity;
   rendered: RenderedRowState | null;
+  /** Mirrors the public `ServiceRow.phases` view rendered for this service. */
+  phases: Record<Phase, PhaseState>;
+  /** Public status string (pod-readiness or hook detail). */
+  status: string | null;
+  /** Public error string surfaced on the row when it has failed. */
+  error: string | null;
 }
 
 export interface AppInstallRowService {
   name: string;
+  displayName?: string;
 }
+
+export type AppRowsListener = (rows: ServiceRow<Phase>[]) => void;
 
 function emptySource(): SourceActivity {
   return { state: "unknown", detail: null, error: null };
+}
+
+function emptyPhases(): Record<Phase, PhaseState> {
+  return {
+    pull: "pending",
+    secrets: "pending",
+    install: "pending",
+    ready: "pending",
+  };
 }
 
 function isReadyStatus(status: string): boolean {
@@ -67,24 +87,50 @@ function combineReadinessAndHook(
   return hookDetail ?? readiness;
 }
 
+/**
+ * Tracks per-service phase progress for image-mode app installs and emits a
+ * snapshot ServiceRow[] for the declarative <PhaseTable services> prop on
+ * every state change.
+ */
 export class AppInstallRows {
   private readonly rows = new Map<string, AppRowAggregate>();
+  private readonly order: string[] = [];
 
   constructor(
-    private readonly display: PhaseTable<Phase>,
     services: AppInstallRowService[],
+    private readonly onChange: AppRowsListener = () => {},
   ) {
     for (const service of services) {
+      this.order.push(service.name);
       this.rows.set(service.name, {
         serviceName: service.name,
+        displayName: service.displayName ?? null,
         terminal: null,
         pull: emptySource(),
         secrets: emptySource(),
         helmHook: emptySource(),
         k8s: emptySource(),
         rendered: null,
+        phases: emptyPhases(),
+        status: null,
+        error: null,
       });
     }
+    this.emit();
+  }
+
+  /** Current snapshot — useful for tests and final-state rendering. */
+  snapshot(): ServiceRow<Phase>[] {
+    return this.order.map((name) => {
+      const row = this.rows.get(name)!;
+      return {
+        name: row.serviceName,
+        displayName: row.displayName ?? undefined,
+        phases: { ...row.phases },
+        status: row.status,
+        error: row.error,
+      };
+    });
   }
 
   transition(
@@ -124,11 +170,11 @@ export class AppInstallRows {
   setError(serviceName: string, error: string): void {
     const row = this.rows.get(serviceName);
     if (!row) return;
-    const rendered = row.rendered;
-    if (rendered) {
-      row.rendered = { ...rendered, error };
+    if (row.rendered) {
+      row.rendered = { ...row.rendered, error };
     }
-    this.display.setError(serviceName, error);
+    row.error = error;
+    this.emit();
   }
 
   updateHook(serviceName: string, status: HookStatus): void {
@@ -144,7 +190,8 @@ export class AppInstallRows {
 
     this.renderDerived(row);
     if (status.phase === "failed" && row.helmHook.error) {
-      this.display.setError(serviceName, row.helmHook.error);
+      row.error = row.helmHook.error;
+      this.emit();
     }
   }
 
@@ -208,7 +255,8 @@ export class AppInstallRows {
       detail: status,
       error,
     });
-    this.display.setError(serviceName, error);
+    row.error = error;
+    this.emit();
   }
 
   startReady(serviceName: string): void {
@@ -252,7 +300,8 @@ export class AppInstallRows {
       detail: status,
       error,
     });
-    this.display.setError(serviceName, error);
+    row.error = error;
+    this.emit();
   }
 
   private sourceForPhase(
@@ -332,6 +381,10 @@ export class AppInstallRows {
     });
   }
 
+  /**
+   * Update the row's public ServiceRow view (phases / status / error) from a
+   * computed RenderedRowState and emit a snapshot.
+   */
   private render(row: AppRowAggregate, next: RenderedRowState): void {
     if (renderEquals(row.rendered, next)) return;
 
@@ -341,10 +394,11 @@ export class AppInstallRows {
     const phaseChanged =
       previous?.phase !== next.phase || previous.state !== next.state;
     if (phaseChanged) {
+      // When advancing past install → ready, finalize install as done.
       if (next.phase === "ready" && previous?.phase === "install") {
-        this.display.transition(row.serviceName, "install", "done");
+        this.applyPhase(row, "install", "done");
       }
-      this.display.transition(row.serviceName, next.phase, next.state);
+      this.applyPhase(row, next.phase, next.state);
     }
 
     if (
@@ -354,7 +408,37 @@ export class AppInstallRows {
         next.state === "done" ||
         next.state === "failed")
     ) {
-      this.display.setPodStatus(row.serviceName, next.detail);
+      row.status = next.detail;
     }
+
+    if (next.error) {
+      row.error = next.error;
+    }
+
+    this.emit();
+  }
+
+  /**
+   * Mark the named phase with the given state, propagating the implicit
+   * monotonic ordering used by the old PhaseTable: any phase before the new
+   * one is treated as done; later phases stay pending until explicitly set.
+   */
+  private applyPhase(
+    row: AppRowAggregate,
+    phase: Phase,
+    state: PhaseState,
+  ): void {
+    const idx = PHASES.indexOf(phase);
+    if (idx < 0) return;
+    for (let i = 0; i < idx; i++) {
+      if (row.phases[PHASES[i]] !== "done") {
+        row.phases[PHASES[i]] = "done";
+      }
+    }
+    row.phases[phase] = state;
+  }
+
+  private emit(): void {
+    this.onChange(this.snapshot());
   }
 }

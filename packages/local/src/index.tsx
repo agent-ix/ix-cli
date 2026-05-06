@@ -1,4 +1,4 @@
-import { makeListr, startListing } from "@agent-ix/ix-ui-cli";
+import { Item, Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
 import { execa } from "execa";
 import pc from "picocolors";
 import fs from "node:fs";
@@ -79,11 +79,8 @@ function deployableMatchesTags(
 }
 
 export async function executeLocals(services: string[], action: "up" | "down") {
-  const list = startListing(`ix local ${action}`);
-  list.commit();
+  const header = `ix local ${action}`;
 
-  // M6: If user passes both named services and "all", that's a conflicting
-  // intent — error rather than silently dropping named services.
   if (
     services.length > 1 &&
     services.some((s) => s === "all") &&
@@ -104,13 +101,12 @@ export async function executeLocals(services: string[], action: "up" | "down") {
     );
   }
 
-  const tasks = makeListr(
-    services.map((svc) => {
+  try {
+    for (const svc of services) {
       const isGlobal = svc === "all";
       const serviceDir = isGlobal
         ? path.join(DEV_DIR, "local")
         : path.join(DEV_DIR, svc);
-
       const cmd = isGlobal
         ? action === "up"
           ? "up"
@@ -119,50 +115,38 @@ export async function executeLocals(services: string[], action: "up" | "down") {
           ? "deploy"
           : "halt";
 
-      return {
-        title: `${action === "up" ? "Starting" : "Stopping"} ${pc.cyan(svc)}`,
-        task: async (ctx, task) => {
-          if (!fs.existsSync(serviceDir)) {
-            // FR-004-AC-1: descriptive directory error
-            if (!isGlobal && action === "up") {
-              throw new Error(
-                `Directory not found: ${serviceDir}. ` +
-                  `Drop --from-source to deploy the latest stable build from the registry.`,
-              );
-            }
-            throw new Error(`Directory not found: ${serviceDir}`);
-          }
+      if (!fs.existsSync(serviceDir)) {
+        if (!isGlobal && action === "up") {
+          throw new Error(
+            `Directory not found: ${serviceDir}. ` +
+              `Drop --from-source to deploy the latest stable build from the registry.`,
+          );
+        }
+        throw new Error(`Directory not found: ${serviceDir}`);
+      }
 
-          const subprocess = execa("make", [cmd], {
-            cwd: serviceDir,
-            all: true,
-          });
+      // Inherit stdio so make output streams directly. The final-state
+      // listing is rendered after the loop completes (success or fail).
+      await execa("make", [cmd], { cwd: serviceDir, stdio: "inherit" });
+    }
 
-          subprocess.all?.on("data", (chunk) => {
-            let logLine = chunk.toString().trim();
-            if (logLine) {
-              const lines = logLine.split("\n").filter(Boolean);
-              if (lines.length > 0) {
-                task.output = lines[lines.length - 1];
-              }
-            }
-          });
-
-          await subprocess;
-        },
-      };
-    }),
-    { concurrent: false },
-  );
-
-  try {
-    await tasks.run();
-    list.success(
-      `Successfully ${action === "up" ? "started" : "stopped"} everything.`,
+    await renderStatic(
+      <Listing
+        header={header}
+        status="passed"
+        tail={`Successfully ${action === "up" ? "started" : "stopped"} everything.`}
+      />,
     );
   } catch (err) {
-    // FR-003-AC-3: failure outro
-    list.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header={header}
+        status="failed"
+        tail={`Failed: ${msg}`}
+        tailVariant="error"
+      />,
+    );
     throw err;
   }
 }
@@ -303,89 +287,78 @@ export async function runDown(
     }
   }
 
-  const list = startListing(
-    `ix local down · ${services.join(", ")} · ${config.helmChartRegistry}`,
-  );
-  list.commit();
-  const tasks = makeListr(
-    releases.map(({ name, namespace }) => ({
-      title: `Uninstall ${pc.cyan(name)} (${namespace})`,
-      task: async (_ctx: unknown, task: { output: string }) => {
-        const subprocess = execa(
-          "helm",
-          ["uninstall", name, "--namespace", namespace, "--ignore-not-found"],
-          { all: true },
-        );
-        subprocess.all?.on("data", (chunk) => {
-          const line = chunk.toString().trim();
-          if (line) task.output = line;
-        });
-        await subprocess;
-      },
-    })),
-    { concurrent: false },
-  );
-  await tasks.run();
+  const header = `ix local down · ${services.join(", ")} · ${config.helmChartRegistry}`;
 
-  // Delete PVCs in every namespace we just uninstalled from so that Retain-policy
-  // PVs don't get stuck in Released state on the next `ix local up` cycle.
-  const uninstalledNamespaces = [...new Set(releases.map((r) => r.namespace))];
-  const cleanupTasks = makeListr(
-    [
-      ...uninstalledNamespaces.map((ns) => ({
-        title: `Delete PVCs in ${pc.cyan(ns)}`,
-        task: async (_ctx: unknown, task: { output: string }) => {
-          const subprocess = execa(
-            "kubectl",
-            ["delete", "pvc", "--all", "-n", ns, "--ignore-not-found"],
-            { all: true },
-          );
-          subprocess.all?.on("data", (chunk) => {
-            const line = chunk.toString().trim();
-            if (line) task.output = line;
-          });
-          await subprocess;
-        },
-      })),
-      {
-        title: "Patch Released PVs → Available",
-        task: async (_ctx: unknown, task: { output: string }) => {
-          const { stdout } = await execa("kubectl", [
-            "get",
-            "pv",
-            "-o",
-            "jsonpath={range .items[?(@.status.phase=='Released')]}{.metadata.name}{'\\n'}{end}",
-          ]);
-          const pvNames = stdout.split("\n").filter(Boolean);
-          for (const pv of pvNames) {
-            task.output = `Clearing claimRef on ${pv}`;
-            await execa("kubectl", [
-              "patch",
-              "pv",
-              pv,
-              "--type=json",
-              `-p=[{"op":"remove","path":"/spec/claimRef"}]`,
-            ]);
-          }
-          task.output =
-            pvNames.length > 0
-              ? `Cleared ${pvNames.length} PV(s)`
-              : "No Released PVs found";
-        },
-      },
-    ],
-    { concurrent: false },
-  );
-  await cleanupTasks.run();
+  try {
+    for (const { name, namespace } of releases) {
+      await execa(
+        "helm",
+        ["uninstall", name, "--namespace", namespace, "--ignore-not-found"],
+        { stdio: "inherit" },
+      );
+    }
 
-  list.success(`Uninstalled: ${releases.map((r) => r.name).join(", ")}`);
+    // Delete PVCs in every namespace we just uninstalled from so that
+    // Retain-policy PVs don't get stuck in Released state on the next
+    // `ix local up` cycle.
+    const uninstalledNamespaces = [
+      ...new Set(releases.map((r) => r.namespace)),
+    ];
+    for (const ns of uninstalledNamespaces) {
+      await execa(
+        "kubectl",
+        ["delete", "pvc", "--all", "-n", ns, "--ignore-not-found"],
+        { stdio: "inherit" },
+      );
+    }
+
+    // Patch Released PVs → Available
+    const { stdout } = await execa("kubectl", [
+      "get",
+      "pv",
+      "-o",
+      "jsonpath={range .items[?(@.status.phase=='Released')]}{.metadata.name}{'\\n'}{end}",
+    ]);
+    const pvNames = stdout.split("\n").filter(Boolean);
+    for (const pv of pvNames) {
+      await execa("kubectl", [
+        "patch",
+        "pv",
+        pv,
+        "--type=json",
+        `-p=[{"op":"remove","path":"/spec/claimRef"}]`,
+      ]);
+    }
+
+    await renderStatic(
+      <Listing
+        header={header}
+        status="passed"
+        tail={`Uninstalled: ${releases.map((r) => r.name).join(", ")}`}
+      >
+        {pvNames.length > 0 && (
+          <Note>{`Cleared claimRef on ${pvNames.length} Released PV(s).`}</Note>
+        )}
+      </Listing>,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header={header}
+        status="failed"
+        tail={`Failed: ${msg}`}
+        tailVariant="error"
+      />,
+    );
+    throw err;
+  }
 }
 
 export async function runRefresh(
   config: import("./config.js").IxConfig,
 ): Promise<void> {
-  const list = startListing("ix local refresh");
-  list.commit();
+  const header = "ix local refresh";
   try {
     const token = await resolveGhcrToken(false);
     const prior = readCachedDeployables(config.org);
@@ -395,26 +368,37 @@ export async function runRefresh(
       refresh: true,
     });
     const changes = diffRegistry(prior, reg);
-    for (const change of changes) {
-      list.item(formatRefreshChange(change));
-    }
-    if (changes.length === 0) {
-      list.success(`Registry up to date · ${reg.length} deployable(s).`);
-    } else {
-      list.success(`Refreshed: ${changes.length} chart(s) updated.`);
-    }
+
+    await renderStatic(
+      <Listing
+        header={header}
+        status="passed"
+        tail={
+          changes.length === 0
+            ? `Registry up to date · ${reg.length} deployable(s).`
+            : `Refreshed: ${changes.length} chart(s) updated.`
+        }
+      >
+        {changes.map((change, i) => (
+          <Item key={i} name={formatRefreshChange(change)} />
+        ))}
+      </Listing>,
+    );
   } catch (err) {
-    list.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header={header}
+        status="failed"
+        tail={`Failed: ${msg}`}
+        tailVariant="error"
+      />,
+    );
     throw err;
   }
 }
 
 async function loadRegistryForCommand(config: import("./config.js").IxConfig) {
   const token = await resolveGhcrToken(false);
-  const list = startListing(`ix local · resolving registry · ${config.org}`);
-  try {
-    return await loadRegistry({ org: config.org, githubToken: token });
-  } finally {
-    list.stop();
-  }
+  return await loadRegistry({ org: config.org, githubToken: token });
 }
