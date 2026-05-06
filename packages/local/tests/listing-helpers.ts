@@ -69,6 +69,7 @@ export function makeListingMock(extra: Record<string, unknown> = {}) {
   const PhaseTable = "PhaseTable" as unknown as React.FC;
   const ConfirmPrompt = "ConfirmPrompt" as unknown as React.FC;
   const PasswordPrompt = "PasswordPrompt" as unknown as React.FC;
+  const TextPrompt = "TextPrompt" as unknown as React.FC;
 
   const recordListing = (el: ListingElement): void => {
     if (el == null || el.type !== Listing) return;
@@ -111,9 +112,12 @@ export function makeListingMock(extra: Record<string, unknown> = {}) {
     PhaseTable,
     ConfirmPrompt,
     PasswordPrompt,
+    TextPrompt,
     renderStatic,
     render,
     useRenderResult: () => ({ exit: () => {}, setResult: () => {} }),
+    useEffect: () => {},
+    useState: <T>(initial: T): [T, (next: T) => void] => [initial, () => {}],
     __calls: calls,
     __reset: () => {
       calls.length = 0;

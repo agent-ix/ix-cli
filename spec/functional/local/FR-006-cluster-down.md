@@ -17,18 +17,23 @@ relationships:
 
 ## Behavior
 
-`runClusterDown(config, opts)` tears down the kind cluster:
+`runClusterDown(config, opts)` tears down the kind cluster behind two confirmation gates:
 
-1. If `opts.yes` is false, prompts the user via `@clack/prompts` confirm with a message naming the specific cluster (NFR-002-AC-1). If declined or cancelled, calls `outroSuccess("Cancelled. Cluster not deleted.")` and returns.
-2. Calls `kind get clusters` and checks whether the target cluster is listed.
-3. If absent, calls `outroSuccess("Cluster '…' does not exist. Nothing to delete.")` and returns.
-4. Calls `kind delete cluster --name <name>` with `stdio: "inherit"`.
-5. On success: `outroSuccess`. On failure: `outroError` + rethrows.
+1. If `opts.yes` is false, render a `<ConfirmPrompt>` (default false) with a message naming the specific cluster (NFR-002-AC-1). If declined or cancelled, render a cancelled `<Listing>` and return.
+2. Render a second `<TextPrompt>` requiring the user to retype the cluster name verbatim (case-sensitive). On mismatch, render a `failed` listing with a "name did not match" message and return non-zero.
+3. Call `kind get clusters` and check whether the target cluster is listed.
+4. If absent, render an info `<Listing>` and return.
+5. Call `kind delete cluster --name <name>` with `stdio: "inherit"`.
+6. On success: render a passed `<Listing>`. On failure: render a `failed` `<Listing>` and rethrow.
+
+`opts.yes` bypasses both confirmation gates so scripts can run unattended.
 
 ## Acceptance
 
-- **FR-006-AC-1**: Without `--yes`, a `@clack/prompts` confirm prompt is shown before any destructive action.
-- **FR-006-AC-2**: Prompt decline or cancel exits 0 without calling `kind delete cluster`.
-- **FR-006-AC-3**: The command is idempotent — absent cluster exits 0 with an informational message.
+- **FR-006-AC-1**: Without `--yes`, a `<ConfirmPrompt>` is shown before any destructive action.
+- **FR-006-AC-2**: Prompt decline or cancel returns without calling `kind delete cluster`.
+- **FR-006-AC-3**: The command is idempotent — absent cluster returns with an informational message.
 - **FR-006-AC-4**: `kind delete cluster` is the only process spawned for destruction (no helm uninstall).
-- **FR-006-AC-5**: Failure of `kind delete cluster` propagates the error after calling `outroError`.
+- **FR-006-AC-5**: Failure of `kind delete cluster` propagates the error after rendering a `failed` listing.
+- **FR-006-AC-6**: After the first confirm passes, a second prompt requires the user to retype the cluster name; mismatch aborts before any destructive call.
+- **FR-006-AC-7**: `--yes` bypasses both confirmation gates.

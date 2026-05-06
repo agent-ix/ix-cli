@@ -16,6 +16,10 @@ export default class LocalHalt extends Command {
       description: "Tear down via local make targets (source mode).",
     }),
     src: Flags.boolean({ description: "Alias for --from-source." }),
+    yes: Flags.boolean({
+      char: "y",
+      description: "Skip the confirmation prompt for `halt all`.",
+    }),
   };
 
   async run(): Promise<void> {
@@ -24,9 +28,11 @@ export default class LocalHalt extends Command {
     try {
       await runDown(services, {
         fromSource: flags["from-source"] || flags.src,
+        yes: flags.yes,
       });
-    } catch {
-      this.exit(1);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.error(msg, { exit: 1 });
     }
   }
 }

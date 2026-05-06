@@ -29,7 +29,7 @@ Tests fall into four types:
 |-----------------|--------------------------------------|----------------------------------------|-----------------|
 | StR-001         | US-001 → FR-001, FR-002, FR-003      | TC-001–TC-010 (static/unit)            | ✅ Partial (static + unit; integration pending) |
 | StR-002         | US-002 → NFR-001, FR-002; US-007 → FR-034 | TC-007–TC-010, TC-300–TC-308 (static + unit) | ✅ Partial (static + unit; integration pending) |
-| StR-003         | US-003/004/005 → FR-004–007, NFR-002 | TC-022–TC-043 (unit)                   | ✅ Complete (unit) |
+| StR-003         | US-003/004/005/008/009 → FR-004–007, FR-035, FR-036, NFR-002 | TC-022–TC-043, TC-291–TC-321 (unit + integration) | ⚠️ Partial (existing unit complete; new ACs pending implementation) |
 | StR-004         | US-006 → FR-008, FR-009              | TC-022–TC-031 (unit)                   | ✅ Complete (unit) |
 
 ### User Story Coverage
@@ -43,6 +43,8 @@ Tests fall into four types:
 | US-005 | Cluster status: node/pod health tables | TC-039–TC-043 | ✅ Complete (unit) |
 | US-006 | ClusterConfig parsed from config.yaml | TC-022–TC-024 | ✅ Complete (unit) |
 | US-007 | `ix local refresh` shows per-chart diff rows for changed/new charts | TC-300–TC-308 | ✅ Complete (static + unit) |
+| US-008 | `ix local halt all` (image mode): list, confirm, uninstall every deployable | TC-291–TC-299 | 🚧 In Progress |
+| US-009 | `ix local cluster stop`/`start`: pause and resume kind containers | TC-310–TC-318 | 🚧 In Progress |
 
 ### Functional Requirement Coverage
 
@@ -65,6 +67,23 @@ Tests fall into four types:
 | FR-006 | AC-3: idempotent — absent cluster exits 0 | TC-035 | ✅ Complete (unit) |
 | FR-006 | AC-4: only kind delete cluster spawned | TC-037 | ✅ Complete (unit) |
 | FR-006 | AC-5: kind delete failure propagates | TC-036 | ✅ Complete (unit) |
+| FR-006 | AC-6: name-mismatch on second prompt aborts before destruction | TC-319 | 🚧 In Progress |
+| FR-006 | AC-7: --yes bypasses both confirmation gates | TC-320 | 🚧 In Progress |
+| FR-035 | AC-1: runDown loads registry and resolves all deployables in image mode | TC-291, TC-292 | 🚧 In Progress |
+| FR-035 | AC-2: Listing of (release, namespace) rendered before destruction | TC-293 | 🚧 In Progress |
+| FR-035 | AC-3: ConfirmPrompt shown without --yes; decline returns clean | TC-294 | 🚧 In Progress |
+| FR-035 | AC-4: --yes bypasses prompt | TC-295 | 🚧 In Progress |
+| FR-035 | AC-5: named-service halt unchanged (no listing/prompt) | TC-296 | 🚧 In Progress |
+| FR-035 | AC-6: mixed all + named throws mixing error | TC-297 | 🚧 In Progress |
+| FR-035 | AC-7: post-condition — releases gone, PVCs deleted, PVs Available | TC-298 | ❌ Missing (integration) |
+| FR-035 | AC-8: halt.ts surfaces error message before exit | TC-299 | 🚧 In Progress |
+| FR-036 | AC-1: runClusterStop runs docker stop on each kind node | TC-310 | 🚧 In Progress |
+| FR-036 | AC-2: runClusterStart runs docker start, waits for API server | TC-311 | 🚧 In Progress |
+| FR-036 | AC-3: stop idempotent on already-stopped; start idempotent on already-running | TC-312, TC-313 | 🚧 In Progress |
+| FR-036 | AC-4: absent cluster — stop and start fail with clear message | TC-314, TC-315 | 🚧 In Progress |
+| FR-036 | AC-5: both render Listing of (node, state) | TC-316 | 🚧 In Progress |
+| FR-036 | AC-6: stop → start round trip preserves PVC data | TC-317 | ❌ Missing (integration) |
+| FR-036 | AC-7: API-server reachability timeout renders warn (not failed) | TC-318 | 🚧 In Progress |
 | FR-007 | AC-1–AC-3: node table columns | TC-039 | ✅ Complete (unit) |
 | FR-007 | AC-4: all healthy → outroSuccess only | TC-040 | ✅ Complete (unit) |
 | FR-007 | AC-5: unhealthy pods → pod table | TC-041 | ✅ Complete (unit) |
@@ -509,6 +528,37 @@ Tests fall into four types:
 | TC-193 | Mocked os.tmpdir() to a different volume — no governed-file write touches it | Unit | P1 | FR-010-AC-8 | 🚧 In Progress |
 | TC-194 | Pre-existing <target>.tmp.* sibling >30s old is pruned on next set(); younger orphans left | Unit | P1 | FR-010-AC-9 | 🚧 In Progress |
 | TC-195 | Plugin id "../foo" or "" or "Foo" → log+skip with reason "invalid-plugin-id"; doctor reports | Unit | P1 | FR-013-AC-7 | 🚧 In Progress |
+| TC-291 | Static: runDown body in index.tsx no longer throws "all" requires --from-source for image-mode all | Static | P1 | FR-035-AC-1 | 🚧 In Progress |
+| TC-292 | Unit: resolveDownReleases(["all"], registry, …) returns every deployable with `apps→auth→platform→system` tier order | Unit | P1 | FR-035-AC-1 | ✅ Complete |
+| TC-293 | Unit: resolveDownReleases includes umbrella + every subchart install for role=app, deduped | Unit | P1 | FR-035-AC-2 | ✅ Complete |
+| TC-294 | Unit: runDown(["all"], {}) — ConfirmPrompt declined → no helm uninstall, no kubectl delete | Unit | P1 | FR-035-AC-3 | ❌ Missing (integration) |
+| TC-295 | Unit: runDown(["all"], {yes: true}) → no prompt, full destructive sequence runs | Unit | P1 | FR-035-AC-4 | ❌ Missing (integration) |
+| TC-296 | Unit: resolveDownReleases(["build"], …) → only the named release, no expansion of others | Unit | P1 | FR-035-AC-5 | ✅ Complete |
+| TC-297 | Unit: runDown(["all", "build"], {}) → throws mixing error | Unit | P1 | FR-035-AC-6 | 🚧 In Progress |
+| TC-322 | Unit: resolveDownReleases sorts dependents-before-dependencies for "all" | Unit | P1 | FR-035-AC-1 | ✅ Complete |
+| TC-323 | Unit: resolveDownReleases preserves argv order for named services (no tier sort) | Unit | P1 | FR-035-AC-5 | ✅ Complete |
+| TC-324 | Unit: resolveDownReleases dedupe preserves first-occurrence position | Unit | P2 | FR-035-AC-1 | ✅ Complete |
+| TC-325 | Unit: resolveDownReleases ranks unknown namespaces last in tier order | Unit | P2 | FR-035-AC-1 | ✅ Complete |
+| TC-298 | Integration: after `ix local halt all --yes`, `helm list -A` returns no ix releases, PVCs deleted, PVs Available | Integration | P1 | FR-035-AC-7 | ❌ Missing |
+| TC-299 | Static: apps/ix/src/commands/local/halt.ts catch logs error message (no bare `catch {}`) | Static | P1 | FR-035-AC-8 | 🚧 In Progress |
+| TC-310 | Unit: runClusterStop runs `docker stop` on every node from `kind get nodes` | Unit | P1 | FR-036-AC-1 | 🚧 In Progress |
+| TC-311 | Unit: runClusterStart runs `docker start` then polls `kubectl get ns` until ok | Unit | P1 | FR-036-AC-2 | 🚧 In Progress |
+| TC-312 | Unit: runClusterStop idempotent — already-stopped node reports state without error | Unit | P1 | FR-036-AC-3 | ✅ Complete |
+| TC-313 | Unit: runClusterStart idempotent — already-running node reports state without error | Unit | P1 | FR-036-AC-3 | ✅ Complete |
+| TC-314 | Unit: runClusterStop with absent kind cluster renders failed listing, returns non-zero | Unit | P1 | FR-036-AC-4 | ✅ Complete |
+| TC-315 | Unit: runClusterStart with absent kind cluster renders failed listing, returns non-zero | Unit | P1 | FR-036-AC-4 | ✅ Complete |
+| TC-316 | Unit: both stop and start render a Listing with rows containing (node name, state) | Unit | P1 | FR-036-AC-5 | ✅ Complete |
+| TC-317 | Integration: stop → start round trip; previously-bound PVC re-attaches with prior data | Integration | P1 | FR-036-AC-6 | ❌ Missing |
+| TC-318 | Unit: runClusterStart with API-server timeout renders warn listing (not failed); exit 0 | Unit | P1 | FR-036-AC-7 | ✅ Complete |
+| TC-319 | Unit: runClusterDown — second prompt name-mismatch aborts before kind delete | Unit | P1 | FR-006-AC-6 | ✅ Complete |
+| TC-320 | Unit: runClusterDown({yes: true}) bypasses both ConfirmPrompt and TextPrompt | Unit | P1 | FR-006-AC-7 | ✅ Complete |
+| TC-321 | Static: index.ts exports runClusterStop and runClusterStart | Static | P1 | FR-001-AC-1, FR-036 | ✅ Complete |
+| TC-326 | Unit: runClusterStop — real docker error surfaces in row description, run continues | Unit | P2 | FR-036-AC-3 | ✅ Complete |
+| TC-327 | Unit: runClusterStop — kind-binary failure (missing/permissions) renders distinct error | Unit | P1 | FR-036-AC-4 | ✅ Complete |
+| TC-328 | Unit: runClusterStart — real docker error surfaces in row description, run continues | Unit | P2 | FR-036-AC-3 | ✅ Complete |
+| TC-329 | Unit: runClusterStart — kind-binary failure renders distinct error | Unit | P1 | FR-036-AC-4 | ✅ Complete |
+| TC-330 | Unit: runClusterDown — ESC during name retype reports Cancelled (warn), not name-mismatch | Unit | P2 | FR-006-AC-6 | ✅ Complete |
+| TC-331 | Unit: runClusterDown — name retype rejects on any non-match input (case-sensitive) | Unit | P2 | FR-006-AC-6 | ✅ Complete |
 
 ---
 

@@ -21,7 +21,10 @@
     "topicSeparator": " ",
     "topics": {
       "local": {
-        "description": "Manage the local Agent IX cluster (init, up, halt, status, list, admin-reset, auth)."
+        "description": "Manage the local Agent IX cluster (init, up, halt, status, list, admin-reset, auth, cluster)."
+      },
+      "local cluster": {
+        "description": "Cluster lifecycle subcommands (down, stop, start, status)."
       },
       "elements": {
         "description": "Element discovery, scaffolding, and tap management."

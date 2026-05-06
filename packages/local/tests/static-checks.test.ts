@@ -425,18 +425,52 @@ describe("FR-031: umbrella install + settling indicator", () => {
     expect(src).toMatch(/updatedReplicas/);
   });
 
-  it("TC-096: runDown uninstalls the umbrella release first for role=app", () => {
-    const src = readSrc("index.ts");
+  it("TC-096: resolveDownReleases uninstalls the umbrella release first for role=app", () => {
+    const src = readSrc("commands/halt-resolve.ts");
     // Umbrella release name added BEFORE expanding subcharts.
     expect(src).toMatch(
-      /role === "app"[\s\S]*?pushRelease\(deployable\.name[\s\S]*?defaultExpandApp/,
+      /role === "app"[\s\S]*?pushRelease\(deployable\.name[\s\S]*?expandApp/,
     );
   });
 
-  it("TC-097: runDown deduplicates releases via a seen set", () => {
-    const src = readSrc("index.ts");
+  it("TC-097: resolveDownReleases deduplicates releases via a seen set", () => {
+    const src = readSrc("commands/halt-resolve.ts");
     expect(src).toMatch(/seen\s*=\s*new Set/);
     expect(src).toMatch(/pushRelease/);
+  });
+
+  // FR-035 — halt all (image mode)
+  it("TC-291: runDown no longer rejects image-mode 'all' with --from-source error", () => {
+    const src = readSrc("index.ts");
+    // The old gating message must be gone.
+    expect(src).not.toMatch(
+      /"all" requires --from-source\. For image-mode teardown/,
+    );
+    // index.ts delegates resolution to the helper.
+    expect(src).toMatch(/resolveDownReleases/);
+    // And the helper enumerates the registry under "all".
+    const helper = readSrc("commands/halt-resolve.ts");
+    expect(helper).toMatch(/isAll\s*=\s*services\.includes\("all"\)/);
+    expect(helper).toMatch(/registry\.map\(\(d\)\s*=>\s*d\.name\)/);
+  });
+
+  it("TC-299: halt.ts surfaces error message instead of swallowing it", () => {
+    const haltPath = resolve(
+      PKG_SRC,
+      "../../../apps/ix/src/commands/local/halt.ts",
+    );
+    const src = readFileSync(haltPath, "utf-8");
+    // No bare catch block — must capture the error.
+    expect(src).not.toMatch(/}\s*catch\s*{\s*\n\s*this\.exit\(1\)/);
+    expect(src).toMatch(/catch\s*\(\s*err\b/);
+    expect(src).toMatch(/this\.error\(/);
+  });
+
+  // FR-036 — cluster stop / start exports
+  it("TC-321: index.ts re-exports runClusterStop and runClusterStart", () => {
+    const src = readSrc("index.ts");
+    expect(src).toMatch(/export\s*\{\s*runClusterStop\s*\}/);
+    expect(src).toMatch(/export\s*\{\s*runClusterStart\s*\}/);
   });
 });
 

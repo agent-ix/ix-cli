@@ -8,6 +8,7 @@ import { execa } from "execa";
 import {
   ConfirmPrompt,
   Listing,
+  TextPrompt,
   render,
   renderStatic,
   useEffect,
@@ -44,9 +45,48 @@ async function defaultConfirm(clusterName: string): Promise<boolean> {
   return answer === true;
 }
 
+// FR-006-AC-6: second confirmation gate — user must retype the cluster name.
+// Returns "match" when the typed value equals clusterName, "mismatch" when
+// they typed something else, and "cancelled" when the prompt was aborted
+// (ESC). Distinguishing the latter lets the caller surface a clearer error.
+export type NameConfirmResult = "match" | "mismatch" | "cancelled";
+
+async function defaultConfirmName(
+  clusterName: string,
+): Promise<NameConfirmResult> {
+  let result: NameConfirmResult = "cancelled";
+  const Capture: React.FC = () => {
+    const { exit } = useRenderResult();
+    const [done, setDone] = useState(false);
+    useEffect(() => {
+      if (done) {
+        const t = setTimeout(exit, 0);
+        return () => clearTimeout(t);
+      }
+    }, [done, exit]);
+    return (
+      <TextPrompt
+        message={`Type the cluster name '${clusterName}' to confirm deletion:`}
+        onSubmit={(r) => {
+          if (!r.ok) {
+            result = "cancelled";
+          } else {
+            result = r.value === clusterName ? "match" : "mismatch";
+          }
+          setDone(true);
+        }}
+      />
+    );
+  };
+  await render(<Capture />);
+  return result;
+}
+
 export interface ClusterDownDeps {
   /** Test seam — replace the interactive prompt with a function under test control. */
   confirm?: (clusterName: string) => Promise<boolean>;
+  /** Test seam — replace the second name-retype prompt. */
+  confirmName?: (clusterName: string) => Promise<NameConfirmResult>;
 }
 
 export async function runClusterDown(
@@ -56,6 +96,7 @@ export async function runClusterDown(
 ): Promise<void> {
   const clusterName = config.kindClusterName;
   const confirm = deps.confirm ?? defaultConfirm;
+  const confirmName = deps.confirmName ?? defaultConfirmName;
 
   if (!opts.yes) {
     const confirmed = await confirm(clusterName);
@@ -66,6 +107,23 @@ export async function runClusterDown(
           status="passed"
           tail="Cancelled. Cluster not deleted."
           tailVariant="warn"
+        />,
+      );
+      return;
+    }
+    // FR-006-AC-6: second gate — retype cluster name. Mismatch or cancel aborts.
+    const nameResult = await confirmName(clusterName);
+    if (nameResult !== "match") {
+      const tail =
+        nameResult === "cancelled"
+          ? "Cancelled. Cluster not deleted."
+          : `Name did not match '${clusterName}'. Aborting — cluster not deleted.`;
+      await renderStatic(
+        <Listing
+          header={HEADER}
+          status={nameResult === "cancelled" ? "passed" : "failed"}
+          tail={tail}
+          tailVariant={nameResult === "cancelled" ? "warn" : "error"}
         />,
       );
       return;

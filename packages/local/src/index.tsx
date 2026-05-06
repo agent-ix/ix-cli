@@ -1,11 +1,21 @@
-import { Item, Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import type React from "react";
+import {
+  ConfirmPrompt,
+  Item,
+  Listing,
+  Note,
+  render,
+  renderStatic,
+  useEffect,
+  useRenderResult,
+  useState,
+} from "@agent-ix/ix-ui-cli";
 import { execa } from "execa";
 import pc from "picocolors";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { loadConfig } from "./config.js";
-import { resolveDeployableNamespace } from "./discovery.js";
 import { runImageModeUp } from "./commands/up-image.js";
 import { runSourceModeUp } from "./commands/up-source.js";
 import {
@@ -37,6 +47,8 @@ export {
   computeEffectiveDeploySet,
 } from "./commands/cluster-up.js";
 export { runClusterDown } from "./commands/cluster-down.js";
+export { runClusterStop } from "./commands/cluster-stop.js";
+export { runClusterStart } from "./commands/cluster-start.js";
 export { runClusterStatus } from "./commands/cluster-status.js";
 export { runInitCluster } from "./commands/init-cluster.js";
 export { runList } from "./commands/list.js";
@@ -238,9 +250,35 @@ export async function runUp(
   }
 }
 
+async function defaultHaltAllConfirm(count: number): Promise<boolean> {
+  let answer: boolean | null = null;
+  const Capture: React.FC = () => {
+    const { exit } = useRenderResult();
+    const [done, setDone] = useState(false);
+    useEffect(() => {
+      if (done) {
+        const t = setTimeout(exit, 0);
+        return () => clearTimeout(t);
+      }
+    }, [done, exit]);
+    return (
+      <ConfirmPrompt
+        message={`Halt all ${count} listed release(s)? This will uninstall every deployable and delete all PVCs in their namespaces.`}
+        defaultValue={false}
+        onSubmit={(r) => {
+          answer = r.ok ? r.value : null;
+          setDone(true);
+        }}
+      />
+    );
+  };
+  await render(<Capture />);
+  return answer === true;
+}
+
 export async function runDown(
   servicesArgs: string[],
-  opts: { fromSource?: boolean } = {},
+  opts: { fromSource?: boolean; yes?: boolean } = {},
 ): Promise<void> {
   const services = servicesArgs.length > 0 ? servicesArgs : ["all"];
 
@@ -249,45 +287,65 @@ export async function runDown(
     return;
   }
 
-  if (services.includes("all")) {
+  // FR-035-AC-6: mixing "all" with named services is rejected.
+  if (
+    services.length > 1 &&
+    services.includes("all") &&
+    services.some((s) => s !== "all")
+  ) {
     throw new Error(
-      '"all" requires --from-source. For image-mode teardown, list deployables explicitly (see `ix local list`).',
+      'Cannot mix "all" with named services. Use "all" alone or list individual services.',
     );
   }
 
   const config = loadConfig();
   const registry = await loadRegistryForCommand(config);
-  const releases: { name: string; namespace: string }[] = [];
-  const seen = new Set<string>();
-  const pushRelease = (name: string, namespace: string) => {
-    const key = `${namespace}/${name}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    releases.push({ name, namespace });
-  };
-  for (const svc of services) {
-    const deployable = findDeployable(registry, svc);
-    if (deployable.role === "app") {
-      // FR-031: app-role deployables install as a single umbrella Helm
-      // release named after the deployable. Uninstall that release first;
-      // Helm cleans up all subchart resources as part of it.
-      const umbrellaNs = resolveDeployableNamespace(deployable);
-      pushRelease(deployable.name, umbrellaNs);
-      // Transitional cleanup: prior versions of ix-cli installed each
-      // subchart as its own Helm release. Include those names too so
-      // users mid-migration aren't left with orphan releases. The down
-      // task is gated by --ignore-not-found, so missing releases no-op.
-      const { defaultExpandApp } = await import("./commands/up-image.js");
-      const installs = await defaultExpandApp(deployable, config);
-      for (const install of installs) {
-        pushRelease(install.name, install.namespace);
-      }
-    } else {
-      pushRelease(deployable.name, resolveDeployableNamespace(deployable));
+  const isAll = services.includes("all");
+
+  // FR-035-AC-1: image-mode "all" enumerates the registry and resolves
+  // every deployable. The resolver is a pure function; runDown only handles
+  // I/O around it.
+  const { resolveDownReleases } = await import("./commands/halt-resolve.js");
+  const { defaultExpandApp } = await import("./commands/up-image.js");
+  const releases = await resolveDownReleases(
+    services,
+    registry,
+    config,
+    defaultExpandApp,
+  );
+
+  const header = `ix local halt · ${services.join(", ")} · ${config.helmChartRegistry}`;
+
+  // FR-035-AC-2/AC-3: for "all" in image mode, preview the releases that
+  // will be uninstalled and require explicit confirmation. --yes bypasses.
+  if (isAll && !opts.yes) {
+    await renderStatic(
+      <Listing
+        header={header}
+        status="passed"
+        tail={`${releases.length} release(s) will be uninstalled.`}
+      >
+        {releases.map((r) => (
+          <Item
+            key={`${r.namespace}/${r.name}`}
+            name={`${r.namespace}/${r.name}`}
+          />
+        ))}
+      </Listing>,
+    );
+    const confirmed = await defaultHaltAllConfirm(releases.length);
+    if (!confirmed) {
+      await renderStatic(
+        <Listing
+          header={header}
+          status="passed"
+          tail="Cancelled. No releases uninstalled."
+          tailVariant="warn"
+        />,
+      );
+      return;
     }
   }
-
-  const header = `ix local down · ${services.join(", ")} · ${config.helmChartRegistry}`;
 
   try {
     for (const { name, namespace } of releases) {
