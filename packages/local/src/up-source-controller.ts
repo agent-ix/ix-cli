@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execa } from "execa";
 import pc from "picocolors";
@@ -346,6 +347,8 @@ export interface SourceModePlan {
   >[];
   requiresRegistryAuth: boolean;
   imageTag: string;
+  tmpDir: string;
+  dispose: () => void;
 }
 
 export async function planSourceModeUp(
@@ -353,39 +356,51 @@ export async function planSourceModeUp(
   config: IxConfig,
   tagOverride: string | null,
   devDir: string,
-  tmpDir: string,
   opts: UpFilterOptions,
 ): Promise<SourceModePlan> {
   const imageTag = tagOverride ?? config.imageTag;
-  const plans = services.map((service) =>
-    resolveLocalInstalls(service, devDir, tmpDir, opts),
-  );
-  const rawInstalls = plans.flatMap((plan) => plan.installs);
-  const override = opts.namespaceOverride?.trim();
-  const namespaced = override
-    ? rawInstalls.map((i) => ({ ...i, namespace: override }))
-    : rawInstalls;
-  const installs = opts.refresh
-    ? namespaced.map((i) => ({ ...i, dependencyUpdate: true }))
-    : namespaced;
-  if (installs.length === 0) {
-    throw new Error("No local installs matched the requested tag filters.");
-  }
-  const requiresRegistryAuth = installs.some(
-    (install) => install.dependencyUpdate,
-  );
-  const secretRepoDirs = [
-    ...new Set(plans.flatMap((plan) => plan.secretRepoDirs)),
-  ];
-  const secretContracts = (
-    await Promise.all(
-      secretRepoDirs.map((repoDir) => loadSecretContract(repoDir)),
-    )
-  ).filter(
-    (contract): contract is NonNullable<typeof contract> => contract !== null,
-  );
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-local-source-"));
+  try {
+    const plans = services.map((service) =>
+      resolveLocalInstalls(service, devDir, tmpDir, opts),
+    );
+    const rawInstalls = plans.flatMap((plan) => plan.installs);
+    const override = opts.namespaceOverride?.trim();
+    const namespaced = override
+      ? rawInstalls.map((i) => ({ ...i, namespace: override }))
+      : rawInstalls;
+    const installs = opts.refresh
+      ? namespaced.map((i) => ({ ...i, dependencyUpdate: true }))
+      : namespaced;
+    if (installs.length === 0) {
+      throw new Error("No local installs matched the requested tag filters.");
+    }
+    const requiresRegistryAuth = installs.some(
+      (install) => install.dependencyUpdate,
+    );
+    const secretRepoDirs = [
+      ...new Set(plans.flatMap((plan) => plan.secretRepoDirs)),
+    ];
+    const secretContracts = (
+      await Promise.all(
+        secretRepoDirs.map((repoDir) => loadSecretContract(repoDir)),
+      )
+    ).filter(
+      (contract): contract is NonNullable<typeof contract> => contract !== null,
+    );
 
-  return { installs, secretContracts, requiresRegistryAuth, imageTag };
+    return {
+      installs,
+      secretContracts,
+      requiresRegistryAuth,
+      imageTag,
+      tmpDir,
+      dispose: () => fs.rmSync(tmpDir, { recursive: true, force: true }),
+    };
+  } catch (err) {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    throw err;
+  }
 }
 
 export async function runSourceModePipeline(
@@ -415,7 +430,18 @@ export async function runSourceModePipeline(
       (i) => i.secretContractDir === contract.repoDir,
     );
     const namespace = matched?.namespace ?? IX_APPS_NAMESPACE;
-    await applySecretContract(contract, namespace);
+    try {
+      await applySecretContract(contract, namespace);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const failed = matched
+        ? [matched]
+        : plan.installs.filter((install) => install.namespace === namespace);
+      for (const install of failed) {
+        rows.setError(install.name, "secrets", msg);
+      }
+      throw err;
+    }
   }
   for (const install of plan.installs) {
     rows.setPhase(install.name, "secrets", "done");

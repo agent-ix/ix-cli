@@ -247,6 +247,8 @@ describe("Source and image mode share the live PhaseTable renderer", () => {
 
     expect(src).not.toMatch(/\bexeca\(/);
     expect(src).not.toMatch(/\bwaitForRollout\(/);
+    expect(src).not.toMatch(/\bmkdtempSync\(/);
+    expect(src).not.toMatch(/\brmSync\(/);
     expect(controller).toMatch(/export async function runSourceModePipeline/);
   });
 

@@ -348,6 +348,7 @@ export async function runSingleServicePipeline(
   const failures: string[] = [];
   const svcTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-local-svc-"));
   let chartRef = install.chartRef;
+  let phase: Phase = "pull";
 
   try {
     rows.setPhase(install.name, "pull", "running", "helm pull");
@@ -377,13 +378,21 @@ export async function runSingleServicePipeline(
     }
     rows.setPhase(install.name, "pull", "done");
 
+    phase = "secrets";
     rows.setPhase(install.name, "secrets", "running", "checking secrets");
-    for (const contract of contracts) {
-      await applySecretContract(contract, install.namespace);
+    try {
+      for (const contract of contracts) {
+        await applySecretContract(contract, install.namespace);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      rows.setError(install.name, "secrets", msg);
+      throw err;
     }
     rows.setPhase(install.name, "secrets", "done");
 
     try {
+      phase = "install";
       rows.setPhase(install.name, "install", "running", "helm upgrade");
       const args = buildHelmInstallArgs(
         { ...install, chartRef },
@@ -393,6 +402,7 @@ export async function runSingleServicePipeline(
       await execa("helm", args, { all: true });
       rows.setPhase(install.name, "install", "done");
 
+      phase = "ready";
       rows.setPhase(install.name, "ready", "running", "checking rollout");
       await waitForRollout(
         install.name,
@@ -405,8 +415,8 @@ export async function runSingleServicePipeline(
       rows.setPhase(install.name, "ready", "done", "ready");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      rows.setError(install.name, "ready", msg);
-      rows.finishPending(install.name, "ready");
+      rows.setError(install.name, phase, msg);
+      rows.finishPending(install.name, phase);
       if (!opts.continueOnError) throw err;
       failures.push(`${install.name}: ${msg}`);
     }

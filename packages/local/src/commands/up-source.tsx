@@ -1,6 +1,3 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import type { IxConfig } from "../config.js";
 import { renderPhaseTableRun } from "../phase-table-runner.js";
 import {
@@ -27,18 +24,15 @@ export async function runSourceModeUp(
   opts: UpFilterOptions = {},
 ): Promise<void> {
   const header = `ix local up · ${services.join(", ")} · source`;
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-local-source-"));
+  const plan = await planSourceModeUp(
+    services,
+    config,
+    tagOverride,
+    devDir,
+    opts,
+  );
 
   try {
-    const plan = await planSourceModeUp(
-      services,
-      config,
-      tagOverride,
-      devDir,
-      tmpDir,
-      opts,
-    );
-
     await renderPhaseTableRun<SourcePhase, SourceModeResult>({
       header,
       phases: SOURCE_PHASES,
@@ -64,6 +58,6 @@ export async function runSourceModeUp(
       }),
     });
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    plan.dispose();
   }
 }

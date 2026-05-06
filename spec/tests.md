@@ -117,6 +117,7 @@ Tests fall into four types:
 | NFR-001-AC-3 | Static grep: PhaseTable imported from @agent-ix/ix-ui-cli | TC-010 | ✅ Complete (static) |
 | NFR-001-AC-6 | Static grep: live Ink command wrappers delegate process orchestration to controllers | TC-282, TC-283, TC-284 | ✅ Complete (static) |
 | NFR-001-AC-7 | Unit: shared phase row model emits cloned snapshots and preserves failure state | TC-285, TC-286, TC-287, TC-288 | ✅ Complete (unit) |
+| NFR-001-AC-7 | Unit: controller failures update the failed phase before final error rendering | TC-289, TC-290 | ✅ Complete (unit) |
 | NFR-002-AC-1 | Unit: prompt message contains cluster name | TC-038 | ✅ Complete (unit) |
 | NFR-002-AC-2 | Unit: decline/cancel exits 0 without destructive action | TC-033, TC-034 | ✅ Complete (unit) |
 | NFR-002-AC-3 | Unit: --yes bypasses prompt | TC-032 | ✅ Complete (unit) |
@@ -302,6 +303,8 @@ Tests fall into four types:
 | TC-286 | PhaseRows emits immutable snapshots when phases change | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
 | TC-287 | PhaseRows marks failures and finishes prior pending/running phases | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
 | TC-288 | PhaseRows snapshots clone row and phase maps | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
+| TC-289 | Single-service image mode marks Helm upgrade failures on the install phase | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
+| TC-290 | Source mode marks secret application failures on the secrets phase | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
 | TC-277 | Published chart artifact contains `ix-local.secrets.yaml` only when the source chart places it inside the packaged chart tree | Artifact inspection | P1 | FR-033-AC-11 | ❌ Missing |
 | TC-278 | A chart whose rendered manifests reference a materialized Secret but whose published artifact lacks the contract is flagged as an artifact defect | Artifact + manifest inspection | P1 | FR-033-AC-12 | ❌ Missing |
 
