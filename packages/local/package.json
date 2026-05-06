@@ -1,7 +1,7 @@
 {
   "name": "@agent-ix/ix-cli-local",
   "description": "Local cluster commands for ix-cli (up, down, init-cluster, auth).",
-  "version": "0.1.0",
+  "version": "0.6.0",
   "type": "module",
   "files": [
     "dist/",

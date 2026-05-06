@@ -1,7 +1,7 @@
 {
   "name": "@agent-ix/ix-cli-elements",
   "description": "Element discovery, tap management, and project scaffolding commands for ix-cli.",
-  "version": "0.1.0",
+  "version": "0.6.0",
   "type": "module",
   "files": [
     "dist/",
