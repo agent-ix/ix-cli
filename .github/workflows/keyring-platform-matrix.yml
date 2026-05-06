@@ -41,6 +41,11 @@ jobs:
           node-version: "22"
           cache: "pnpm"
 
+      - name: Configure npm auth for @agent-ix
+        uses: agent-ix/nodejs-actions/setup-npmrc@main
+        with:
+          npm_registry_token: ${{ secrets.REGISTRY_TOKEN }}
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
