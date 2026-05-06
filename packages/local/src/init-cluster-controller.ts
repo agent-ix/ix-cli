@@ -14,6 +14,7 @@ import {
   type ResolvedHostMount,
 } from "./host-mounts.js";
 import { PhaseRows, createPhaseRows } from "./phase-rows.js";
+import { wildcardCertYaml, ingressTlsCertYaml } from "./cluster-cert.js";
 
 export function buildKindConfig(
   clusterName: string,
@@ -164,46 +165,8 @@ spec:
     secretName: ix-ca-secret
 `.trim();
 
-function wildcardCertYaml(hosts: string[]): string {
-  const sans = hosts.map((h) => `    - "*.${h}"`).join("\n");
-  return `
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: ix-dev-wildcard-cert
-  namespace: default
-spec:
-  secretName: ix-dev-wildcard-tls
-  dnsNames:
-${sans}
-  issuerRef:
-    name: ix-local-issuer
-    kind: ClusterIssuer
-    group: cert-manager.io
-`.trim();
-}
-
 const INGRESS_NGINX_URL = (version: string) =>
   `https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-${version}/deploy/static/provider/kind/deploy.yaml`;
-
-function ingressTlsCertYaml(hosts: string[]): string {
-  const sans = hosts.map((h) => `    - "*.${h}"`).join("\n");
-  return `
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: ix-tls
-  namespace: ingress-nginx
-spec:
-  secretName: ix-tls
-  dnsNames:
-${sans}
-  issuerRef:
-    name: ix-local-issuer
-    kind: ClusterIssuer
-    group: cert-manager.io
-`.trim();
-}
 
 const WEBHOOK_PROBE_INGRESS = `apiVersion: networking.k8s.io/v1
 kind: Ingress

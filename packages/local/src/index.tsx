@@ -25,6 +25,7 @@ import {
 } from "./registry.js";
 import { resolveGhcrToken } from "./credentials.js";
 import { diffRegistry, formatRefreshChange } from "./refresh-diff.js";
+import { ensureClusterCertCoversHosts } from "./cluster-cert.js";
 
 // Schema + plugin metadata (consumed by apps/ix init hook).
 export {
@@ -51,6 +52,8 @@ export { runClusterStop } from "./commands/cluster-stop.js";
 export { runClusterStart } from "./commands/cluster-start.js";
 export { runClusterStatus } from "./commands/cluster-status.js";
 export { runInitCluster } from "./commands/init-cluster.js";
+export { runClusterRefreshCert } from "./commands/cluster-refresh-cert.js";
+export { ensureClusterCertCoversHosts } from "./cluster-cert.js";
 export { runList } from "./commands/list.js";
 export { loadRegistry, findDeployable } from "./registry.js";
 export { resolveGhcrToken } from "./credentials.js";
@@ -164,6 +167,42 @@ export async function executeLocals(services: string[], action: "up" | "down") {
 }
 
 /**
+ * Verify the cluster TLS cert covers the configured hosts; re-issue
+ * if not. Silent on the happy path; renders a single Listing when a
+ * refresh is performed, or when the check fails (so the up-flow
+ * output isn't stolen by a no-op cert check).
+ */
+async function ensureCertOrLog(config: {
+  hosts: string[];
+  certWaitTimeoutSeconds: number;
+}): Promise<void> {
+  const { hosts } = config;
+  try {
+    const { refreshed } = await ensureClusterCertCoversHosts(hosts, {
+      waitTimeoutSeconds: config.certWaitTimeoutSeconds,
+    });
+    if (!refreshed) return;
+    await renderStatic(
+      <Listing
+        header="ix local · tls cert"
+        status="passed"
+        tail={`Re-issued ix-tls for hosts: ${hosts.join(", ")}`}
+      />,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header="ix local · tls cert"
+        status="failed"
+        tail={`Cert check skipped: ${msg}`}
+        tailVariant="error"
+      />,
+    );
+  }
+}
+
+/**
  * FR-008: top-level dispatcher for `ix local up`. Default = image mode from
  * registry; `--from-source` opts into local Helm chart deployment.
  *
@@ -191,6 +230,7 @@ export async function runUp(
       return;
     }
     const config = loadConfig();
+    await ensureCertOrLog(config);
     await runSourceModeUp(services, config, opts.tag ?? null, DEV_DIR, {
       includeTag: opts.includeTag,
       excludeTag: opts.excludeTag,
@@ -208,6 +248,7 @@ export async function runUp(
     );
   }
   const config = loadConfig();
+  await ensureCertOrLog(config.hosts);
   const registry = await loadRegistryForCommand(config);
   for (const svc of services) {
     const deployable = findDeployable(registry, svc);

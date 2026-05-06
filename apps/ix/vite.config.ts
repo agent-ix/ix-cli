@@ -18,6 +18,8 @@ export default defineConfig({
         "commands/local/cluster/start": "src/commands/local/cluster/start.ts",
         "commands/local/cluster/stop": "src/commands/local/cluster/stop.ts",
         "commands/local/cluster/status": "src/commands/local/cluster/status.ts",
+        "commands/local/cluster/refresh-cert":
+          "src/commands/local/cluster/refresh-cert.ts",
         "commands/local/admin-reset": "src/commands/local/admin-reset.ts",
         "commands/local/auth/reset-admin":
           "src/commands/local/auth/reset-admin.ts",

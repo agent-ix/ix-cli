@@ -105,6 +105,9 @@ describe("ix-cli-auth-AC-6 — namespace constants are the single source of trut
   //     fills this in via secrets.yaml; the literal is the "no override" case).
   //   - init-cluster.ts: cert-manager + ingress-nginx are out-of-scope
   //     infrastructure that must remain in their pinned upstream namespaces.
+  //   - cluster-cert.ts: TLS cert manifests target cert-manager's
+  //     `default` namespace (wildcard cert) and `ingress-nginx`. Same
+  //     rationale as init-cluster — out-of-scope upstream namespaces.
   // Any new use of a namespace literal in source SHALL be added to this
   // allowlist explicitly, with rationale, or — preferably — replaced with one
   // of the IX_*_NAMESPACE constants.
@@ -114,6 +117,7 @@ describe("ix-cli-auth-AC-6 — namespace constants are the single source of trut
     "src/commands/init-cluster.ts",
     "src/commands/init-cluster.tsx",
     "src/init-cluster-controller.ts",
+    "src/cluster-cert.ts",
     "src/rollout.ts", // function-default in JSDoc-only; see below
   ]);
 
