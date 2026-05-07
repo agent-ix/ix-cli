@@ -2,7 +2,7 @@
  * FR-038 — Cloudflare Tunnel install / uninstall.
  *
  * The `cloudflared` chart is a singleton: one release in the
- * `cloudflared` namespace, one shared tunnel terminating
+ * `platform` namespace, one shared tunnel terminating
  * `*.<tunnel.baseDomain>` and forwarding to ingress-nginx. There is
  * no app-expansion, no per-app secret contract, and no umbrella;
  * this is much simpler than `runImageModeUp`.
@@ -10,6 +10,7 @@
 
 import { execa } from "execa";
 import type { IxConfig } from "../config.js";
+import { IX_PLATFORM_NAMESPACE } from "../config.js";
 import { ensureNamespace } from "../namespaces.js";
 import {
   resolveGhcrToken,
@@ -18,7 +19,10 @@ import {
 import { firstRunSetup, resolveCloudflareToken } from "./credentials.js";
 
 export const TUNNEL_RELEASE_NAME = "cloudflared";
-export const TUNNEL_NAMESPACE = "cloudflared";
+// Cloudflared lives in the `platform` namespace alongside other shared
+// infrastructure (postgres, npm-proxy, pypi-proxy, …). It's not bundled
+// into any App's umbrella — it's a cluster-wide singleton.
+export const TUNNEL_NAMESPACE = IX_PLATFORM_NAMESPACE;
 export const TUNNEL_CHART_PATH = "agent-ix/helm-charts/cloudflared";
 export const TUNNEL_CHART_VERSION = "0.1.0";
 

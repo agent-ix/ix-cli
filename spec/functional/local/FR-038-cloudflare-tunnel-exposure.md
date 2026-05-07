@@ -57,7 +57,8 @@ Cloudflare tunnel **token** is a separate secret declared in
 
 A standalone chart at `helm-charts/charts/cloudflared/` with OCI
 annotations `org.agent-ix.deployable=service`,
-`org.agent-ix.namespace=cloudflared`. One Deployment, one ConfigMap
+`org.agent-ix.namespace=platform` (peer to postgres / npm-proxy / other
+shared infra in the four-tier namespace contract). One Deployment, one ConfigMap
 (catch-all ingress rule pointing at
 `ingress-nginx-controller.ingress-nginx.svc:443` with
 `originRequest.noTLSVerify: true` and `httpHostHeader: ""` so the
@@ -71,7 +72,7 @@ All under the `ix tunnel` topic in `apps/ix`:
 
 | Command                    | Behavior                                                                                            |
 | -------------------------- | --------------------------------------------------------------------------------------------------- |
-| `ix tunnel up`             | First-run setup on a TTY: prompts for token + base domain. Then `helm upgrade --install cloudflared` in `cloudflared` ns, `--wait`. Off a TTY: fail loud with recovery hint. |
+| `ix tunnel up`             | First-run setup on a TTY: prompts for token + base domain. Then `helm upgrade --install cloudflared` in `platform` ns, `--wait`. Off a TTY: fail loud with recovery hint. |
 | `ix tunnel down`           | `helm uninstall cloudflared`. Idempotent on missing release.                                        |
 | `ix tunnel status`         | Pod phase + currently exposed hosts (any Ingress rule whose host ends in `.<tunnel.baseDomain>`).   |
 | `ix tunnel domain [value]` | Read or set `tunnel.baseDomain`. Convenience wrapper around the config write.                       |
