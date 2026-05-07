@@ -24,7 +24,10 @@ export const TUNNEL_RELEASE_NAME = "cloudflared";
 // into any App's umbrella — it's a cluster-wide singleton.
 export const TUNNEL_NAMESPACE = IX_PLATFORM_NAMESPACE;
 export const TUNNEL_CHART_PATH = "agent-ix/helm-charts/cloudflared";
-export const TUNNEL_CHART_VERSION = "0.1.0";
+// Tracks the helm-charts monorepo version (the tag drives every chart's
+// published version regardless of Chart.yaml; bump this whenever the
+// helm-charts repo cuts a new tag).
+export const TUNNEL_CHART_VERSION = "0.10.0";
 
 export interface TunnelInstallOptions {
   /** Override resolved chart version (testing / pinning). */

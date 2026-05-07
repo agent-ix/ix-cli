@@ -77,7 +77,7 @@ describe("exposeApp on missing release (AC-17)", () => {
       {
         name: "spec-editor",
         chartRepository: "agent-ix/spec-editor",
-        version: "0.1.0",
+        version: "0.10.0",
         role: "service" as const,
         title: null,
         category: null,
