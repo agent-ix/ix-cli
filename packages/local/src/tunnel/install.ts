@@ -27,7 +27,7 @@ export const TUNNEL_CHART_PATH = "agent-ix/helm-charts/cloudflared";
 // Tracks the helm-charts monorepo version (the tag drives every chart's
 // published version regardless of Chart.yaml; bump this whenever the
 // helm-charts repo cuts a new tag).
-export const TUNNEL_CHART_VERSION = "0.10.0";
+export const TUNNEL_CHART_VERSION = "0.10.1";
 
 export interface TunnelInstallOptions {
   /** Override resolved chart version (testing / pinning). */
