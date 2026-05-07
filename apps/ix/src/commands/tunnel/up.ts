@@ -3,7 +3,7 @@ import { runTunnelUpCommand } from "@agent-ix/ix-cli-local";
 
 export default class TunnelUp extends Command {
   static description =
-    "Install/upgrade the shared cloudflared tunnel. Requires a Cloudflare token (IX_CF_TUNNEL_TOKEN env or `ix secrets set cloudflare-tunnel-token`).";
+    "Install/upgrade the shared cloudflared tunnel and reconcile every app in tunnel.exposed (reapplying any drifted overlays). Requires a Cloudflare token (IX_CF_TUNNEL_TOKEN env or `ix secrets set cloudflare-tunnel-token`).";
 
   async run(): Promise<void> {
     try {

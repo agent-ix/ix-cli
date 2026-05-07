@@ -26,10 +26,21 @@ just as quickly.
 The flow rides on a shared Cloudflare Tunnel: cloudflared runs once
 in the cluster, terminates a wildcard hostname (default
 `*.agent-ix.dev`), and forwards by `Host` header to ingress-nginx.
-Per-app exposure is just toggling the existing FR-037 multi-host
-ingress on the entry subchart of a release — no per-app tunnel, no
-per-app DNS record. Apps that aren't explicitly exposed remain
-private (FR-037 security boundary).
+Per-app exposure is its own scope, separate from the FR-037 LAN
+extras: `global.tunnelBaseDomains` + `ingress.exposeOnTunnel: true`
+on the entry subchart's ix-service values renders the public host.
+LAN extras (`extraBaseDomains` / `exposeExtraHosts`) stay
+operator-managed and untouched by tunnel commands. Apps that aren't
+explicitly exposed remain private (FR-037 security boundary).
+
+Operator intent for "this release should be tunnel-routed" lives in
+`~/.config/ix/config.d/local.yaml` under `tunnel.exposed[<release>]`
+— not on the helm release itself. That makes exposure survive
+reinstalls: `ix down <app>` followed by `ix up <app>` reapplies the
+tunnel toggle automatically. `ix tunnel up` does the inverse:
+after cloudflared is healthy it walks every entry in
+`tunnel.exposed` and reconciles any release that's missing the
+overlay.
 
 ### One-time setup (operator)
 
@@ -80,9 +91,17 @@ When the cluster is paused/resumed (`ix cluster stop`/`start`):
   token is resolvable. Cluster start NEVER blocks on stdin — the
   prompt-on-TTY behavior is scoped to explicit `ix tunnel up`.
 
-Per-app exposure does NOT survive a `helm uninstall`. After
-`ix halt cloud-manager && ix up cloud-manager` the app is private
-again until the operator re-runs `ix tunnel expose cloud-manager`.
+Per-app exposure DOES survive `ix down <app>` + `ix up <app>` —
+intent is in the CLI config, not on the helm release, so the next
+install pass re-emits the tunnel `--set` flags automatically. To
+fully remove exposure (both intent and effect), run
+`ix tunnel unexpose <app>`.
+
+Likewise after `ix tunnel down` + `ix tunnel up`, the reconcile
+phase walks `tunnel.exposed` and reapplies overlays for every
+release that has intent. Releases that don't exist yet (operator
+recorded intent before installing the app) are reported as
+`skipped — no release yet — \`ix up\` will pick up intent`.
 
 ## Acceptance
 
@@ -102,13 +121,27 @@ again until the operator re-runs `ix tunnel expose cloud-manager`.
   `ix tunnel expose cloud-manager`, the app's Ingress has rules for
   both `*.dev.ix` and `*.agent-ix.dev` (or whatever
   `tunnel.baseDomain` is set to), and the public URL returns the
-  app's response from off-LAN.
+  app's response from off-LAN. The release's
+  `tunnel.exposed[cloud-manager]` entry is persisted in the CLI
+  config.
 - **US-011-AC-5**: `ix tunnel unexpose cloud-manager` removes the
-  `*.<tunnel.baseDomain>` rule from the Ingress. The internal host
-  (e.g. `cloud-manager-ui.dev.ix`) keeps working.
-- **US-011-AC-6**: Exposing one app does NOT expose any other app —
-  sibling subcharts in an umbrella release stay private even when
-  `global.extraBaseDomains` contains the tunnel base domain.
+  `*.<tunnel.baseDomain>` rule from the Ingress AND removes the
+  CLI-config entry. The internal host (e.g.
+  `cloud-manager-ui.dev.ix`) keeps working; LAN extras
+  (`*.luna.ix`) are not touched.
+- **US-011-AC-6**: Exposing one app does NOT expose any other app
+  — sibling subcharts in an umbrella release stay private. The
+  toggle is written to `<entry>.ix-service.ingress.exposeOnTunnel`,
+  never to the wrapper-chart bare path or to non-entry subcharts.
+- **US-011-AC-11**: Tunnel exposure survives `ix down <app>` +
+  `ix up <app>`. The CLI config holds the intent; the install path
+  re-emits `global.tunnelBaseDomains` + the entry-subchart
+  `exposeOnTunnel` flag automatically.
+- **US-011-AC-12**: `ix tunnel up` after cloudflared becomes ready
+  reconciles every `tunnel.exposed` entry. Releases that exist get
+  `helm upgrade --reuse-values` with the tunnel overlay (idempotent
+  no-op when already correct); releases that don't exist yet are
+  reported as `skipped` and do not fail the reconcile.
 - **US-011-AC-7**: `ix up cloud-manager --expose` performs the
   install AND the exposure in one step, equivalent to the two-
   command form. Skipped under `--from-source` (source mode is for
@@ -139,3 +172,5 @@ again until the operator re-runs `ix tunnel expose cloud-manager`.
 | US-011-AC-8 | Inherits FR-038-AC-12-style `getTunnelStatus` shape; live-cluster integration ❌ Missing. |
 | US-011-AC-9 | TC-417 (autoStart=false skip), TC-418 (autoStart=true success), TC-419 (no-token warn-tail). |
 | US-011-AC-10 | TC-420 (auto-start failure swallowed by cluster-start). |
+| US-011-AC-11 | TC-041–TC-044 (`buildTunnelSetArgs` emits tunnel flags from `tunnel.exposed` on every install pass). Live-cluster `ix down` + `ix up` smoke ❌ Missing. |
+| US-011-AC-12 | TC-401 (tunnel.exposed round-trips through config). Live-cluster `tunnel up` reconcile smoke ❌ Missing. |

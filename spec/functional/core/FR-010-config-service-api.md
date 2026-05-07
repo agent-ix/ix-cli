@@ -28,11 +28,20 @@ ConfigService.forPlugin<T>(pluginId: string, schema: ZodSchema<T>): PluginConfig
 ```typescript
 interface PluginConfig<T> {
   get(): T;                          // returns merged-with-defaults, validated value
-  set(partial: Partial<T>): void;    // merges, validates, atomically writes
+  set(partial: Partial<T>): void;    // deep-merges, validates, atomically writes
+  replace(value: T): void;           // overwrites whole value, validates, atomically writes
   reset(): void;                     // deletes the plugin's file (returns to defaults)
   filePath(): string;                // for ix config edit
 }
 ```
+
+**`set` vs `replace`.** `set` deep-merges its patch into the existing
+on-disk content (objects recurse, arrays replace wholesale). That
+makes additions and overrides ergonomic but means absent keys are a
+no-op — `set({ map: {} })` cannot delete entries from an existing
+`map`. Callers that need deletion must use `replace`, which validates
+the full value and writes it verbatim. Both go through the same
+atomic temp+rename + `ConfigSchemaError` handling.
 
 **File layout.** Each plugin's persisted config lives in its own file under `~/.config/ix/`:
 
@@ -67,3 +76,4 @@ The placement difference is the only special case in `ConfigService`; isolation,
 - **FR-010-AC-7** *(read-only filesystem)*: When the target directory is unwritable (`EACCES`/`EROFS`/`ENOSPC`), `set()` throws `ConfigWriteError` naming the path and underlying errno; the existing file content (if any) is unchanged; no orphan temp file remains.
 - **FR-010-AC-8** *(temp file is a sibling)*: Temp files are created in the same directory as the target file (`<target>.tmp.<pid>.<rand>`). A test that mocks `os.tmpdir()` to a different volume confirms that no write path uses it for governed-file temp.
 - **FR-010-AC-9** *(orphan temp pruning)*: `ConfigService` prunes `<target>.tmp.*` siblings older than 30 seconds on the next `set()` for the same plugin id. Younger orphans are left alone (another writer may be mid-flight).
+- **FR-010-AC-10** *(`replace` semantics)*: `replace(value)` writes `value` verbatim — absent keys at any depth are removed from the on-disk content. Validates against the plugin's schema first; on schema failure throws `ConfigSchemaError` and does not modify the file. Same atomic-write + locking behavior as `set`. Used by callers that need to express deletions (e.g. removing an entry from a `Record<string, …>` map).

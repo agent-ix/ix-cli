@@ -95,9 +95,16 @@ All under the `ix tunnel` topic in `apps/ix`:
 | `ix tunnel down`           | `helm uninstall cloudflared`. Idempotent on missing release.                                        |
 | `ix tunnel status`         | Pod phase + currently exposed hosts (any Ingress rule whose host ends in `.<tunnel.baseDomain>`).   |
 | `ix tunnel domain [value]` | Read or set `tunnel.baseDomain`. Convenience wrapper around the config write.                       |
-| `ix tunnel expose <app>`   | `helm upgrade --reuse-values` on the app's release, merging the base domain + flipping the toggle.  |
-| `ix tunnel unexpose <app>` | Inverse of expose; strips the base domain from extras and the matching `extraHosts`, toggle off.    |
+| `ix tunnel expose <app>`   | Records intent in `tunnel.exposed[<app>]`; `helm upgrade --reuse-values` on the release with the tunnel overlay (`global.tunnelBaseDomains` + `<entry>.ix-service.ingress.exposeOnTunnel: true`). |
+| `ix tunnel unexpose <app>` | Removes the entry from `tunnel.exposed`; `helm upgrade --reuse-values` clears the tunnel keys. LAN keys are not touched. |
 | `ix up <app> --expose`     | Convenience: invokes `expose` after a successful image-mode `up`. Skips `"all"` and source mode.    |
+
+After cloudflared comes up (whether via `ix tunnel up` or the
+auto-start hook), the runner reconciles every entry in
+`tunnel.exposed`: each release that exists gets its overlay
+reapplied (idempotent under `--reuse-values`); releases that don't
+exist yet are reported as `skipped — no release yet` and don't fail
+the reconcile.
 
 The oclif topic `"tunnel"` is registered in `apps/ix/package.json`
 under `oclif.topics`. Each command above MUST be registered as a build
@@ -106,7 +113,8 @@ entry in `apps/ix/vite.config.ts` so it is emitted under
 
 `expose` accepts `--hostname=<fqdn>` to override the auto-derived
 `<app>.<baseDomain>`. The override is appended to
-`<entry>.ingress.extraHosts` rather than going through `extraBaseDomains`.
+`<entry>.ix-service.ingress.extraHosts[0]` (single-service:
+`ix-service.ingress.extraHosts[0]`) and never to LAN extras.
 
 ### Token + base-domain resolution
 
@@ -174,13 +182,21 @@ token cannot be resolved, the hook skips with a warn-tail Listing.
 
 ### Expose semantics (umbrella vs. service)
 
-Apps published as umbrella charts (role=app, with `entry` pointing at
-the user-facing subchart) flip `ingress.exposeOnTunnel: true` on
-**only** the entry subchart's values. Single-service releases
-(role=service) flip the toggle at the top level. This is required by
-the FR-037 security boundary: backends that did not opt in must
-remain unreachable on the public suffix even when the suffix is in
-`global.tunnelBaseDomains`.
+Every service-wrapper chart at this org composes ix-service as a
+named subchart, so the toggle path is one level deeper than the
+wrapper. Apps published as umbrella charts (role=app, with the
+`org.agent-ix.entry` annotation pointing at the user-facing
+subchart) flip `<entry>.ix-service.ingress.exposeOnTunnel: true` on
+**only** the entry subchart's ix-service values. Single-service
+releases (role=service) flip `ix-service.ingress.exposeOnTunnel:
+true`. The wrapper-chart bare `ingress.<key>` path is never written
+— writing there silently no-ops because ix-service doesn't read
+wrapper values, and a silent no-op for a security gate is worse
+than not having the flag.
+
+Required by the FR-037 security boundary: backends that did not opt
+in must remain unreachable on the public suffix even when the
+suffix is in `global.tunnelBaseDomains`.
 
 Implementation reads the current values via
 `helm get values <release> -o json --all`, computes a YAML overlay,

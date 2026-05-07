@@ -3,7 +3,7 @@ import { runTunnelUnexposeCommand } from "@agent-ix/ix-cli-local";
 
 export default class TunnelUnexpose extends Command {
   static description =
-    "Remove the tunnel base domain from an app's ingress. The app remains reachable on internal hosts (e.g. *.dev.ix).";
+    "Remove an app from tunnel exposure. Clears tunnel.exposed[<app>] and updates the helm release so the public host is no longer served. LAN hosts (e.g. *.dev.ix, *.luna.ix) keep working.";
 
   static args = {
     app: Args.string({

@@ -3,7 +3,7 @@ import { runTunnelExposeCommand } from "@agent-ix/ix-cli-local";
 
 export default class TunnelExpose extends Command {
   static description =
-    "Add the tunnel base domain (e.g. <app>.agent-ix.dev) to a running app's ingress so cloudflared routes external traffic to it.";
+    "Expose a running app on the tunnel base domain (e.g. <app>.agent-ix.dev). Records intent in tunnel.exposed so exposure survives `ix down` + `ix up`. Idempotent.";
 
   static args = {
     app: Args.string({
