@@ -1,0 +1,265 @@
+/**
+ * FR-038 — High-level runners that the `ix tunnel` CLI invokes.
+ *
+ * These wrap `install.ts` and `expose.ts` with config + registry
+ * loading and route output through the shared `Listing` UI so the
+ * tunnel commands match the look of the rest of the CLI.
+ */
+
+import { Item, Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import { loadConfig, loadTunnelConfig } from "../config.js";
+import { resolveGhcrToken } from "../credentials.js";
+import { loadRegistry } from "../registry.js";
+import { setTunnelBaseDomain } from "./credentials.js";
+import {
+  deriveHostname,
+  exposeApp,
+  unexposeApp,
+  type ExposeResult,
+} from "./expose.js";
+import {
+  getTunnelStatus,
+  runTunnelDown,
+  runTunnelUp,
+  TUNNEL_NAMESPACE,
+} from "./install.js";
+
+const HEADER_UP = "ix tunnel up";
+const HEADER_DOWN = "ix tunnel down";
+const HEADER_STATUS = "ix tunnel status";
+const HEADER_EXPOSE = "ix tunnel expose";
+const HEADER_UNEXPOSE = "ix tunnel unexpose";
+const HEADER_DOMAIN = "ix tunnel domain";
+
+export async function runTunnelUpCommand(): Promise<void> {
+  const config = loadConfig();
+  try {
+    const result = await runTunnelUp(config, { requireToken: true });
+    await renderStatic(
+      <Listing
+        header={HEADER_UP}
+        status="passed"
+        tail={
+          result.installed
+            ? `cloudflared installed in namespace '${TUNNEL_NAMESPACE}'.`
+            : `Skipped: ${result.skippedReason}.`
+        }
+      >
+        <Item name="release" description="cloudflared" />
+        <Item name="namespace" description={TUNNEL_NAMESPACE} />
+      </Listing>,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header={HEADER_UP}
+        status="failed"
+        tail={msg}
+        tailVariant="error"
+      />,
+    );
+    throw err;
+  }
+}
+
+export async function runTunnelDownCommand(): Promise<void> {
+  try {
+    await runTunnelDown();
+    await renderStatic(
+      <Listing
+        header={HEADER_DOWN}
+        status="passed"
+        tail="cloudflared release uninstalled (idempotent)."
+      />,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header={HEADER_DOWN}
+        status="failed"
+        tail={msg}
+        tailVariant="error"
+      />,
+    );
+    throw err;
+  }
+}
+
+export async function runTunnelStatusCommand(): Promise<void> {
+  const tunnelCfg = loadTunnelConfig();
+  const status = await getTunnelStatus(tunnelCfg.baseDomain);
+  const ok = status.installed && status.ready;
+  const tail = status.installed
+    ? `${status.exposedHosts.length} exposed host(s) under *.${tunnelCfg.baseDomain}.`
+    : `cloudflared is not installed. Run \`ix tunnel up\`.`;
+  await renderStatic(
+    <Listing
+      header={HEADER_STATUS}
+      status={ok ? "passed" : "failed"}
+      tailVariant={ok ? undefined : "warn"}
+      tail={tail}
+    >
+      <Item name="installed" description={status.installed ? "yes" : "no"} />
+      <Item name="pod-phase" description={status.podPhase ?? "(none)"} />
+      <Item name="base-domain" description={tunnelCfg.baseDomain} />
+      <Item
+        name="auto-start"
+        description={tunnelCfg.autoStart ? "true" : "false"}
+      />
+      {status.exposedHosts.map((h) => (
+        <Item key={h} name="exposed" description={h} />
+      ))}
+      {status.exposedHosts.length === 0 && status.installed && (
+        <Note>
+          No app currently exposes a {tunnelCfg.baseDomain} host. Use{" "}
+          <Note>{`ix tunnel expose <app>`}</Note>.
+        </Note>
+      )}
+    </Listing>,
+  );
+}
+
+async function loadRegistryForTunnel() {
+  const config = loadConfig();
+  const token = await resolveGhcrToken(false);
+  const registry = await loadRegistry({ org: config.org, githubToken: token });
+  return { config, registry };
+}
+
+async function renderExposeResult(
+  header: string,
+  baseDomain: string,
+  result: ExposeResult,
+  hostnameOverride: string | null,
+): Promise<void> {
+  const derivedOrOverride =
+    hostnameOverride ?? `${result.release}.${baseDomain}`;
+  await renderStatic(
+    <Listing
+      header={header}
+      status="passed"
+      tail={`Tunnel-routed at https://${derivedOrOverride}`}
+    >
+      <Item name="release" description={result.release} />
+      <Item name="namespace" description={result.namespace} />
+      <Item name="base-domain" description={result.baseDomain} />
+      {result.hostsAdded.map((h) => (
+        <Item key={h} name="exposed" description={h} />
+      ))}
+      {result.ingressUrls
+        .filter((u) => u.includes(baseDomain))
+        .map((u) => (
+          <Item key={u} name="url" description={u} />
+        ))}
+    </Listing>,
+  );
+}
+
+export async function runTunnelExposeCommand(
+  appName: string,
+  hostnameOverride: string | null = null,
+): Promise<void> {
+  try {
+    const tunnelCfg = loadTunnelConfig();
+    const { config, registry } = await loadRegistryForTunnel();
+    const baseDomain = tunnelCfg.baseDomain;
+    const hostname = hostnameOverride ?? deriveHostname(appName, baseDomain);
+    const result = await exposeApp(appName, registry, config, baseDomain, {
+      hostname: hostnameOverride ?? undefined,
+    });
+    await renderExposeResult(HEADER_EXPOSE, baseDomain, result, hostname);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header={HEADER_EXPOSE}
+        status="failed"
+        tail={msg}
+        tailVariant="error"
+      />,
+    );
+    throw err;
+  }
+}
+
+export async function runTunnelDomainCommand(
+  newValue: string | null,
+): Promise<void> {
+  const before = loadTunnelConfig().baseDomain;
+  if (newValue === null) {
+    await renderStatic(
+      <Listing
+        header={HEADER_DOMAIN}
+        status="passed"
+        tail={`Current tunnel base domain: ${before}.`}
+      >
+        <Item name="base-domain" description={before} />
+      </Listing>,
+    );
+    return;
+  }
+  try {
+    setTunnelBaseDomain(newValue);
+    const after = loadTunnelConfig().baseDomain;
+    await renderStatic(
+      <Listing
+        header={HEADER_DOMAIN}
+        status="passed"
+        tail={
+          before === after
+            ? `Unchanged: tunnel base domain is ${after}.`
+            : `Tunnel base domain set to ${after}. Confirm the *.${after} CNAME exists in your Cloudflare zone.`
+        }
+      >
+        <Item name="base-domain" description={after} />
+      </Listing>,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header={HEADER_DOMAIN}
+        status="failed"
+        tail={msg}
+        tailVariant="error"
+      />,
+    );
+    throw err;
+  }
+}
+
+export async function runTunnelUnexposeCommand(appName: string): Promise<void> {
+  try {
+    const tunnelCfg = loadTunnelConfig();
+    const { config, registry } = await loadRegistryForTunnel();
+    const result = await unexposeApp(
+      appName,
+      registry,
+      config,
+      tunnelCfg.baseDomain,
+    );
+    await renderStatic(
+      <Listing
+        header={HEADER_UNEXPOSE}
+        status="passed"
+        tail={`Removed *.${tunnelCfg.baseDomain} hosts from release '${result.release}'.`}
+      >
+        <Item name="release" description={result.release} />
+        <Item name="namespace" description={result.namespace} />
+      </Listing>,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header={HEADER_UNEXPOSE}
+        status="failed"
+        tail={msg}
+        tailVariant="error"
+      />,
+    );
+    throw err;
+  }
+}

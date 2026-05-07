@@ -98,6 +98,21 @@ async function promptForToken(activeBackend: string): Promise<string | null> {
 }
 
 /**
+ * Resolve the GHCR token without prompting. Cluster lifecycle hooks use this
+ * path so background convenience work never blocks on an interactive prompt.
+ */
+export async function resolveGhcrTokenNonInteractive(): Promise<string | null> {
+  const ix = process.env.IX_GHCR_TOKEN?.trim();
+  if (ix) return ix;
+
+  const fallback = resolveFallbackEnvToken();
+  if (fallback) return fallback;
+
+  const stored = await defaultSecretsService().get(SECRET_ID);
+  return stored?.trim() || null;
+}
+
+/**
  * Resolve the GHCR token. Per FR-011 / FR-014:
  *
  * 1. Canonical env binding `IX_GHCR_TOKEN` (declared on the secret
@@ -116,14 +131,8 @@ export async function resolveGhcrToken(forcePrompt = false): Promise<string> {
   const svc = defaultSecretsService();
 
   if (!forcePrompt) {
-    const ix = process.env.IX_GHCR_TOKEN?.trim();
-    if (ix) return ix;
-
-    const fallback = resolveFallbackEnvToken();
-    if (fallback) return fallback;
-
-    const stored = await svc.get(SECRET_ID);
-    if (stored) return stored;
+    const resolved = await resolveGhcrTokenNonInteractive();
+    if (resolved) return resolved;
   }
 
   const token = await promptForToken(await svc.activeBackendId());

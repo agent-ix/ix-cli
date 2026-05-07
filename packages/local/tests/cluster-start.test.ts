@@ -16,9 +16,11 @@ import type { IxConfig } from "../src/config.js";
 
 const config: IxConfig = {
   kindClusterName: "ix",
+  hosts: ["dev.ix"],
   internalBaseDomain: "dev.ix",
   externalBaseDomain: null,
   enableExternalHost: false,
+  publicBaseUrl: null,
   imageTag: "latest",
   imageRegistry: "ghcr.io/agent-ix",
   helmChartRegistry: "ghcr.io",
@@ -113,5 +115,127 @@ describe("runClusterStart", () => {
     expect(last.status).toBe("passed");
     expect(last.tailVariant).toBe("warn");
     expect(last.tail).toEqual(expect.stringContaining("did not respond"));
+  });
+
+  it("TC-417: tunnel autoStart=false skips tunnel install entirely", async () => {
+    mockExeca.mockResolvedValueOnce({ stdout: "ix-control-plane\n" } as never);
+    mockExeca.mockResolvedValueOnce({} as never);
+    const waitForApi = vi.fn(async () => true);
+    const runTunnelUp = vi.fn(async () => ({
+      installed: true,
+      skippedReason: null,
+    }));
+
+    await runClusterStart(
+      config,
+      {},
+      {
+        waitForApi,
+        loadTunnelConfig: () => ({
+          autoStart: false,
+          baseDomain: "agent-ix.dev",
+          tunnelId: null,
+        }),
+        runTunnelUp,
+      },
+    );
+
+    expect(runTunnelUp).not.toHaveBeenCalled();
+    expect(
+      calls.some((c) => c.header === "ix local cluster start · tunnel"),
+    ).toBe(false);
+  });
+
+  it("TC-419: tunnel autoStart=true skip renders warn-tail listing and returns success", async () => {
+    mockExeca.mockResolvedValueOnce({ stdout: "ix-control-plane\n" } as never);
+    mockExeca.mockResolvedValueOnce({} as never);
+    const waitForApi = vi.fn(async () => true);
+
+    await runClusterStart(
+      config,
+      {},
+      {
+        waitForApi,
+        loadTunnelConfig: () => ({
+          autoStart: true,
+          baseDomain: "agent-ix.dev",
+          tunnelId: null,
+        }),
+        runTunnelUp: vi.fn(async () => ({
+          installed: false,
+          skippedReason: "no GHCR token for cloudflared chart pull",
+        })),
+      },
+    );
+
+    const tunnel = calls.find(
+      (c) => c.header === "ix local cluster start · tunnel",
+    );
+    expect(tunnel).toBeDefined();
+    expect(tunnel!.status).toBe("passed");
+    expect(tunnel!.tailVariant).toBe("warn");
+    expect(tunnel!.tail).toEqual(expect.stringContaining("Skipped"));
+  });
+
+  it("TC-418: tunnel autoStart=true successful install renders passed listing", async () => {
+    mockExeca.mockResolvedValueOnce({ stdout: "ix-control-plane\n" } as never);
+    mockExeca.mockResolvedValueOnce({} as never);
+    const waitForApi = vi.fn(async () => true);
+    const runTunnelUp = vi.fn(async () => ({
+      installed: true,
+      skippedReason: null,
+    }));
+
+    await runClusterStart(
+      config,
+      {},
+      {
+        waitForApi,
+        loadTunnelConfig: () => ({
+          autoStart: true,
+          baseDomain: "agent-ix.dev",
+          tunnelId: null,
+        }),
+        runTunnelUp,
+      },
+    );
+
+    expect(runTunnelUp).toHaveBeenCalledWith(config, { requireToken: false });
+    const tunnel = calls.find(
+      (c) => c.header === "ix local cluster start · tunnel",
+    );
+    expect(tunnel).toBeDefined();
+    expect(tunnel!.status).toBe("passed");
+    expect(tunnel!.tail).toEqual(expect.stringContaining("cloudflared"));
+  });
+
+  it("TC-420: tunnel install failures are warned and swallowed", async () => {
+    mockExeca.mockResolvedValueOnce({ stdout: "ix-control-plane\n" } as never);
+    mockExeca.mockResolvedValueOnce({} as never);
+    const waitForApi = vi.fn(async () => true);
+
+    await runClusterStart(
+      config,
+      {},
+      {
+        waitForApi,
+        loadTunnelConfig: () => ({
+          autoStart: true,
+          baseDomain: "agent-ix.dev",
+          tunnelId: null,
+        }),
+        runTunnelUp: vi.fn(async () => {
+          throw new Error("helm failed");
+        }),
+      },
+    );
+
+    const tunnel = calls.find(
+      (c) => c.header === "ix local cluster start · tunnel",
+    );
+    expect(tunnel).toBeDefined();
+    expect(tunnel!.status).toBe("failed");
+    expect(tunnel!.tailVariant).toBe("warn");
+    expect(tunnel!.tail).toEqual(expect.stringContaining("helm failed"));
   });
 });

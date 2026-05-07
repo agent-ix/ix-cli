@@ -8,6 +8,7 @@ import {
   registerSecretsForPlugin,
   setDefaultSecretsService,
   SecretsService,
+  type SecretsBackend,
   type SecretsBackendMode,
 } from "@agent-ix/ix-cli-core";
 import {
@@ -115,7 +116,7 @@ const hook: Hook<"init"> = async function () {
 
   const svc = new SecretsService({
     mode,
-    backends: new Map([
+    backends: new Map<string, SecretsBackend>([
       ["keyring", new KeyringBackend()],
       ["age-file", new AgeFileBackend()],
     ]),

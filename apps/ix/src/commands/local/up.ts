@@ -1,5 +1,5 @@
 import { Args, Command, Flags } from "@oclif/core";
-import { runUp } from "@agent-ix/ix-cli-local";
+import { runTunnelExposeCommand, runUp } from "@agent-ix/ix-cli-local";
 
 export default class LocalUp extends Command {
   static description = "Start services (image mode or source mode).";
@@ -39,14 +39,19 @@ export default class LocalUp extends Command {
       description:
         "Force `helm dependency update` to re-pull subchart deps from OCI even if a vendored copy exists (source mode). Helm-only; does not touch container images. Opt-in.",
     }),
+    expose: Flags.boolean({
+      description:
+        "After install, run `ix tunnel expose <app>` to add the tunnel base domain to the app's ingress. Requires cloudflared to be running (`ix tunnel up`).",
+    }),
   };
 
   async run(): Promise<void> {
     const { args, flags } = await this.parse(LocalUp);
     const services = (args.services as string[] | undefined) ?? [];
+    const fromSource = flags["from-source"] || flags.src;
     try {
       await runUp(services, {
-        fromSource: flags["from-source"] || flags.src,
+        fromSource,
         tag: flags.tag,
         namespace: flags.namespace,
         includeTag: flags["include-tag"],
@@ -55,6 +60,15 @@ export default class LocalUp extends Command {
         latest: flags.latest,
         refresh: flags.refresh,
       });
+      // FR-038 — convenience: opt-in tunnel exposure after a successful
+      // up. Only meaningful for explicit named services (skipping
+      // "all"/source-mode keeps the flag scoped to the common case).
+      if (flags.expose && !fromSource) {
+        const named = services.filter((s) => s !== "all");
+        for (const name of named) {
+          await runTunnelExposeCommand(name, null);
+        }
+      }
     } catch (err) {
       this.log(err instanceof Error ? err.message : String(err));
       this.exit(1);

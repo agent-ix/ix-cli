@@ -12,12 +12,12 @@ implements the migrated ix-local-cli command set inside the ix-cli monorepo.
 
 Tests fall into four types:
 
-| Type        | Description                                                              |
-|-------------|--------------------------------------------------------------------------|
-| Static      | Source-inspection tests (grep / readFileSync). Run under vitest.         |
-| Unit        | Pure-function tests with no I/O. Run under vitest.                       |
-| Integration | Require a live cluster or external process. Cannot run in unit context.  |
-| Review      | Manual code inspection — no automated test possible.                     |
+| Type        | Description                                                             |
+| ----------- | ----------------------------------------------------------------------- |
+| Static      | Source-inspection tests (grep / readFileSync). Run under vitest.        |
+| Unit        | Pure-function tests with no I/O. Run under vitest.                      |
+| Integration | Require a live cluster or external process. Cannot run in unit context. |
+| Review      | Manual code inspection — no automated test possible.                    |
 
 ---
 
@@ -25,183 +25,214 @@ Tests fall into four types:
 
 ### Stakeholder Requirement Coverage
 
-| Stakeholder Req | Trace to US/FR                       | Test/Validation                        | Coverage Status |
-|-----------------|--------------------------------------|----------------------------------------|-----------------|
-| StR-001         | US-001 → FR-001, FR-002, FR-003      | TC-001–TC-010 (static/unit)            | ✅ Partial (static + unit; integration pending) |
-| StR-002         | US-002 → NFR-001, FR-002; US-007 → FR-034 | TC-007–TC-010, TC-300–TC-308 (static + unit) | ✅ Partial (static + unit; integration pending) |
+| Stakeholder Req | Trace to US/FR                                               | Test/Validation                                   | Coverage Status                                                     |
+| --------------- | ------------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------------- |
+| StR-001         | US-001 → FR-001, FR-002, FR-003                              | TC-001–TC-010 (static/unit)                       | ✅ Partial (static + unit; integration pending)                     |
+| StR-002         | US-002 → NFR-001, FR-002; US-007 → FR-034                    | TC-007–TC-010, TC-300–TC-308 (static + unit)      | ✅ Partial (static + unit; integration pending)                     |
 | StR-003         | US-003/004/005/008/009 → FR-004–007, FR-035, FR-036, NFR-002 | TC-022–TC-043, TC-291–TC-321 (unit + integration) | ⚠️ Partial (existing unit complete; new ACs pending implementation) |
-| StR-004         | US-006 → FR-008, FR-009              | TC-022–TC-031 (unit)                   | ✅ Complete (unit) |
+| StR-004         | US-006 → FR-008, FR-009                                      | TC-022–TC-031 (unit)                              | ✅ Complete (unit)                                                  |
+| StR-007         | US-010 → FR-037; FR-038 (Cloudflare tunnel exposure)         | TC-400–TC-424, TC-430–TC-435 (unit/static)        | ✅ Complete (unit/static; live-cluster smoke still useful)          |
 
 ### User Story Coverage
 
-| User Story | Acceptance Criteria | Test Cases | Coverage Status |
-|------------|---------------------|------------|-----------------|
-| US-001 | ix up/down/init/auth commands reachable | TC-001–TC-006 | ✅ Complete (static) |
-| US-002 | Multi-service progress rendered via PhaseTable | TC-007, TC-010 | ✅ Complete (static) |
-| US-003 | Cluster up: init + deploy ix-core services | TC-025–TC-031 | ✅ Complete (unit) |
-| US-004 | Cluster down: confirmation guard, idempotent | TC-032–TC-038 | ✅ Complete (unit) |
-| US-005 | Cluster status: node/pod health tables | TC-039–TC-043 | ✅ Complete (unit) |
-| US-006 | ClusterConfig parsed from config.yaml | TC-022–TC-024 | ✅ Complete (unit) |
-| US-007 | `ix local refresh` shows per-chart diff rows for changed/new charts | TC-300–TC-308 | ✅ Complete (static + unit) |
-| US-008 | `ix local halt all` (image mode): list, confirm, uninstall every deployable | TC-291–TC-299 | 🚧 In Progress |
-| US-009 | `ix local cluster stop`/`start`: pause and resume kind containers | TC-310–TC-318 | 🚧 In Progress |
+| User Story | Acceptance Criteria                                                         | Test Cases     | Coverage Status             |
+| ---------- | --------------------------------------------------------------------------- | -------------- | --------------------------- |
+| US-001     | ix up/down/init/auth commands reachable                                     | TC-001–TC-006  | ✅ Complete (static)        |
+| US-002     | Multi-service progress rendered via PhaseTable                              | TC-007, TC-010 | ✅ Complete (static)        |
+| US-003     | Cluster up: init + deploy ix-core services                                  | TC-025–TC-031  | ✅ Complete (unit)          |
+| US-004     | Cluster down: confirmation guard, idempotent                                | TC-032–TC-038  | ✅ Complete (unit)          |
+| US-005     | Cluster status: node/pod health tables                                      | TC-039–TC-043  | ✅ Complete (unit)          |
+| US-006     | ClusterConfig parsed from config.yaml                                       | TC-022–TC-024  | ✅ Complete (unit)          |
+| US-007     | `ix local refresh` shows per-chart diff rows for changed/new charts         | TC-300–TC-308  | ✅ Complete (static + unit) |
+| US-008     | `ix local halt all` (image mode): list, confirm, uninstall every deployable | TC-291–TC-299  | 🚧 In Progress              |
+| US-009     | `ix local cluster stop`/`start`: pause and resume kind containers           | TC-310–TC-318  | 🚧 In Progress              |
 
 ### Functional Requirement Coverage
 
-| Functional Req | Acceptance Criteria | Test Cases | Coverage Status |
-|----------------|---------------------|------------|-----------------|
-| FR-001 | AC-1: all commands registered | TC-001–TC-006 | ✅ Complete (static) |
-| FR-001 | AC-2: ix-local-cli FR-001–FR-020 satisfied | — | Review |
-| FR-002 | AC-1: `ix up` uses PhaseTable from @agent-ix/ix-ui-cli | TC-010 | ✅ Complete (static) |
-| FR-002 | AC-2: ix-local-cli FR-022 ACs satisfied via PhaseTable | — | Review |
-| FR-002 | AC-3: no AppDisplay reference in src | TC-007 | ✅ Complete (static) |
-| FR-002 | AC-4: Phase type defined only in phases.ts | TC-008, TC-009 | ✅ Complete (static) |
-| FR-003 | AC-1: queued phase state when pool slot unavailable | — | ❌ Missing (integration) |
-| FR-003 | AC-2: child failure does not abort sibling pipelines | — | ❌ Missing (integration) |
-| FR-003 | AC-3: exit 0 on all success, exit 1 on any failure | — | ❌ Missing (integration) |
-| FR-004 | AC-1: cluster subcommand group exports up/down/status | TC-007–TC-011 (static) | ✅ Complete (static) |
-| FR-005 | AC-2–AC-6: computeEffectiveDeploySet algorithm | TC-025–TC-031 | ✅ Complete (unit) |
-| FR-005 | AC-7: NFR-001 output compliance | TC-013 (static) | ✅ Complete (static) |
-| FR-006 | AC-1: confirmation prompt shown without --yes | TC-038 | ✅ Complete (unit) |
-| FR-006 | AC-2: decline/cancel exits 0 without delete | TC-033, TC-034 | ✅ Complete (unit) |
-| FR-006 | AC-3: idempotent — absent cluster exits 0 | TC-035 | ✅ Complete (unit) |
-| FR-006 | AC-4: only kind delete cluster spawned | TC-037 | ✅ Complete (unit) |
-| FR-006 | AC-5: kind delete failure propagates | TC-036 | ✅ Complete (unit) |
-| FR-006 | AC-6: name-mismatch on second prompt aborts before destruction | TC-319 | 🚧 In Progress |
-| FR-006 | AC-7: --yes bypasses both confirmation gates | TC-320 | 🚧 In Progress |
-| FR-035 | AC-1: runDown loads registry and resolves all deployables in image mode | TC-291, TC-292 | 🚧 In Progress |
-| FR-035 | AC-2: Listing of (release, namespace) rendered before destruction | TC-293 | 🚧 In Progress |
-| FR-035 | AC-3: ConfirmPrompt shown without --yes; decline returns clean | TC-294 | 🚧 In Progress |
-| FR-035 | AC-4: --yes bypasses prompt | TC-295 | 🚧 In Progress |
-| FR-035 | AC-5: named-service halt unchanged (no listing/prompt) | TC-296 | 🚧 In Progress |
-| FR-035 | AC-6: mixed all + named throws mixing error | TC-297 | 🚧 In Progress |
-| FR-035 | AC-7: post-condition — releases gone, PVCs deleted, PVs Available | TC-298 | ❌ Missing (integration) |
-| FR-035 | AC-8: halt.ts surfaces error message before exit | TC-299 | 🚧 In Progress |
-| FR-036 | AC-1: runClusterStop runs docker stop on each kind node | TC-310 | 🚧 In Progress |
-| FR-036 | AC-2: runClusterStart runs docker start, waits for API server | TC-311 | 🚧 In Progress |
-| FR-036 | AC-3: stop idempotent on already-stopped; start idempotent on already-running | TC-312, TC-313 | 🚧 In Progress |
-| FR-036 | AC-4: absent cluster — stop and start fail with clear message | TC-314, TC-315 | 🚧 In Progress |
-| FR-036 | AC-5: both render Listing of (node, state) | TC-316 | 🚧 In Progress |
-| FR-036 | AC-6: stop → start round trip preserves PVC data | TC-317 | ❌ Missing (integration) |
-| FR-036 | AC-7: API-server reachability timeout renders warn (not failed) | TC-318 | 🚧 In Progress |
-| FR-007 | AC-1–AC-3: node table columns | TC-039 | ✅ Complete (unit) |
-| FR-007 | AC-4: all healthy → outroSuccess only | TC-040 | ✅ Complete (unit) |
-| FR-007 | AC-5: unhealthy pods → pod table | TC-041 | ✅ Complete (unit) |
-| FR-007 | AC-6: kubectl failure throws descriptive error | TC-042 | ✅ Complete (unit) |
-| FR-008 | AC-1–AC-4: ix-core tag inclusion/exclusion | TC-025, TC-026 | ✅ Complete (unit) |
-| FR-009 | AC-1: absent file returns defaults | TC-022 | ✅ Complete (unit) |
-| FR-009 | AC-2: valid cluster key parsed | TC-023 | ✅ Complete (unit) |
-| FR-009 | AC-3: non-array throws ConfigValidationError | TC-024 | ✅ Complete (unit) |
-| auth | ix-cli-auth-AC-1: no HTTP transport in `auth-init.ts` / `auth-reset-admin.ts` | TC-080 | ✅ Complete (static) |
-| auth | ix-cli-auth-AC-2: `system`, `auth`, `platform`, `apps` namespaces all present after `ix up` | TC-081 | ❌ Missing (integration) |
-| auth | ix-cli-auth-AC-3: bootstrap Secret at `system/admin-bootstrap` (not `auth/admin-bootstrap`) | TC-082 | ❌ Missing (integration) |
-| auth | ix-cli-auth-AC-4: identity deployment in `auth` namespace | TC-083 | ❌ Missing (integration) |
-| auth | ix-cli-auth-AC-5: `auth reset-user <admin>` surfaces clear "use reset-admin" message on 403 | TC-084 | ❌ Missing (integration) |
-| auth | ix-cli-auth-AC-6: no namespace string literals in `packages/local/src` outside `config.ts` | TC-085 | ✅ Complete (static) |
-| auth | ix-cli-auth-CON-1: `auth-init.ts` / `auth-reset-admin.ts` contain no `fetch`/`http`/`https`/`kubectlRaw`/`--raw` | TC-086 | ✅ Complete (static) |
-| auth | ix-cli-auth-CON-2: `auth-secret.ts` writes Secret to `IX_SYSTEM_NAMESPACE` only | TC-087 | ⚠️ Partial (static complete; integration pending) |
-| auth | ix-cli-auth-CON-3: all `kubectlRaw` calls target `IX_AUTH_NAMESPACE` | TC-088 | ✅ Complete (static) |
-| auth | ix-cli-auth-CON-4: no namespace string literals (covered by TC-085) | TC-085 | ✅ Complete (static) |
-| auth | ix-cli-auth-CON-5: Deployable registry — identity/auth-service/permission-service declare `namespace: IX_AUTH_NAMESPACE`; up-image/up-source honor `deployable.namespace` | TC-089 | ❌ Missing (integration) |
-| FR-031 | AC-6: unmatched umbrella install failure marks final table failed with umbrella error | TC-280c | ✅ Complete (static) |
-| FR-031 | AC-8: full ready workload stays settling when controller revision/update is incomplete | TC-095, TC-110, TC-111 | ✅ Complete |
-| FR-031 | AC-13: waitForRollout enriches status with `·label` when readyReplicas=0 | TC-109 | ✅ Complete |
-| FR-031 | AC-14: state-labeled `1/1·settle` remains active until plain `1/1` | TC-112 | ✅ Complete |
-| FR-033 | AC-1: loadSecretContractFromTgz exported, uses tar, cleans up | TC-100, TC-106, TC-107 | ✅ Complete (static + unit) |
-| FR-033 | AC-2: findSecretContractDir not called from up-image | TC-101 | ✅ Complete (static) |
-| FR-033 | AC-3: runImageModeUp has no devDir param | TC-102 | ✅ Complete (static) |
-| FR-033 | AC-4: UP_PHASES pull before secrets | TC-103 | ✅ Complete (static) |
-| FR-033 | AC-5: contractsByName built from bundled subcharts after pull | TC-104, TC-274, TC-275 | ⚠️ Partial (static + directory-layout static; integration missing) |
-| FR-033 | AC-6: single-service pulls chart tgz before install | TC-108 | ✅ Complete (static) |
-| FR-033 | AC-7: missing ix-local.secrets.yaml → graceful skip | TC-105 | ✅ Complete (unit) |
-| FR-033 | AC-8: tmpDir always deleted in finally | TC-107 | ✅ Complete (unit) |
-| FR-033 | AC-9: app mode loads secret contracts from vendored subchart directories | TC-274 | ✅ Complete (static) |
-| FR-033 | AC-10: directory-based app-mode contract loading imports and calls `loadSecretContract` | TC-275 | ✅ Complete (static) |
-| FR-033 | AC-11: image-mode secret contracts must live inside the packaged chart source tree | TC-277 | ❌ Missing (artifact inspection) |
-| FR-033 | AC-12: missing packaged contract for a Secret-referencing chart is an artifact defect | TC-278 | ❌ Missing (artifact + manifest inspection) |
-| FR-033 | AC-13: app umbrella install polls Helm hook failures and aborts early | TC-276 | ✅ Complete (static + unit hook detection) |
-| FR-034 | AC-1: per-chart rows emitted via `Listing.item()` (not note/raw) | TC-301 | ✅ Complete (static) |
-| FR-034 | AC-2: row text matches `role:name old -> new` and `role:name (new) ver` | TC-302, TC-307, TC-308 | ✅ Complete (static + unit) |
-| FR-034 | AC-3: cache snapshot read before `loadRegistry({refresh:true})` | TC-300 | ✅ Complete (static) |
-| FR-034 | AC-4: missing/foreign-org cache → all entries treated as added | TC-303 | ✅ Complete (unit) |
-| FR-034 | AC-5: zero changes → no `item()` calls, only `success()` | TC-304, TC-305 | ✅ Complete (unit) |
-| FR-034 | AC-6: registry-discovery errors still rethrow | — | Review |
+| Functional Req | Acceptance Criteria                                                                                                                                                                                                    | Test Cases             | Coverage Status                                                    |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------ |
+| FR-001         | AC-1: all commands registered                                                                                                                                                                                          | TC-001–TC-006          | ✅ Complete (static)                                               |
+| FR-001         | AC-2: ix-local-cli FR-001–FR-020 satisfied                                                                                                                                                                             | —                      | Review                                                             |
+| FR-002         | AC-1: `ix up` uses PhaseTable from @agent-ix/ix-ui-cli                                                                                                                                                                 | TC-010                 | ✅ Complete (static)                                               |
+| FR-002         | AC-2: ix-local-cli FR-022 ACs satisfied via PhaseTable                                                                                                                                                                 | —                      | Review                                                             |
+| FR-002         | AC-3: no AppDisplay reference in src                                                                                                                                                                                   | TC-007                 | ✅ Complete (static)                                               |
+| FR-002         | AC-4: Phase type defined only in phases.ts                                                                                                                                                                             | TC-008, TC-009         | ✅ Complete (static)                                               |
+| FR-002         | AC-6: success frame passes flat `tailIngressUrls` + `tailIngressHosts = config.hosts`; PhaseTable renders per-host `◎ Ingress · <host>` blocks via longest-suffix grouping. No ingress section when no Ingress exists. | —                      | 🚧 Pending implementation                                          |
+| FR-003         | AC-1: queued phase state when pool slot unavailable                                                                                                                                                                    | —                      | ❌ Missing (integration)                                           |
+| FR-003         | AC-2: child failure does not abort sibling pipelines                                                                                                                                                                   | —                      | ❌ Missing (integration)                                           |
+| FR-003         | AC-3: exit 0 on all success, exit 1 on any failure                                                                                                                                                                     | —                      | ❌ Missing (integration)                                           |
+| FR-004         | AC-1: cluster subcommand group exports up/down/status                                                                                                                                                                  | TC-007–TC-011 (static) | ✅ Complete (static)                                               |
+| FR-005         | AC-2–AC-6: computeEffectiveDeploySet algorithm                                                                                                                                                                         | TC-025–TC-031          | ✅ Complete (unit)                                                 |
+| FR-005         | AC-7: NFR-001 output compliance                                                                                                                                                                                        | TC-013 (static)        | ✅ Complete (static)                                               |
+| FR-006         | AC-1: confirmation prompt shown without --yes                                                                                                                                                                          | TC-038                 | ✅ Complete (unit)                                                 |
+| FR-006         | AC-2: decline/cancel exits 0 without delete                                                                                                                                                                            | TC-033, TC-034         | ✅ Complete (unit)                                                 |
+| FR-006         | AC-3: idempotent — absent cluster exits 0                                                                                                                                                                              | TC-035                 | ✅ Complete (unit)                                                 |
+| FR-006         | AC-4: only kind delete cluster spawned                                                                                                                                                                                 | TC-037                 | ✅ Complete (unit)                                                 |
+| FR-006         | AC-5: kind delete failure propagates                                                                                                                                                                                   | TC-036                 | ✅ Complete (unit)                                                 |
+| FR-006         | AC-6: name-mismatch on second prompt aborts before destruction                                                                                                                                                         | TC-319                 | 🚧 In Progress                                                     |
+| FR-006         | AC-7: --yes bypasses both confirmation gates                                                                                                                                                                           | TC-320                 | 🚧 In Progress                                                     |
+| FR-035         | AC-1: runDown loads registry and resolves all deployables in image mode                                                                                                                                                | TC-291, TC-292         | 🚧 In Progress                                                     |
+| FR-035         | AC-2: Listing of (release, namespace) rendered before destruction                                                                                                                                                      | TC-293                 | 🚧 In Progress                                                     |
+| FR-035         | AC-3: ConfirmPrompt shown without --yes; decline returns clean                                                                                                                                                         | TC-294                 | 🚧 In Progress                                                     |
+| FR-035         | AC-4: --yes bypasses prompt                                                                                                                                                                                            | TC-295                 | 🚧 In Progress                                                     |
+| FR-035         | AC-5: named-service halt unchanged (no listing/prompt)                                                                                                                                                                 | TC-296                 | 🚧 In Progress                                                     |
+| FR-035         | AC-6: mixed all + named throws mixing error                                                                                                                                                                            | TC-297                 | 🚧 In Progress                                                     |
+| FR-035         | AC-7: post-condition — releases gone, PVCs deleted, PVs Available                                                                                                                                                      | TC-298                 | ❌ Missing (integration)                                           |
+| FR-035         | AC-8: halt.ts surfaces error message before exit                                                                                                                                                                       | TC-299                 | 🚧 In Progress                                                     |
+| FR-036         | AC-1: runClusterStop runs docker stop on each kind node                                                                                                                                                                | TC-310                 | 🚧 In Progress                                                     |
+| FR-036         | AC-2: runClusterStart runs docker start, waits for API server                                                                                                                                                          | TC-311                 | 🚧 In Progress                                                     |
+| FR-036         | AC-3: stop idempotent on already-stopped; start idempotent on already-running                                                                                                                                          | TC-312, TC-313         | 🚧 In Progress                                                     |
+| FR-036         | AC-4: absent cluster — stop and start fail with clear message                                                                                                                                                          | TC-314, TC-315         | 🚧 In Progress                                                     |
+| FR-036         | AC-5: both render Listing of (node, state)                                                                                                                                                                             | TC-316                 | 🚧 In Progress                                                     |
+| FR-036         | AC-6: stop → start round trip preserves PVC data                                                                                                                                                                       | TC-317                 | ❌ Missing (integration)                                           |
+| FR-036         | AC-7: API-server reachability timeout renders warn (not failed)                                                                                                                                                        | TC-318                 | 🚧 In Progress                                                     |
+| FR-007         | AC-1–AC-3: node table columns                                                                                                                                                                                          | TC-039                 | ✅ Complete (unit)                                                 |
+| FR-007         | AC-4: all healthy → outroSuccess only                                                                                                                                                                                  | TC-040                 | ✅ Complete (unit)                                                 |
+| FR-007         | AC-5: unhealthy pods → pod table                                                                                                                                                                                       | TC-041                 | ✅ Complete (unit)                                                 |
+| FR-007         | AC-6: kubectl failure throws descriptive error                                                                                                                                                                         | TC-042                 | ✅ Complete (unit)                                                 |
+| FR-008         | AC-1–AC-4: ix-core tag inclusion/exclusion                                                                                                                                                                             | TC-025, TC-026         | ✅ Complete (unit)                                                 |
+| FR-009         | AC-1: absent file returns defaults                                                                                                                                                                                     | TC-022                 | ✅ Complete (unit)                                                 |
+| FR-009         | AC-2: valid cluster key parsed                                                                                                                                                                                         | TC-023                 | ✅ Complete (unit)                                                 |
+| FR-009         | AC-3: non-array throws ConfigValidationError                                                                                                                                                                           | TC-024                 | ✅ Complete (unit)                                                 |
+| auth           | ix-cli-auth-AC-1: no HTTP transport in `auth-init.ts` / `auth-reset-admin.ts`                                                                                                                                          | TC-080                 | ✅ Complete (static)                                               |
+| auth           | ix-cli-auth-AC-2: `system`, `auth`, `platform`, `apps` namespaces all present after `ix up`                                                                                                                            | TC-081                 | ❌ Missing (integration)                                           |
+| auth           | ix-cli-auth-AC-3: bootstrap Secret at `system/admin-bootstrap` (not `auth/admin-bootstrap`)                                                                                                                            | TC-082                 | ❌ Missing (integration)                                           |
+| auth           | ix-cli-auth-AC-4: identity deployment in `auth` namespace                                                                                                                                                              | TC-083                 | ❌ Missing (integration)                                           |
+| auth           | ix-cli-auth-AC-5: `auth reset-user <admin>` surfaces clear "use reset-admin" message on 403                                                                                                                            | TC-084                 | ❌ Missing (integration)                                           |
+| auth           | ix-cli-auth-AC-6: no namespace string literals in `packages/local/src` outside `config.ts`                                                                                                                             | TC-085                 | ✅ Complete (static)                                               |
+| auth           | ix-cli-auth-CON-1: `auth-init.ts` / `auth-reset-admin.ts` contain no `fetch`/`http`/`https`/`kubectlRaw`/`--raw`                                                                                                       | TC-086                 | ✅ Complete (static)                                               |
+| auth           | ix-cli-auth-CON-2: `auth-secret.ts` writes Secret to `IX_SYSTEM_NAMESPACE` only                                                                                                                                        | TC-087                 | ⚠️ Partial (static complete; integration pending)                  |
+| auth           | ix-cli-auth-CON-3: all `kubectlRaw` calls target `IX_AUTH_NAMESPACE`                                                                                                                                                   | TC-088                 | ✅ Complete (static)                                               |
+| auth           | ix-cli-auth-CON-4: no namespace string literals (covered by TC-085)                                                                                                                                                    | TC-085                 | ✅ Complete (static)                                               |
+| auth           | ix-cli-auth-CON-5: Deployable registry — identity/auth-service/permission-service declare `namespace: IX_AUTH_NAMESPACE`; up-image/up-source honor `deployable.namespace`                                              | TC-089                 | ❌ Missing (integration)                                           |
+| FR-031         | AC-6: unmatched umbrella install failure marks final table failed with umbrella error                                                                                                                                  | TC-280c                | ✅ Complete (static)                                               |
+| FR-031         | AC-8: full ready workload stays settling when controller revision/update is incomplete                                                                                                                                 | TC-095, TC-110, TC-111 | ✅ Complete                                                        |
+| FR-031         | AC-13: waitForRollout enriches status with `·label` when readyReplicas=0                                                                                                                                               | TC-109                 | ✅ Complete                                                        |
+| FR-031         | AC-14: state-labeled `1/1·settle` remains active until plain `1/1`                                                                                                                                                     | TC-112                 | ✅ Complete                                                        |
+| FR-031         | AC-15: ingress URLs read from `helm get manifest`, passed flat to PhaseTable via `tailIngressUrls` alongside `tailIngressHosts = config.hosts`; TLS-covered hosts use `https://`, non-TLS use `http://`.               | —                      | 🚧 Pending implementation                                          |
+| FR-031         | AC-16: multi-host manifests render under per-host `◎ Ingress · <host>` blocks (PhaseTable grouping per ix-ui FR-004-AC-9); within-group URL order follows chart-rendered order; group order follows first-URL-seen.    | —                      | 🚧 Pending implementation                                          |
+| FR-033         | AC-1: loadSecretContractFromTgz exported, uses tar, cleans up                                                                                                                                                          | TC-100, TC-106, TC-107 | ✅ Complete (static + unit)                                        |
+| FR-033         | AC-2: findSecretContractDir not called from up-image                                                                                                                                                                   | TC-101                 | ✅ Complete (static)                                               |
+| FR-033         | AC-3: runImageModeUp has no devDir param                                                                                                                                                                               | TC-102                 | ✅ Complete (static)                                               |
+| FR-033         | AC-4: UP_PHASES pull before secrets                                                                                                                                                                                    | TC-103                 | ✅ Complete (static)                                               |
+| FR-033         | AC-5: contractsByName built from bundled subcharts after pull                                                                                                                                                          | TC-104, TC-274, TC-275 | ⚠️ Partial (static + directory-layout static; integration missing) |
+| FR-033         | AC-6: single-service pulls chart tgz before install                                                                                                                                                                    | TC-108                 | ✅ Complete (static)                                               |
+| FR-033         | AC-7: missing ix-local.secrets.yaml → graceful skip                                                                                                                                                                    | TC-105                 | ✅ Complete (unit)                                                 |
+| FR-033         | AC-8: tmpDir always deleted in finally                                                                                                                                                                                 | TC-107                 | ✅ Complete (unit)                                                 |
+| FR-033         | AC-9: app mode loads secret contracts from vendored subchart directories                                                                                                                                               | TC-274                 | ✅ Complete (static)                                               |
+| FR-033         | AC-10: directory-based app-mode contract loading imports and calls `loadSecretContract`                                                                                                                                | TC-275                 | ✅ Complete (static)                                               |
+| FR-033         | AC-11: image-mode secret contracts must live inside the packaged chart source tree                                                                                                                                     | TC-277                 | ❌ Missing (artifact inspection)                                   |
+| FR-033         | AC-12: missing packaged contract for a Secret-referencing chart is an artifact defect                                                                                                                                  | TC-278                 | ❌ Missing (artifact + manifest inspection)                        |
+| FR-033         | AC-13: app umbrella install polls Helm hook failures and aborts early                                                                                                                                                  | TC-276                 | ✅ Complete (static + unit hook detection)                         |
+| FR-034         | AC-1: per-chart rows emitted via `Listing.item()` (not note/raw)                                                                                                                                                       | TC-301                 | ✅ Complete (static)                                               |
+| FR-034         | AC-2: row text matches `role:name old -> new` and `role:name (new) ver`                                                                                                                                                | TC-302, TC-307, TC-308 | ✅ Complete (static + unit)                                        |
+| FR-034         | AC-3: cache snapshot read before `loadRegistry({refresh:true})`                                                                                                                                                        | TC-300                 | ✅ Complete (static)                                               |
+| FR-034         | AC-4: missing/foreign-org cache → all entries treated as added                                                                                                                                                         | TC-303                 | ✅ Complete (unit)                                                 |
+| FR-034         | AC-5: zero changes → no `item()` calls, only `success()`                                                                                                                                                               | TC-304, TC-305         | ✅ Complete (unit)                                                 |
+| FR-034         | AC-6: registry-discovery errors still rethrow                                                                                                                                                                          | —                      | Review                                                             |
+| FR-038         | AC-1: missing tunnel block returns documented defaults                                                                                                                                                                 | TC-400                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-2: persisted tunnel block round-trips through loadTunnelConfig                                                                                                                                                      | TC-401                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-3: autoStart strings "true"/"false" coerced to booleans                                                                                                                                                             | TC-403, TC-403b        | ✅ Complete (unit)                                                 |
+| FR-038         | AC-4: invalid baseDomain falls back to schema default (FR-011-AC-1 pattern)                                                                                                                                            | TC-402                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-5: env IX_CF_TUNNEL_TOKEN takes precedence over backend                                                                                                                                                             | TC-413                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-6: backend value used when env unset                                                                                                                                                                                | TC-414                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-7: requireCloudflareToken throws when neither source has a token                                                                                                                                                    | TC-415                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-8: buildExposeOverlay({}) sets extraBaseDomains + ingress.exposeExtraHosts                                                                                                                                          | TC-405, TC-406         | ✅ Complete (unit)                                                 |
+| FR-038         | AC-9: buildExposeOverlay idempotent on repeated baseDomain                                                                                                                                                             | TC-407                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-10: entry-key path routes ingress flip through subchart; siblings absent from overlay                                                                                                                               | TC-409                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-11: buildUnexposeOverlay strips baseDomain + matching extraHosts; flips toggle off                                                                                                                                  | TC-410, TC-411, TC-412 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-12: helm template fails clearly when tunnelToken missing                                                                                                                                                            | TC-416                 | ✅ Complete (manual `helm template`)                               |
+| FR-038         | AC-13: cluster start with autoStart=false produces no tunnel call                                                                                                                                                      | TC-417                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-14: cluster start with autoStart=true + token resolves runs tunnel install                                                                                                                                          | TC-418                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-15: autoStart=true + no token renders warn-tail Listing, returns success                                                                                                                                            | TC-419, TC-423         | ✅ Complete (unit)                                                 |
+| FR-038         | AC-16: tunnel-install failure inside cluster-start hook is swallowed (cluster start exits 0)                                                                                                                           | TC-420                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-17: ix tunnel expose with absent release surfaces actionable error                                                                                                                                                  | TC-421                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-18: ix tunnel down idempotent on missing release                                                                                                                                                                    | TC-422                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-19: tunnel command files are registered as Vite build entries                                                                                                                                                       | TC-424                 | ✅ Complete (static)                                               |
+| FR-038         | hostname derivation `<app>.<baseDomain>` is pure                                                                                                                                                                       | TC-405                 | ✅ Complete (unit)                                                 |
+| FR-038         | hostname override appended to ingress.extraHosts                                                                                                                                                                       | TC-408                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-20: firstRunSetup non-TTY missing token throws CI-safe error                                                                                                                                                        | TC-430                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-21: firstRunSetup non-TTY token-set returns without prompting                                                                                                                                                       | TC-431                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-22: firstRunSetup TTY prompts for token + base domain, persists both                                                                                                                                                | TC-432                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-23: firstRunSetup idempotent when both already configured                                                                                                                                                           | TC-433                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-24: setTunnelBaseDomain validates and writes; rejects invalid                                                                                                                                                       | TC-434, TC-435         | ✅ Complete (unit)                                                 |
+| FR-038         | AC-25: ix tunnel domain read/write convenience                                                                                                                                                                         | TC-436                 | ❌ Missing (integration)                                           |
 
 ### Non-Functional Requirement Coverage
 
-| Non-Functional Req | Verification Method | Evidence/Test Cases | Status |
-|--------------------|---------------------|---------------------|--------|
-| NFR-001-AC-1 | Static grep: no console.log/error/warn/process.stderr.write | TC-011, TC-012 | ✅ Complete (static) |
-| NFR-001-AC-2 | Static grep: introCommand/outroSuccess/outroError imported from @agent-ix/ix-ui-cli in every command that calls them | TC-013 | ✅ Complete (static) |
-| NFR-001-AC-3 | Static grep: PhaseTable imported from @agent-ix/ix-ui-cli | TC-010 | ✅ Complete (static) |
-| NFR-001-AC-6 | Static grep: live Ink command wrappers delegate process orchestration to controllers | TC-282, TC-283, TC-284 | ✅ Complete (static) |
-| NFR-001-AC-7 | Unit: shared phase row model emits cloned snapshots and preserves failure state | TC-285, TC-286, TC-287, TC-288 | ✅ Complete (unit) |
-| NFR-001-AC-7 | Unit: controller failures update the failed phase before final error rendering | TC-289, TC-290 | ✅ Complete (unit) |
-| NFR-002-AC-1 | Unit: prompt message contains cluster name | TC-038 | ✅ Complete (unit) |
-| NFR-002-AC-2 | Unit: decline/cancel exits 0 without destructive action | TC-033, TC-034 | ✅ Complete (unit) |
-| NFR-002-AC-3 | Unit: --yes bypasses prompt | TC-032 | ✅ Complete (unit) |
+| Non-Functional Req | Verification Method                                                                                                  | Evidence/Test Cases            | Status               |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------- | ------------------------------ | -------------------- |
+| NFR-001-AC-1       | Static grep: no console.log/error/warn/process.stderr.write                                                          | TC-011, TC-012                 | ✅ Complete (static) |
+| NFR-001-AC-2       | Static grep: introCommand/outroSuccess/outroError imported from @agent-ix/ix-ui-cli in every command that calls them | TC-013                         | ✅ Complete (static) |
+| NFR-001-AC-3       | Static grep: PhaseTable imported from @agent-ix/ix-ui-cli                                                            | TC-010                         | ✅ Complete (static) |
+| NFR-001-AC-6       | Static grep: live Ink command wrappers delegate process orchestration to controllers                                 | TC-282, TC-283, TC-284         | ✅ Complete (static) |
+| NFR-001-AC-7       | Unit: shared phase row model emits cloned snapshots and preserves failure state                                      | TC-285, TC-286, TC-287, TC-288 | ✅ Complete (unit)   |
+| NFR-001-AC-7       | Unit: controller failures update the failed phase before final error rendering                                       | TC-289, TC-290                 | ✅ Complete (unit)   |
+| NFR-002-AC-1       | Unit: prompt message contains cluster name                                                                           | TC-038                         | ✅ Complete (unit)   |
+| NFR-002-AC-2       | Unit: decline/cancel exits 0 without destructive action                                                              | TC-033, TC-034                 | ✅ Complete (unit)   |
+| NFR-002-AC-3       | Unit: --yes bypasses prompt                                                                                          | TC-032                         | ✅ Complete (unit)   |
 
 ---
 
 ## Test Case Summary
 
-| Test ID | Title | Type | Priority | Traces To | Status |
-|---------|-------|------|----------|-----------|--------|
-| TC-001 | index.ts exports runUp | Static | P1 | FR-001-AC-1 | ✅ Complete |
-| TC-002 | index.ts exports runDown | Static | P1 | FR-001-AC-1 | ✅ Complete |
-| TC-003 | index.ts exports runList | Static | P1 | FR-001-AC-1 | ✅ Complete |
-| TC-004 | index.ts exports runAuthInit | Static | P1 | FR-001-AC-1 | ✅ Complete |
-| TC-005 | index.ts exports runInitCluster | Static | P1 | FR-001-AC-1 | ✅ Complete |
-| TC-006 | index.ts exports runAuthResetAdmin, runAuthInvite, runAuthResetUser | Static | P2 | FR-001-AC-1 | ✅ Complete |
-| TC-007 | No AppDisplay reference in src | Static | P1 | FR-002-AC-3 | ✅ Complete |
-| TC-008 | phases.ts exports Phase type | Static | P1 | FR-002-AC-4 | ✅ Complete |
-| TC-009 | Phase type not declared outside phases.ts | Static | P1 | FR-002-AC-4 | ✅ Complete |
-| TC-010 | PhaseTable imported from @agent-ix/ix-ui-cli, not a local file | Static | P1 | FR-002-AC-1, NFR-001-AC-3 | ✅ Complete |
-| TC-011 | No console.log/error/warn/info calls in src | Static | P1 | NFR-001-AC-1 | ✅ Complete |
-| TC-012 | No process.stderr.write calls in src | Static | P1 | NFR-001-AC-1 | ✅ Complete |
-| TC-013 | Every command file using introCommand imports it from @agent-ix/ix-ui-cli | Static | P1 | NFR-001-AC-2 | ✅ Complete |
-| TC-014 | queued phase state signalled when pool slot unavailable | Unit | P1 | FR-003-AC-1 | ✅ Complete |
-| TC-015 | Child failure does not abort sibling concurrent pipelines | Integration | P1 | FR-003-AC-2 | ❌ Missing |
-| TC-016 | Exit code 0 iff all children succeeded; exit 1 if any failed | Integration | P1 | FR-003-AC-3 | ❌ Missing |
-| TC-017 | ix-local-cli FR-001–FR-020 ACs verified in implementation | Review | P2 | FR-001-AC-2 | Review |
-| TC-018 | ix-local-cli FR-022 ACs satisfied via PhaseTable | Review | P2 | FR-002-AC-2 | Review |
-| TC-007 | index.ts exports runClusterUp | Static | P1 | FR-004-AC-1 | ✅ Complete |
-| TC-008 | index.ts exports computeEffectiveDeploySet | Static | P1 | FR-004-AC-1, FR-005 | ✅ Complete |
-| TC-009 | index.ts exports runClusterDown | Static | P1 | FR-004-AC-1, FR-006 | ✅ Complete |
-| TC-010 | index.ts exports runClusterStatus | Static | P1 | FR-004-AC-1, FR-007 | ✅ Complete |
-| TC-011 | index.ts exports loadClusterConfig | Static | P1 | FR-004-AC-1, FR-009 | ✅ Complete |
-| TC-022 | loadClusterConfig: absent file returns defaults | Unit | P1 | FR-009-AC-1 | ✅ Complete |
-| TC-023 | loadClusterConfig: cluster key parsed correctly | Unit | P1 | FR-009-AC-2 | ✅ Complete |
-| TC-024 | loadClusterConfig: non-array defaultTags throws ConfigValidationError | Unit | P1 | FR-009-AC-3 | ✅ Complete |
-| TC-025 | computeEffectiveDeploySet: ix-core tagged apps included | Unit | P1 | FR-005-AC-2, FR-008-AC-1 | ✅ Complete |
-| TC-026 | computeEffectiveDeploySet: non-tagged apps excluded | Unit | P1 | FR-005-AC-2, FR-008-AC-2 | ✅ Complete |
-| TC-027 | computeEffectiveDeploySet: skipApps excludes tagged app | Unit | P1 | FR-005-AC-4 | ✅ Complete |
-| TC-028 | computeEffectiveDeploySet: extraApps includes untagged app | Unit | P1 | FR-005-AC-3 | ✅ Complete |
-| TC-029 | computeEffectiveDeploySet: deduplication — one app appears once | Unit | P1 | FR-005-AC-5 | ✅ Complete |
-| TC-030 | computeEffectiveDeploySet: skipApps precedence over extraApps | Unit | P1 | FR-005-AC-4 | ✅ Complete |
-| TC-031 | computeEffectiveDeploySet: deterministic output | Unit | P2 | FR-005-AC-6 | ✅ Complete |
-| TC-032 | runClusterDown: --yes skips prompt, calls kind delete | Unit | P1 | FR-006-AC-2, NFR-002-AC-3 | ✅ Complete |
-| TC-033 | runClusterDown: prompt returns false — no deletion | Unit | P1 | FR-006-AC-2, NFR-002-AC-2 | ✅ Complete |
-| TC-034 | runClusterDown: prompt cancelled — no deletion | Unit | P1 | FR-006-AC-2, NFR-002-AC-2 | ✅ Complete |
-| TC-035 | runClusterDown: absent cluster exits 0 | Unit | P1 | FR-006-AC-3 | ✅ Complete |
-| TC-036 | runClusterDown: kind delete failure propagates | Unit | P1 | FR-006-AC-5 | ✅ Complete |
-| TC-037 | runClusterDown: no helm uninstall called | Unit | P2 | FR-006-AC-4 | ✅ Complete |
-| TC-038 | runClusterDown: prompt message contains cluster name | Unit | P1 | NFR-002-AC-1 | ✅ Complete |
-| TC-039 | runClusterStatus: node table columns rendered | Unit | P1 | FR-007-AC-1–AC-3 | ✅ Complete |
-| TC-040 | runClusterStatus: all healthy → outroSuccess only | Unit | P1 | FR-007-AC-4 | ✅ Complete |
-| TC-041 | runClusterStatus: unhealthy pod → pod table shown | Unit | P1 | FR-007-AC-5 | ✅ Complete |
-| TC-042 | runClusterStatus: kubectl failure throws descriptive error | Unit | P1 | FR-007-AC-6 | ✅ Complete |
-| TC-043 | runClusterStatus: picocolors mock strips ANSI codes | Unit | P2 | FR-007-AC-7 | ✅ Complete |
-| TC-080 | Static grep: `auth-init.ts` and `auth-reset-admin.ts` contain no `fetch\|http://\|https://\|kubectlRaw\|--raw` references | Static | P1 | ix-cli-auth-AC-1, ix-cli-auth-CON-1 | ✅ Complete |
-| TC-081 | After `ix up`: `kubectl get ns system auth platform apps` returns all four | Integration | P1 | ix-cli-auth-AC-2 | ❌ Missing |
-| TC-082 | After `ix local init`: `kubectl get secret admin-bootstrap -n system` succeeds; `-n auth` returns NotFound | Integration | P1 | ix-cli-auth-AC-3, ix-cli-auth-CON-2 | ❌ Missing |
-| TC-083 | After `ix up`: `kubectl get deployment identity -n auth` returns the deployment | Integration | P1 | ix-cli-auth-AC-4, ix-cli-auth-CON-5 | ❌ Missing |
-| TC-084 | `ix local auth reset-user <admin-email>` displays "use `ix local auth reset-admin`" guidance and exits non-zero | Integration | P1 | ix-cli-auth-AC-5 | ❌ Missing |
-| TC-085 | Static grep: no namespace string literals (`"default"`, `"auth"`, `"system"`, `"platform"`, `"apps"`, `"ix-system"`) in `packages/local/src/` outside `config.ts` | Static | P1 | ix-cli-auth-AC-6, ix-cli-auth-CON-4 | ✅ Complete |
-| TC-086 | Static grep: `auth-init.ts` only uses `kubectlExecJson`/`kubectl` shell-out; `auth-reset-admin.ts` likewise; neither imports `fetch`/`undici` | Static | P1 | ix-cli-auth-CON-1 | ✅ Complete |
-| TC-087 | Static + integration: `auth-secret.ts` builds manifest with `metadata.namespace: ${IX_SYSTEM_NAMESPACE}`; applied Secret in `system`, never `auth` | Static + Integration | P1 | ix-cli-auth-CON-2 | ⚠️ Partial (static complete; integration pending) |
-| TC-088 | Static grep: every `kubectlRaw(...)` invocation in `packages/local/src/commands/auth-*.ts` passes `IX_AUTH_NAMESPACE` (or equivalent constant) as the namespace argument | Static | P1 | ix-cli-auth-CON-3 | ✅ Complete |
-| TC-089 | Integration: Deployable entries for `identity`, `auth-service`, `permission-service` declare `namespace: IX_AUTH_NAMESPACE`; helm releases land in `auth` after `ix up` | Integration | P1 | ix-cli-auth-CON-5 | ❌ Missing |
+| Test ID | Title                                                                                                                                                                    | Type                 | Priority | Traces To                           | Status                                            |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- | -------- | ----------------------------------- | ------------------------------------------------- |
+| TC-001  | index.ts exports runUp                                                                                                                                                   | Static               | P1       | FR-001-AC-1                         | ✅ Complete                                       |
+| TC-002  | index.ts exports runDown                                                                                                                                                 | Static               | P1       | FR-001-AC-1                         | ✅ Complete                                       |
+| TC-003  | index.ts exports runList                                                                                                                                                 | Static               | P1       | FR-001-AC-1                         | ✅ Complete                                       |
+| TC-004  | index.ts exports runAuthInit                                                                                                                                             | Static               | P1       | FR-001-AC-1                         | ✅ Complete                                       |
+| TC-005  | index.ts exports runInitCluster                                                                                                                                          | Static               | P1       | FR-001-AC-1                         | ✅ Complete                                       |
+| TC-006  | index.ts exports runAuthResetAdmin, runAuthInvite, runAuthResetUser                                                                                                      | Static               | P2       | FR-001-AC-1                         | ✅ Complete                                       |
+| TC-007  | No AppDisplay reference in src                                                                                                                                           | Static               | P1       | FR-002-AC-3                         | ✅ Complete                                       |
+| TC-008  | phases.ts exports Phase type                                                                                                                                             | Static               | P1       | FR-002-AC-4                         | ✅ Complete                                       |
+| TC-009  | Phase type not declared outside phases.ts                                                                                                                                | Static               | P1       | FR-002-AC-4                         | ✅ Complete                                       |
+| TC-010  | PhaseTable imported from @agent-ix/ix-ui-cli, not a local file                                                                                                           | Static               | P1       | FR-002-AC-1, NFR-001-AC-3           | ✅ Complete                                       |
+| TC-011  | No console.log/error/warn/info calls in src                                                                                                                              | Static               | P1       | NFR-001-AC-1                        | ✅ Complete                                       |
+| TC-012  | No process.stderr.write calls in src                                                                                                                                     | Static               | P1       | NFR-001-AC-1                        | ✅ Complete                                       |
+| TC-013  | Every command file using introCommand imports it from @agent-ix/ix-ui-cli                                                                                                | Static               | P1       | NFR-001-AC-2                        | ✅ Complete                                       |
+| TC-014  | queued phase state signalled when pool slot unavailable                                                                                                                  | Unit                 | P1       | FR-003-AC-1                         | ✅ Complete                                       |
+| TC-015  | Child failure does not abort sibling concurrent pipelines                                                                                                                | Integration          | P1       | FR-003-AC-2                         | ❌ Missing                                        |
+| TC-016  | Exit code 0 iff all children succeeded; exit 1 if any failed                                                                                                             | Integration          | P1       | FR-003-AC-3                         | ❌ Missing                                        |
+| TC-017  | ix-local-cli FR-001–FR-020 ACs verified in implementation                                                                                                                | Review               | P2       | FR-001-AC-2                         | Review                                            |
+| TC-018  | ix-local-cli FR-022 ACs satisfied via PhaseTable                                                                                                                         | Review               | P2       | FR-002-AC-2                         | Review                                            |
+| TC-007  | index.ts exports runClusterUp                                                                                                                                            | Static               | P1       | FR-004-AC-1                         | ✅ Complete                                       |
+| TC-008  | index.ts exports computeEffectiveDeploySet                                                                                                                               | Static               | P1       | FR-004-AC-1, FR-005                 | ✅ Complete                                       |
+| TC-009  | index.ts exports runClusterDown                                                                                                                                          | Static               | P1       | FR-004-AC-1, FR-006                 | ✅ Complete                                       |
+| TC-010  | index.ts exports runClusterStatus                                                                                                                                        | Static               | P1       | FR-004-AC-1, FR-007                 | ✅ Complete                                       |
+| TC-011  | index.ts exports loadClusterConfig                                                                                                                                       | Static               | P1       | FR-004-AC-1, FR-009                 | ✅ Complete                                       |
+| TC-022  | loadClusterConfig: absent file returns defaults                                                                                                                          | Unit                 | P1       | FR-009-AC-1                         | ✅ Complete                                       |
+| TC-023  | loadClusterConfig: cluster key parsed correctly                                                                                                                          | Unit                 | P1       | FR-009-AC-2                         | ✅ Complete                                       |
+| TC-024  | loadClusterConfig: non-array defaultTags throws ConfigValidationError                                                                                                    | Unit                 | P1       | FR-009-AC-3                         | ✅ Complete                                       |
+| TC-025  | computeEffectiveDeploySet: ix-core tagged apps included                                                                                                                  | Unit                 | P1       | FR-005-AC-2, FR-008-AC-1            | ✅ Complete                                       |
+| TC-026  | computeEffectiveDeploySet: non-tagged apps excluded                                                                                                                      | Unit                 | P1       | FR-005-AC-2, FR-008-AC-2            | ✅ Complete                                       |
+| TC-027  | computeEffectiveDeploySet: skipApps excludes tagged app                                                                                                                  | Unit                 | P1       | FR-005-AC-4                         | ✅ Complete                                       |
+| TC-028  | computeEffectiveDeploySet: extraApps includes untagged app                                                                                                               | Unit                 | P1       | FR-005-AC-3                         | ✅ Complete                                       |
+| TC-029  | computeEffectiveDeploySet: deduplication — one app appears once                                                                                                          | Unit                 | P1       | FR-005-AC-5                         | ✅ Complete                                       |
+| TC-030  | computeEffectiveDeploySet: skipApps precedence over extraApps                                                                                                            | Unit                 | P1       | FR-005-AC-4                         | ✅ Complete                                       |
+| TC-031  | computeEffectiveDeploySet: deterministic output                                                                                                                          | Unit                 | P2       | FR-005-AC-6                         | ✅ Complete                                       |
+| TC-032  | runClusterDown: --yes skips prompt, calls kind delete                                                                                                                    | Unit                 | P1       | FR-006-AC-2, NFR-002-AC-3           | ✅ Complete                                       |
+| TC-033  | runClusterDown: prompt returns false — no deletion                                                                                                                       | Unit                 | P1       | FR-006-AC-2, NFR-002-AC-2           | ✅ Complete                                       |
+| TC-034  | runClusterDown: prompt cancelled — no deletion                                                                                                                           | Unit                 | P1       | FR-006-AC-2, NFR-002-AC-2           | ✅ Complete                                       |
+| TC-035  | runClusterDown: absent cluster exits 0                                                                                                                                   | Unit                 | P1       | FR-006-AC-3                         | ✅ Complete                                       |
+| TC-036  | runClusterDown: kind delete failure propagates                                                                                                                           | Unit                 | P1       | FR-006-AC-5                         | ✅ Complete                                       |
+| TC-037  | runClusterDown: no helm uninstall called                                                                                                                                 | Unit                 | P2       | FR-006-AC-4                         | ✅ Complete                                       |
+| TC-038  | runClusterDown: prompt message contains cluster name                                                                                                                     | Unit                 | P1       | NFR-002-AC-1                        | ✅ Complete                                       |
+| TC-039  | runClusterStatus: node table columns rendered                                                                                                                            | Unit                 | P1       | FR-007-AC-1–AC-3                    | ✅ Complete                                       |
+| TC-040  | runClusterStatus: all healthy → outroSuccess only                                                                                                                        | Unit                 | P1       | FR-007-AC-4                         | ✅ Complete                                       |
+| TC-041  | runClusterStatus: unhealthy pod → pod table shown                                                                                                                        | Unit                 | P1       | FR-007-AC-5                         | ✅ Complete                                       |
+| TC-042  | runClusterStatus: kubectl failure throws descriptive error                                                                                                               | Unit                 | P1       | FR-007-AC-6                         | ✅ Complete                                       |
+| TC-043  | runClusterStatus: picocolors mock strips ANSI codes                                                                                                                      | Unit                 | P2       | FR-007-AC-7                         | ✅ Complete                                       |
+| TC-080  | Static grep: `auth-init.ts` and `auth-reset-admin.ts` contain no `fetch\|http://\|https://\|kubectlRaw\|--raw` references                                                | Static               | P1       | ix-cli-auth-AC-1, ix-cli-auth-CON-1 | ✅ Complete                                       |
+| TC-081  | After `ix up`: `kubectl get ns system auth platform apps` returns all four                                                                                               | Integration          | P1       | ix-cli-auth-AC-2                    | ❌ Missing                                        |
+| TC-082  | After `ix local init`: `kubectl get secret admin-bootstrap -n system` succeeds; `-n auth` returns NotFound                                                               | Integration          | P1       | ix-cli-auth-AC-3, ix-cli-auth-CON-2 | ❌ Missing                                        |
+| TC-083  | After `ix up`: `kubectl get deployment identity -n auth` returns the deployment                                                                                          | Integration          | P1       | ix-cli-auth-AC-4, ix-cli-auth-CON-5 | ❌ Missing                                        |
+| TC-084  | `ix local auth reset-user <admin-email>` displays "use `ix local auth reset-admin`" guidance and exits non-zero                                                          | Integration          | P1       | ix-cli-auth-AC-5                    | ❌ Missing                                        |
+| TC-085  | Static grep: no namespace string literals (`"default"`, `"auth"`, `"system"`, `"platform"`, `"apps"`, `"ix-system"`) in `packages/local/src/` outside `config.ts`        | Static               | P1       | ix-cli-auth-AC-6, ix-cli-auth-CON-4 | ✅ Complete                                       |
+| TC-086  | Static grep: `auth-init.ts` only uses `kubectlExecJson`/`kubectl` shell-out; `auth-reset-admin.ts` likewise; neither imports `fetch`/`undici`                            | Static               | P1       | ix-cli-auth-CON-1                   | ✅ Complete                                       |
+| TC-087  | Static + integration: `auth-secret.ts` builds manifest with `metadata.namespace: ${IX_SYSTEM_NAMESPACE}`; applied Secret in `system`, never `auth`                       | Static + Integration | P1       | ix-cli-auth-CON-2                   | ⚠️ Partial (static complete; integration pending) |
+| TC-088  | Static grep: every `kubectlRaw(...)` invocation in `packages/local/src/commands/auth-*.ts` passes `IX_AUTH_NAMESPACE` (or equivalent constant) as the namespace argument | Static               | P1       | ix-cli-auth-CON-3                   | ✅ Complete                                       |
+| TC-089  | Integration: Deployable entries for `identity`, `auth-service`, `permission-service` declare `namespace: IX_AUTH_NAMESPACE`; helm releases land in `auth` after `ix up`  | Integration          | P1       | ix-cli-auth-CON-5                   | ❌ Missing                                        |
 
 ---
 
@@ -211,121 +242,121 @@ Tests fall into four types:
 
 ### Stakeholder Requirement Coverage
 
-| Stakeholder Req | Trace to FR | Test Cases | Coverage Status |
-|-----------------|-------------|------------|-----------------|
-| StR-001 | FR-010, FR-011, FR-012 | TC-044–TC-075 | ✅ Partial (unit + static; integration pending) |
+| Stakeholder Req | Trace to FR            | Test Cases    | Coverage Status                                 |
+| --------------- | ---------------------- | ------------- | ----------------------------------------------- |
+| StR-001         | FR-010, FR-011, FR-012 | TC-044–TC-075 | ✅ Partial (unit + static; integration pending) |
 
 ### Functional Requirement Coverage
 
-| Functional Req | Acceptance Criteria | Test Cases | Coverage Status |
-|----------------|---------------------|------------|-----------------|
-| FR-010 | AC-1: groups by tap, root first | TC-071 | ✅ Complete (unit) |
-| FR-010 | AC-2: shows name + description | TC-072 | ✅ Complete (unit) |
-| FR-010 | AC-3: --refresh bypasses cache | TC-076 | ✅ Complete (unit) |
-| FR-010 | AC-4: empty state message | TC-078 | ✅ Complete (unit) |
-| FR-010 | AC-5: no console.log in command handler | TC-048 | ✅ Complete (static) |
-| FR-011 | AC-1: unknown type throws helpful error | TC-075 | ✅ Complete (unit) |
-| FR-011 | AC-2: clone/update to cache dir | — | ❌ Missing (integration) |
-| FR-011 | AC-3: cookiecutter invocation | — | ❌ Missing (integration) |
-| FR-011 | AC-4: git init + initial commit | — | ❌ Missing (integration) |
-| FR-011 | AC-5: gh repo create --private | — | ❌ Missing (integration) |
-| FR-011 | AC-6: --no-git / --no-github flags | — | ❌ Missing (integration) |
-| FR-011 | AC-7: --org override | — | ❌ Missing (integration) |
-| FR-012 | AC-1: tap add appends + invalidates cache | TC-059 | ✅ Complete (unit) |
-| FR-012 | AC-2: duplicate tap is no-op | TC-060 | ✅ Complete (unit) |
-| FR-012 | AC-3: URL format validation | TC-056–TC-058, TC-061 | ✅ Complete (unit) |
-| FR-012 | AC-4: tap remove + invalidates cache | TC-062 | ✅ Complete (unit) |
-| FR-012 | AC-5: remove root tap throws | TC-063 | ✅ Complete (unit) |
-| FR-012 | AC-6: tap list marks root with (root) | TC-077 | ✅ Complete (unit) |
-| FR-012 | AC-7: root tap always present | TC-064 | ✅ Complete (unit) |
-| FR-013 | AC-1–AC-3: new element scaffolding | — | ❌ Missing (stub — pending meta-template) |
-| FR-013 | AC-4: manual steps printed | — | Review |
+| Functional Req | Acceptance Criteria                       | Test Cases            | Coverage Status                           |
+| -------------- | ----------------------------------------- | --------------------- | ----------------------------------------- |
+| FR-010         | AC-1: groups by tap, root first           | TC-071                | ✅ Complete (unit)                        |
+| FR-010         | AC-2: shows name + description            | TC-072                | ✅ Complete (unit)                        |
+| FR-010         | AC-3: --refresh bypasses cache            | TC-076                | ✅ Complete (unit)                        |
+| FR-010         | AC-4: empty state message                 | TC-078                | ✅ Complete (unit)                        |
+| FR-010         | AC-5: no console.log in command handler   | TC-048                | ✅ Complete (static)                      |
+| FR-011         | AC-1: unknown type throws helpful error   | TC-075                | ✅ Complete (unit)                        |
+| FR-011         | AC-2: clone/update to cache dir           | —                     | ❌ Missing (integration)                  |
+| FR-011         | AC-3: cookiecutter invocation             | —                     | ❌ Missing (integration)                  |
+| FR-011         | AC-4: git init + initial commit           | —                     | ❌ Missing (integration)                  |
+| FR-011         | AC-5: gh repo create --private            | —                     | ❌ Missing (integration)                  |
+| FR-011         | AC-6: --no-git / --no-github flags        | —                     | ❌ Missing (integration)                  |
+| FR-011         | AC-7: --org override                      | —                     | ❌ Missing (integration)                  |
+| FR-012         | AC-1: tap add appends + invalidates cache | TC-059                | ✅ Complete (unit)                        |
+| FR-012         | AC-2: duplicate tap is no-op              | TC-060                | ✅ Complete (unit)                        |
+| FR-012         | AC-3: URL format validation               | TC-056–TC-058, TC-061 | ✅ Complete (unit)                        |
+| FR-012         | AC-4: tap remove + invalidates cache      | TC-062                | ✅ Complete (unit)                        |
+| FR-012         | AC-5: remove root tap throws              | TC-063                | ✅ Complete (unit)                        |
+| FR-012         | AC-6: tap list marks root with (root)     | TC-077                | ✅ Complete (unit)                        |
+| FR-012         | AC-7: root tap always present             | TC-064                | ✅ Complete (unit)                        |
+| FR-013         | AC-1–AC-3: new element scaffolding        | —                     | ❌ Missing (stub — pending meta-template) |
+| FR-013         | AC-4: manual steps printed                | —                     | Review                                    |
 
 ### Non-Functional Requirement Coverage
 
-| Non-Functional Req | Verification Method | Test Cases | Status |
-|--------------------|---------------------|------------|--------|
-| NFR-001-AC-1 | Static grep: no console.log/error/warn/info | TC-048 | ✅ Complete (static) |
-| NFR-001-AC-1 | Static grep: no process.stderr.write | TC-049 | ✅ Complete (static) |
-| NFR-001-AC-2 | Static grep: introCommand imported from @agent-ix/ix-ui-cli | TC-050 | ✅ Complete (static) |
+| Non-Functional Req | Verification Method                                         | Test Cases | Status               |
+| ------------------ | ----------------------------------------------------------- | ---------- | -------------------- |
+| NFR-001-AC-1       | Static grep: no console.log/error/warn/info                 | TC-048     | ✅ Complete (static) |
+| NFR-001-AC-1       | Static grep: no process.stderr.write                        | TC-049     | ✅ Complete (static) |
+| NFR-001-AC-2       | Static grep: introCommand imported from @agent-ix/ix-ui-cli | TC-050     | ✅ Complete (static) |
 
 ### Test Case Summary — packages/elements
 
-| Test ID | Title | Type | Priority | Traces To | Status |
-|---------|-------|------|----------|-----------|--------|
-| TC-044 | index.ts exports runElementsList | Static | P1 | FR-010 | ✅ Complete |
-| TC-045 | index.ts exports runInit | Static | P1 | FR-011 | ✅ Complete |
-| TC-046 | index.ts exports runElementsNew | Static | P1 | FR-013 | ✅ Complete |
-| TC-047 | index.ts exports runTapAdd, runTapRemove, runTapList | Static | P1 | FR-012 | ✅ Complete |
-| TC-048 | No console.log in src | Static | P1 | NFR-001-AC-1, FR-010-AC-5 | ✅ Complete |
-| TC-049 | No process.stderr.write in src | Static | P1 | NFR-001-AC-1 | ✅ Complete |
-| TC-050 | introCommand imported from @agent-ix/ix-ui-cli | Static | P1 | NFR-001-AC-2 | ✅ Complete |
-| TC-051 | readCache returns null for cold cache | Unit | P1 | FR-010 | ✅ Complete |
-| TC-052 | writeCache/readCache round-trips elements | Unit | P1 | FR-010 | ✅ Complete |
-| TC-053 | readCache returns null and deletes file after TTL expiry | Unit | P1 | FR-010 | ✅ Complete |
-| TC-054 | readCache returns null after explicit invalidation | Unit | P1 | FR-012-AC-1 | ✅ Complete |
-| TC-055 | invalidateCache() clears all taps | Unit | P1 | FR-012-AC-1 | ✅ Complete |
-| TC-056 | validateTapUrl accepts github.com/<org> | Unit | P1 | FR-012-AC-3 | ✅ Complete |
-| TC-057 | validateTapUrl accepts github.com/<org>/<repo> | Unit | P1 | FR-012-AC-3 | ✅ Complete |
-| TC-058 | validateTapUrl rejects invalid formats (bare domain, traversal, non-github) | Unit | P1 | FR-012-AC-3 | ✅ Complete |
-| TC-059 | addTap returns true for new tap | Unit | P1 | FR-012-AC-1 | ✅ Complete |
-| TC-060 | addTap returns false for duplicate | Unit | P1 | FR-012-AC-2 | ✅ Complete |
-| TC-061 | addTap rejects invalid URL before writing config | Unit | P1 | FR-012-AC-3 | ✅ Complete |
-| TC-062 | removeTap removes tap from config | Unit | P1 | FR-012-AC-4 | ✅ Complete |
-| TC-063 | removeTap throws for root tap | Unit | P1 | FR-012-AC-5 | ✅ Complete |
-| TC-064 | loadTapConfig always includes root tap | Unit | P1 | FR-012-AC-7 | ✅ Complete |
-| TC-065 | parseFrontmatter extracts component_type + template_for | Unit | P1 | FR-010 | ✅ Complete |
-| TC-066 | parseFrontmatter returns null for missing frontmatter | Unit | P1 | FR-010 | ✅ Complete |
-| TC-067 | parseFrontmatter returns null for malformed YAML | Unit | P1 | FR-010 | ✅ Complete |
-| TC-068 | toSlug: lowercases, spaces/underscores → hyphens | Unit | P1 | FR-011 | ✅ Complete |
-| TC-069 | toSlug: strips path traversal (.., /, \) | Unit | P1 | FR-011 (security) | ✅ Complete |
-| TC-070 | toSlug: strips non-alphanumeric chars | Unit | P1 | FR-011 (security) | ✅ Complete |
-| TC-071 | resolveAllElements: cache hit — no GitHub fetch | Unit | P1 | FR-010-AC-3 | ✅ Complete |
-| TC-072 | resolveAllElements: cache miss → index → writes cache | Unit | P1 | FR-010 | ✅ Complete |
-| TC-073 | resolveAllElements: index null → falls back to topic search | Unit | P1 | FR-010 | ✅ Complete |
-| TC-074 | resolveElementByType returns matching element | Unit | P1 | FR-011-AC-1 | ✅ Complete |
-| TC-075 | resolveElementByType throws helpful error for unknown type | Unit | P1 | FR-011-AC-1 | ✅ Complete |
-| TC-076 | resolveAllElements: refresh=true skips cache read | Unit | P1 | FR-010-AC-3 | ✅ Complete |
-| TC-077 | runTapList: root tap entry contains "(root)", others do not | Unit | P1 | FR-012-AC-6 | ✅ Complete |
-| TC-078 | runElementsList: empty result directs user to add a tap | Unit | P1 | FR-010-AC-4 | ✅ Complete |
-| TC-090 | runUp options accept refresh boolean and pass it to source mode | Static | P1 | FR-030-AC-1, FR-030-AC-2 | ✅ Complete |
-| TC-091 | UpFilterOptions declares refresh field | Static | P1 | FR-030-AC-2 | ✅ Complete |
-| TC-092 | runSourceModeUp forces dependencyUpdate=true when refresh is set | Static | P1 | FR-030-AC-3 | ✅ Complete |
-| TC-093 | up-image.ts builds umbrella install args; per-subchart helper removed | Static | P1 | FR-031-AC-1, FR-031-AC-2 | ✅ Complete |
-| TC-094 | Umbrella path issues `helm pull` against the app OCI ref, not per-subchart | Static | P1 | FR-031-AC-2 | ✅ Complete |
-| TC-095 | Rollout status appends settling marker when ready but not reconciled | Static | P1 | FR-031-AC-8 | ✅ Complete |
-| TC-109 | waitForRollout enriches onStatus with ·start label when readyReplicas=0 | Unit | P1 | FR-031-AC-13 | ✅ Complete |
-| TC-110 | getRolloutReadyStatus returns `1/1·settle` when old ready Deployment pods exist but updatedReplicas is incomplete | Unit | P1 | FR-031-AC-8 | ✅ Complete |
-| TC-111 | getRolloutReadyStatus returns `1/1·settle` while StatefulSet revisions differ | Unit | P1 | FR-031-AC-8 | ✅ Complete |
-| TC-112 | AppInstallRows keeps `1/1·settle` active, then completes on plain `1/1` | Unit | P1 | FR-031-AC-14 | ✅ Complete |
-| TC-096 | runDown uninstalls the umbrella release first for role=app | Static | P1 | FR-031-AC-11 | ✅ Complete |
-| TC-097 | runDown deduplicates releases via a seen set | Static | P1 | FR-031-AC-11 | ✅ Complete |
-| TC-098 | local-secrets exports ensureGhcrCredsInNamespace producing dockerconfigjson | Static | P1 | FR-032-AC-1, FR-032-AC-2 | ✅ Complete |
-| TC-099 | runImageModeUp calls ensureGhcrCredsInNamespace before helm install for every install ns | Static | P1 | FR-032-AC-3 | ✅ Complete |
-| TC-100 | local-secrets exports loadSecretContractFromTgz | Static | P1 | FR-033-AC-1 | ✅ Complete |
-| TC-101 | up-image.ts does not call findSecretContractDir | Static | P1 | FR-033-AC-2 | ✅ Complete |
-| TC-102 | runImageModeUp does not declare devDir parameter | Static | P1 | FR-033-AC-3 | ✅ Complete |
-| TC-103 | UP_PHASES has pull before secrets | Static | P1 | FR-033-AC-4 | ✅ Complete |
-| TC-104 | up-image.ts imports loadSecretContractFromTgz | Static | P1 | FR-033-AC-1, FR-033-AC-5 | ✅ Complete |
-| TC-105 | loadSecretContractFromTgz returns null when no ix-local.secrets.yaml in chart | Unit | P1 | FR-033-AC-7 | ✅ Complete |
-| TC-106 | loadSecretContractFromTgz returns parsed contract when ix-local.secrets.yaml present | Unit | P1 | FR-033-AC-1 | ✅ Complete |
-| TC-107 | loadSecretContractFromTgz cleans up tmpDir on success and on error | Unit | P1 | FR-033-AC-8 | ✅ Complete |
-| TC-108 | Single-service: runImageModeUp pulls chart tgz before install | Static | P1 | FR-033-AC-6 | ✅ Complete |
-| TC-274 | App-mode bundled subcharts may be directories or tgzs; up-image supports both | Static | P1 | FR-033-AC-5, FR-033-AC-9 | ✅ Complete |
-| TC-275 | App-mode bundled subchart directory path imports and calls loadSecretContract | Static | P1 | FR-033-AC-5, FR-033-AC-10 | ✅ Complete |
-| TC-276 | App umbrella install polls detectHelmHookFailure and aborts helm on hook failure | Static + Unit | P1 | FR-033-AC-13 | ✅ Complete |
-| TC-280c | unmatched umbrella install failures pass failed final state to PhaseTable | Static | P1 | FR-031-AC-6 | ✅ Complete |
-| TC-282 | Image command wrapper delegates Helm/Kubernetes orchestration to `up-image-controller` | Static | P1 | NFR-001-AC-6 | ✅ Complete |
-| TC-283 | Source command wrapper delegates process orchestration to `up-source-controller` | Static | P1 | NFR-001-AC-6 | ✅ Complete |
-| TC-284 | init-cluster command wrapper delegates bootstrap process orchestration to `init-cluster-controller` | Static | P1 | NFR-001-AC-6 | ✅ Complete |
-| TC-285 | PhaseRows creates pending rows for every service and phase | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
-| TC-286 | PhaseRows emits immutable snapshots when phases change | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
-| TC-287 | PhaseRows marks failures and finishes prior pending/running phases | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
-| TC-288 | PhaseRows snapshots clone row and phase maps | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
-| TC-289 | Single-service image mode marks Helm upgrade failures on the install phase | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
-| TC-290 | Source mode marks secret application failures on the secrets phase | Unit | P1 | NFR-001-AC-7 | ✅ Complete |
-| TC-277 | Published chart artifact contains `ix-local.secrets.yaml` only when the source chart places it inside the packaged chart tree | Artifact inspection | P1 | FR-033-AC-11 | ❌ Missing |
-| TC-278 | A chart whose rendered manifests reference a materialized Secret but whose published artifact lacks the contract is flagged as an artifact defect | Artifact + manifest inspection | P1 | FR-033-AC-12 | ❌ Missing |
+| Test ID | Title                                                                                                                                             | Type                           | Priority | Traces To                 | Status      |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | -------- | ------------------------- | ----------- |
+| TC-044  | index.ts exports runElementsList                                                                                                                  | Static                         | P1       | FR-010                    | ✅ Complete |
+| TC-045  | index.ts exports runInit                                                                                                                          | Static                         | P1       | FR-011                    | ✅ Complete |
+| TC-046  | index.ts exports runElementsNew                                                                                                                   | Static                         | P1       | FR-013                    | ✅ Complete |
+| TC-047  | index.ts exports runTapAdd, runTapRemove, runTapList                                                                                              | Static                         | P1       | FR-012                    | ✅ Complete |
+| TC-048  | No console.log in src                                                                                                                             | Static                         | P1       | NFR-001-AC-1, FR-010-AC-5 | ✅ Complete |
+| TC-049  | No process.stderr.write in src                                                                                                                    | Static                         | P1       | NFR-001-AC-1              | ✅ Complete |
+| TC-050  | introCommand imported from @agent-ix/ix-ui-cli                                                                                                    | Static                         | P1       | NFR-001-AC-2              | ✅ Complete |
+| TC-051  | readCache returns null for cold cache                                                                                                             | Unit                           | P1       | FR-010                    | ✅ Complete |
+| TC-052  | writeCache/readCache round-trips elements                                                                                                         | Unit                           | P1       | FR-010                    | ✅ Complete |
+| TC-053  | readCache returns null and deletes file after TTL expiry                                                                                          | Unit                           | P1       | FR-010                    | ✅ Complete |
+| TC-054  | readCache returns null after explicit invalidation                                                                                                | Unit                           | P1       | FR-012-AC-1               | ✅ Complete |
+| TC-055  | invalidateCache() clears all taps                                                                                                                 | Unit                           | P1       | FR-012-AC-1               | ✅ Complete |
+| TC-056  | validateTapUrl accepts github.com/<org>                                                                                                           | Unit                           | P1       | FR-012-AC-3               | ✅ Complete |
+| TC-057  | validateTapUrl accepts github.com/<org>/<repo>                                                                                                    | Unit                           | P1       | FR-012-AC-3               | ✅ Complete |
+| TC-058  | validateTapUrl rejects invalid formats (bare domain, traversal, non-github)                                                                       | Unit                           | P1       | FR-012-AC-3               | ✅ Complete |
+| TC-059  | addTap returns true for new tap                                                                                                                   | Unit                           | P1       | FR-012-AC-1               | ✅ Complete |
+| TC-060  | addTap returns false for duplicate                                                                                                                | Unit                           | P1       | FR-012-AC-2               | ✅ Complete |
+| TC-061  | addTap rejects invalid URL before writing config                                                                                                  | Unit                           | P1       | FR-012-AC-3               | ✅ Complete |
+| TC-062  | removeTap removes tap from config                                                                                                                 | Unit                           | P1       | FR-012-AC-4               | ✅ Complete |
+| TC-063  | removeTap throws for root tap                                                                                                                     | Unit                           | P1       | FR-012-AC-5               | ✅ Complete |
+| TC-064  | loadTapConfig always includes root tap                                                                                                            | Unit                           | P1       | FR-012-AC-7               | ✅ Complete |
+| TC-065  | parseFrontmatter extracts component_type + template_for                                                                                           | Unit                           | P1       | FR-010                    | ✅ Complete |
+| TC-066  | parseFrontmatter returns null for missing frontmatter                                                                                             | Unit                           | P1       | FR-010                    | ✅ Complete |
+| TC-067  | parseFrontmatter returns null for malformed YAML                                                                                                  | Unit                           | P1       | FR-010                    | ✅ Complete |
+| TC-068  | toSlug: lowercases, spaces/underscores → hyphens                                                                                                  | Unit                           | P1       | FR-011                    | ✅ Complete |
+| TC-069  | toSlug: strips path traversal (.., /, \)                                                                                                          | Unit                           | P1       | FR-011 (security)         | ✅ Complete |
+| TC-070  | toSlug: strips non-alphanumeric chars                                                                                                             | Unit                           | P1       | FR-011 (security)         | ✅ Complete |
+| TC-071  | resolveAllElements: cache hit — no GitHub fetch                                                                                                   | Unit                           | P1       | FR-010-AC-3               | ✅ Complete |
+| TC-072  | resolveAllElements: cache miss → index → writes cache                                                                                             | Unit                           | P1       | FR-010                    | ✅ Complete |
+| TC-073  | resolveAllElements: index null → falls back to topic search                                                                                       | Unit                           | P1       | FR-010                    | ✅ Complete |
+| TC-074  | resolveElementByType returns matching element                                                                                                     | Unit                           | P1       | FR-011-AC-1               | ✅ Complete |
+| TC-075  | resolveElementByType throws helpful error for unknown type                                                                                        | Unit                           | P1       | FR-011-AC-1               | ✅ Complete |
+| TC-076  | resolveAllElements: refresh=true skips cache read                                                                                                 | Unit                           | P1       | FR-010-AC-3               | ✅ Complete |
+| TC-077  | runTapList: root tap entry contains "(root)", others do not                                                                                       | Unit                           | P1       | FR-012-AC-6               | ✅ Complete |
+| TC-078  | runElementsList: empty result directs user to add a tap                                                                                           | Unit                           | P1       | FR-010-AC-4               | ✅ Complete |
+| TC-090  | runUp options accept refresh boolean and pass it to source mode                                                                                   | Static                         | P1       | FR-030-AC-1, FR-030-AC-2  | ✅ Complete |
+| TC-091  | UpFilterOptions declares refresh field                                                                                                            | Static                         | P1       | FR-030-AC-2               | ✅ Complete |
+| TC-092  | runSourceModeUp forces dependencyUpdate=true when refresh is set                                                                                  | Static                         | P1       | FR-030-AC-3               | ✅ Complete |
+| TC-093  | up-image.ts builds umbrella install args; per-subchart helper removed                                                                             | Static                         | P1       | FR-031-AC-1, FR-031-AC-2  | ✅ Complete |
+| TC-094  | Umbrella path issues `helm pull` against the app OCI ref, not per-subchart                                                                        | Static                         | P1       | FR-031-AC-2               | ✅ Complete |
+| TC-095  | Rollout status appends settling marker when ready but not reconciled                                                                              | Static                         | P1       | FR-031-AC-8               | ✅ Complete |
+| TC-109  | waitForRollout enriches onStatus with ·start label when readyReplicas=0                                                                           | Unit                           | P1       | FR-031-AC-13              | ✅ Complete |
+| TC-110  | getRolloutReadyStatus returns `1/1·settle` when old ready Deployment pods exist but updatedReplicas is incomplete                                 | Unit                           | P1       | FR-031-AC-8               | ✅ Complete |
+| TC-111  | getRolloutReadyStatus returns `1/1·settle` while StatefulSet revisions differ                                                                     | Unit                           | P1       | FR-031-AC-8               | ✅ Complete |
+| TC-112  | AppInstallRows keeps `1/1·settle` active, then completes on plain `1/1`                                                                           | Unit                           | P1       | FR-031-AC-14              | ✅ Complete |
+| TC-096  | runDown uninstalls the umbrella release first for role=app                                                                                        | Static                         | P1       | FR-031-AC-11              | ✅ Complete |
+| TC-097  | runDown deduplicates releases via a seen set                                                                                                      | Static                         | P1       | FR-031-AC-11              | ✅ Complete |
+| TC-098  | local-secrets exports ensureGhcrCredsInNamespace producing dockerconfigjson                                                                       | Static                         | P1       | FR-032-AC-1, FR-032-AC-2  | ✅ Complete |
+| TC-099  | runImageModeUp calls ensureGhcrCredsInNamespace before helm install for every install ns                                                          | Static                         | P1       | FR-032-AC-3               | ✅ Complete |
+| TC-100  | local-secrets exports loadSecretContractFromTgz                                                                                                   | Static                         | P1       | FR-033-AC-1               | ✅ Complete |
+| TC-101  | up-image.ts does not call findSecretContractDir                                                                                                   | Static                         | P1       | FR-033-AC-2               | ✅ Complete |
+| TC-102  | runImageModeUp does not declare devDir parameter                                                                                                  | Static                         | P1       | FR-033-AC-3               | ✅ Complete |
+| TC-103  | UP_PHASES has pull before secrets                                                                                                                 | Static                         | P1       | FR-033-AC-4               | ✅ Complete |
+| TC-104  | up-image.ts imports loadSecretContractFromTgz                                                                                                     | Static                         | P1       | FR-033-AC-1, FR-033-AC-5  | ✅ Complete |
+| TC-105  | loadSecretContractFromTgz returns null when no ix-local.secrets.yaml in chart                                                                     | Unit                           | P1       | FR-033-AC-7               | ✅ Complete |
+| TC-106  | loadSecretContractFromTgz returns parsed contract when ix-local.secrets.yaml present                                                              | Unit                           | P1       | FR-033-AC-1               | ✅ Complete |
+| TC-107  | loadSecretContractFromTgz cleans up tmpDir on success and on error                                                                                | Unit                           | P1       | FR-033-AC-8               | ✅ Complete |
+| TC-108  | Single-service: runImageModeUp pulls chart tgz before install                                                                                     | Static                         | P1       | FR-033-AC-6               | ✅ Complete |
+| TC-274  | App-mode bundled subcharts may be directories or tgzs; up-image supports both                                                                     | Static                         | P1       | FR-033-AC-5, FR-033-AC-9  | ✅ Complete |
+| TC-275  | App-mode bundled subchart directory path imports and calls loadSecretContract                                                                     | Static                         | P1       | FR-033-AC-5, FR-033-AC-10 | ✅ Complete |
+| TC-276  | App umbrella install polls detectHelmHookFailure and aborts helm on hook failure                                                                  | Static + Unit                  | P1       | FR-033-AC-13              | ✅ Complete |
+| TC-280c | unmatched umbrella install failures pass failed final state to PhaseTable                                                                         | Static                         | P1       | FR-031-AC-6               | ✅ Complete |
+| TC-282  | Image command wrapper delegates Helm/Kubernetes orchestration to `up-image-controller`                                                            | Static                         | P1       | NFR-001-AC-6              | ✅ Complete |
+| TC-283  | Source command wrapper delegates process orchestration to `up-source-controller`                                                                  | Static                         | P1       | NFR-001-AC-6              | ✅ Complete |
+| TC-284  | init-cluster command wrapper delegates bootstrap process orchestration to `init-cluster-controller`                                               | Static                         | P1       | NFR-001-AC-6              | ✅ Complete |
+| TC-285  | PhaseRows creates pending rows for every service and phase                                                                                        | Unit                           | P1       | NFR-001-AC-7              | ✅ Complete |
+| TC-286  | PhaseRows emits immutable snapshots when phases change                                                                                            | Unit                           | P1       | NFR-001-AC-7              | ✅ Complete |
+| TC-287  | PhaseRows marks failures and finishes prior pending/running phases                                                                                | Unit                           | P1       | NFR-001-AC-7              | ✅ Complete |
+| TC-288  | PhaseRows snapshots clone row and phase maps                                                                                                      | Unit                           | P1       | NFR-001-AC-7              | ✅ Complete |
+| TC-289  | Single-service image mode marks Helm upgrade failures on the install phase                                                                        | Unit                           | P1       | NFR-001-AC-7              | ✅ Complete |
+| TC-290  | Source mode marks secret application failures on the secrets phase                                                                                | Unit                           | P1       | NFR-001-AC-7              | ✅ Complete |
+| TC-277  | Published chart artifact contains `ix-local.secrets.yaml` only when the source chart places it inside the packaged chart tree                     | Artifact inspection            | P1       | FR-033-AC-11              | ❌ Missing  |
+| TC-278  | A chart whose rendered manifests reference a materialized Secret but whose published artifact lacks the contract is flagged as an artifact defect | Artifact + manifest inspection | P1       | FR-033-AC-12              | ❌ Missing  |
 
 ---
 
@@ -333,232 +364,265 @@ Tests fall into four types:
 
 ### Stakeholder Requirement Coverage
 
-| Stakeholder Req | Trace to FR/NFR | Test Cases | Coverage Status |
-|-----------------|-----------------|------------|-----------------|
-| StR-005 | FR-010, FR-011, FR-012, FR-013, FR-018, FR-020 | TC-100–TC-124, TC-150–TC-156, TC-185, TC-187–TC-191 | 🚧 In Progress |
-| StR-006 | FR-014, FR-015, FR-016, FR-019, FR-020, NFR-003, NFR-004 | TC-125–TC-143, TC-157–TC-173, TC-184, TC-186 | 🚧 In Progress |
+| Stakeholder Req | Trace to FR/NFR                                          | Test Cases                                          | Coverage Status |
+| --------------- | -------------------------------------------------------- | --------------------------------------------------- | --------------- |
+| StR-005         | FR-010, FR-011, FR-012, FR-013, FR-018, FR-020           | TC-100–TC-124, TC-150–TC-156, TC-185, TC-187–TC-191 | 🚧 In Progress  |
+| StR-006         | FR-014, FR-015, FR-016, FR-019, FR-020, NFR-003, NFR-004 | TC-125–TC-143, TC-157–TC-173, TC-184, TC-186        | 🚧 In Progress  |
 
 ### Functional Requirement Coverage
 
-| Functional Req | Acceptance Criteria | Test Cases | Coverage Status |
-|----------------|---------------------|------------|-----------------|
-| FR-010 | AC-1: forPlugin scopes reads to its own file | TC-100 | 🚧 In Progress (unit) |
-| FR-010 | AC-2: atomic temp+rename write | TC-101 | 🚧 In Progress (unit) |
-| FR-010 | AC-3: file mode 0o600 regardless of umask | TC-102 | 🚧 In Progress (unit) |
-| FR-010 | AC-4: unknown key in strict schema → ConfigSchemaError | TC-103 | 🚧 In Progress (unit) |
-| FR-010 | AC-5: reset() deletes file; defaults thereafter | TC-104 | 🚧 In Progress (unit) |
-| FR-010 | AC-6: filePath() returns absolute path | TC-105 | 🚧 In Progress (unit) |
-| FR-010 | AC-7: read-only target → ConfigWriteError; existing content intact | TC-192 | 🚧 In Progress (unit) |
-| FR-010 | AC-8: temp file is sibling of target (not in os.tmpdir) | TC-193 | 🚧 In Progress (unit) |
-| FR-010 | AC-9: orphan temp pruning on next set() (>30s old) | TC-194 | 🚧 In Progress (unit) |
-| FR-011 | AC-1: malformed file in one plugin doesn't block another | TC-106 | 🚧 In Progress (unit) |
-| FR-011 | AC-2: defaulted load → first set() rewrites file valid | TC-107 | 🚧 In Progress (unit) |
-| FR-011 | AC-3: doctor() returns scoped errors, doesn't throw | TC-108 | 🚧 In Progress (unit) |
-| FR-011 | AC-4: same-plugin concurrent writes serialized via lock | TC-109 | 🚧 In Progress (unit) |
-| FR-011 | AC-5: different-plugin concurrent writes don't contend | TC-110 | 🚧 In Progress (unit) |
-| FR-011 | AC-6: stale lock from non-running pid is reaped | TC-111 | 🚧 In Progress (unit) |
-| FR-011 | AC-7: lock timeout → ConfigLockTimeoutError | TC-112 | 🚧 In Progress (unit) |
-| FR-012 | AC-1: env var beats file value | TC-113 | 🚧 In Progress (unit) |
-| FR-012 | AC-2: file value beats default | TC-114 | 🚧 In Progress (unit) |
-| FR-012 | AC-3: defaults applied when env+file absent | TC-115 | 🚧 In Progress (unit) |
-| FR-012 | AC-4: invalid env value → ConfigSchemaError | TC-116 | 🚧 In Progress (unit) |
-| FR-012 | AC-5: static lint — no cross-plugin forPlugin call sites | TC-117 | 🚧 In Progress (static) |
-| FR-013 | AC-1: configSchema enforced on writes | TC-119 | 🚧 In Progress (unit) |
-| FR-013 | AC-2: non-strict schema → logged + skipped, others load | TC-120 | 🚧 In Progress (unit) |
-| FR-013 | AC-3: duplicate id → second logged + skipped, first preserved | TC-121 | 🚧 In Progress (unit) |
-| FR-013 | AC-4: third-party using "core" → logged + skipped, core preserved | TC-122 | 🚧 In Progress (unit) |
-| FR-013 | AC-5: doctor surfaces failed plugin id, reason, source | TC-123 | 🚧 In Progress (unit) |
-| FR-013 | AC-6: secretsSchema envVar honored ahead of backend | TC-124 | 🚧 In Progress (unit) |
-| FR-013 | AC-7: invalid plugin id (regex violation) → log+skip with reason invalid-plugin-id | TC-195 | 🚧 In Progress (unit) |
-| FR-014 | AC-1: env beats backend in get() | TC-125 | 🚧 In Progress (unit) |
-| FR-014 | AC-2: backend value returned when env unset | TC-126 | 🚧 In Progress (unit) |
-| FR-014 | AC-3: prompt path persists collected value | TC-127 | 🚧 In Progress (unit) |
-| FR-014 | AC-4: no-prompt + non-TTY → null | TC-128 | 🚧 In Progress (unit) |
-| FR-014 | AC-5: set then delete → which() == "unset" | TC-129 | 🚧 In Progress (unit) |
-| FR-014 | AC-6: set on env-bound + env set → SecretBackendImmutableError | TC-130 | 🚧 In Progress (unit) |
-| FR-014 | AC-7: zero secret values in any logged output | TC-131 | 🚧 In Progress (static) |
-| FR-014 | AC-8: malformed SecretId → InvalidSecretIdError | TC-186 | 🚧 In Progress (unit) |
-| FR-015 | AC-1: macOS Keychain round-trip | TC-132 | 🚧 In Progress (integration, GH Actions macos-latest) |
-| FR-015 | AC-2: Linux libsecret round-trip | TC-133 | 🚧 In Progress (integration, GH Actions ubuntu-latest + gnome-keyring) |
-| FR-015 | AC-3: dbus unset → backend becomes age-file | TC-134 | 🚧 In Progress (integration) |
-| FR-015 | AC-4: list() filters to service "ix-cli" only | TC-135 | 🚧 In Progress (unit, mocked) |
-| FR-015 | AC-5: denied prompt → KeyringAccessError with remediation | TC-136 | 🚧 In Progress (unit, mocked) |
-| FR-015 | AC-6: probe runs at most once per process | TC-137 | 🚧 In Progress (unit) |
-| FR-016 | AC-1: secrets.d/<id>.age + secrets.key created mode 0600 | TC-138 | 🚧 In Progress (unit) |
-| FR-016 | AC-2a: blob bytes do not contain plaintext substring | TC-139 | 🚧 In Progress (unit) |
-| FR-016 | AC-2b: secrets.key is exactly one AGE-SECRET-KEY-1… identity + \n | TC-184 | 🚧 In Progress (unit) |
-| FR-016 | AC-3: AEAD-tag corruption isolates failure to one plugin | TC-140 | 🚧 In Progress (unit) |
-| FR-016 | AC-4: every write produces 0o600 post-rename | TC-141 | 🚧 In Progress (unit) |
-| FR-016 | AC-5: wide-perm secrets.key → SecretsIdentityPermissionsError | TC-142 | 🚧 In Progress (unit) |
-| FR-016 | AC-6: zero plaintext leaks across full lifecycle | TC-143 | 🚧 In Progress (unit) |
-| FR-018 | AC-1: get omits plugin → defaults to "core" | TC-150 | 🚧 In Progress (unit) |
-| FR-018 | AC-2: set persists; next ix local up observes value | TC-151 | 🚧 In Progress (integration) |
-| FR-018 | AC-3: invalid set surfaces full four-tuple error | TC-152 | 🚧 In Progress (unit) |
-| FR-018 | AC-4: edit re-prompts on validation failure | TC-153 | 🚧 In Progress (unit) |
-| FR-018 | AC-5: doctor with mixed valid/invalid files exits non-zero | TC-154 | 🚧 In Progress (unit) |
-| FR-018 | AC-6: unknown plugin → UnknownPluginError + list of ids | TC-155 | 🚧 In Progress (unit) |
-| FR-018 | AC-7: concurrent set serialized via per-file lock | TC-156 | 🚧 In Progress (unit) |
-| FR-018 | AC-8: non-JSON for array key → ConfigSetParseError | TC-185 | 🚧 In Progress (unit) |
-| FR-019 | AC-1: list never renders secret values | TC-157 | 🚧 In Progress (static + unit) |
-| FR-019 | AC-2: set prints "stored <id> in <backend>" only | TC-158 | 🚧 In Progress (unit) |
-| FR-019 | AC-3: which transitions: env / keyring / unset | TC-159 | 🚧 In Progress (unit) |
-| FR-019 | AC-4: rm clears persisted value; warns if env set | TC-160 | 🚧 In Progress (unit) |
-| FR-019 | AC-5: unknown id → UnknownSecretError | TC-161 | 🚧 In Progress (unit) |
-| FR-019 | AC-6: zero secret values across lifecycle stdout/stderr | TC-162 | 🚧 In Progress (unit) |
-| FR-019 | AC-7: keyring denial → remediation surfaced; not echoed | TC-163 | 🚧 In Progress (unit) |
-| FR-020 | AC-1: empty env+file → full default object | TC-187 | 🚧 In Progress (unit) |
-| FR-020 | AC-2: every leaf env binding takes precedence over file | TC-188 | 🚧 In Progress (unit) |
-| FR-020 | AC-3: secretsBackend=auto switches by probe outcome | TC-189 | 🚧 In Progress (unit) |
-| FR-020 | AC-4: secretsBackend=keyring + probe fail → KeyringUnavailableError | TC-183 | 🚧 In Progress (unit) |
-| FR-020 | AC-5: unknown key (e.g. cluster.context) on core → strict reject | TC-190 | 🚧 In Progress (unit) |
-| FR-020 | AC-6: every declared SecretId registered + envVar honored | TC-191 | 🚧 In Progress (unit) |
-| FR-020 | AC-7: auth.expiresAt has no env binding (no IX_AUTH_EXPIRES_AT effect) | TC-191 | 🚧 In Progress (unit) |
+| Functional Req | Acceptance Criteria                                                                | Test Cases | Coverage Status                                                        |
+| -------------- | ---------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------------------------- |
+| FR-010         | AC-1: forPlugin scopes reads to its own file                                       | TC-100     | 🚧 In Progress (unit)                                                  |
+| FR-010         | AC-2: atomic temp+rename write                                                     | TC-101     | 🚧 In Progress (unit)                                                  |
+| FR-010         | AC-3: file mode 0o600 regardless of umask                                          | TC-102     | 🚧 In Progress (unit)                                                  |
+| FR-010         | AC-4: unknown key in strict schema → ConfigSchemaError                             | TC-103     | 🚧 In Progress (unit)                                                  |
+| FR-010         | AC-5: reset() deletes file; defaults thereafter                                    | TC-104     | 🚧 In Progress (unit)                                                  |
+| FR-010         | AC-6: filePath() returns absolute path                                             | TC-105     | 🚧 In Progress (unit)                                                  |
+| FR-010         | AC-7: read-only target → ConfigWriteError; existing content intact                 | TC-192     | 🚧 In Progress (unit)                                                  |
+| FR-010         | AC-8: temp file is sibling of target (not in os.tmpdir)                            | TC-193     | 🚧 In Progress (unit)                                                  |
+| FR-010         | AC-9: orphan temp pruning on next set() (>30s old)                                 | TC-194     | 🚧 In Progress (unit)                                                  |
+| FR-011         | AC-1: malformed file in one plugin doesn't block another                           | TC-106     | 🚧 In Progress (unit)                                                  |
+| FR-011         | AC-2: defaulted load → first set() rewrites file valid                             | TC-107     | 🚧 In Progress (unit)                                                  |
+| FR-011         | AC-3: doctor() returns scoped errors, doesn't throw                                | TC-108     | 🚧 In Progress (unit)                                                  |
+| FR-011         | AC-4: same-plugin concurrent writes serialized via lock                            | TC-109     | 🚧 In Progress (unit)                                                  |
+| FR-011         | AC-5: different-plugin concurrent writes don't contend                             | TC-110     | 🚧 In Progress (unit)                                                  |
+| FR-011         | AC-6: stale lock from non-running pid is reaped                                    | TC-111     | 🚧 In Progress (unit)                                                  |
+| FR-011         | AC-7: lock timeout → ConfigLockTimeoutError                                        | TC-112     | 🚧 In Progress (unit)                                                  |
+| FR-012         | AC-1: env var beats file value                                                     | TC-113     | 🚧 In Progress (unit)                                                  |
+| FR-012         | AC-2: file value beats default                                                     | TC-114     | 🚧 In Progress (unit)                                                  |
+| FR-012         | AC-3: defaults applied when env+file absent                                        | TC-115     | 🚧 In Progress (unit)                                                  |
+| FR-012         | AC-4: invalid env value → ConfigSchemaError                                        | TC-116     | 🚧 In Progress (unit)                                                  |
+| FR-012         | AC-5: static lint — no cross-plugin forPlugin call sites                           | TC-117     | 🚧 In Progress (static)                                                |
+| FR-013         | AC-1: configSchema enforced on writes                                              | TC-119     | 🚧 In Progress (unit)                                                  |
+| FR-013         | AC-2: non-strict schema → logged + skipped, others load                            | TC-120     | 🚧 In Progress (unit)                                                  |
+| FR-013         | AC-3: duplicate id → second logged + skipped, first preserved                      | TC-121     | 🚧 In Progress (unit)                                                  |
+| FR-013         | AC-4: third-party using "core" → logged + skipped, core preserved                  | TC-122     | 🚧 In Progress (unit)                                                  |
+| FR-013         | AC-5: doctor surfaces failed plugin id, reason, source                             | TC-123     | 🚧 In Progress (unit)                                                  |
+| FR-013         | AC-6: secretsSchema envVar honored ahead of backend                                | TC-124     | 🚧 In Progress (unit)                                                  |
+| FR-013         | AC-7: invalid plugin id (regex violation) → log+skip with reason invalid-plugin-id | TC-195     | 🚧 In Progress (unit)                                                  |
+| FR-014         | AC-1: env beats backend in get()                                                   | TC-125     | 🚧 In Progress (unit)                                                  |
+| FR-014         | AC-2: backend value returned when env unset                                        | TC-126     | 🚧 In Progress (unit)                                                  |
+| FR-014         | AC-3: prompt path persists collected value                                         | TC-127     | 🚧 In Progress (unit)                                                  |
+| FR-014         | AC-4: no-prompt + non-TTY → null                                                   | TC-128     | 🚧 In Progress (unit)                                                  |
+| FR-014         | AC-5: set then delete → which() == "unset"                                         | TC-129     | 🚧 In Progress (unit)                                                  |
+| FR-014         | AC-6: set on env-bound + env set → SecretBackendImmutableError                     | TC-130     | 🚧 In Progress (unit)                                                  |
+| FR-014         | AC-7: zero secret values in any logged output                                      | TC-131     | 🚧 In Progress (static)                                                |
+| FR-014         | AC-8: malformed SecretId → InvalidSecretIdError                                    | TC-186     | 🚧 In Progress (unit)                                                  |
+| FR-015         | AC-1: macOS Keychain round-trip                                                    | TC-132     | 🚧 In Progress (integration, GH Actions macos-latest)                  |
+| FR-015         | AC-2: Linux libsecret round-trip                                                   | TC-133     | 🚧 In Progress (integration, GH Actions ubuntu-latest + gnome-keyring) |
+| FR-015         | AC-3: dbus unset → backend becomes age-file                                        | TC-134     | 🚧 In Progress (integration)                                           |
+| FR-015         | AC-4: list() filters to service "ix-cli" only                                      | TC-135     | 🚧 In Progress (unit, mocked)                                          |
+| FR-015         | AC-5: denied prompt → KeyringAccessError with remediation                          | TC-136     | 🚧 In Progress (unit, mocked)                                          |
+| FR-015         | AC-6: probe runs at most once per process                                          | TC-137     | 🚧 In Progress (unit)                                                  |
+| FR-016         | AC-1: secrets.d/<id>.age + secrets.key created mode 0600                           | TC-138     | 🚧 In Progress (unit)                                                  |
+| FR-016         | AC-2a: blob bytes do not contain plaintext substring                               | TC-139     | 🚧 In Progress (unit)                                                  |
+| FR-016         | AC-2b: secrets.key is exactly one AGE-SECRET-KEY-1… identity + \n                  | TC-184     | 🚧 In Progress (unit)                                                  |
+| FR-016         | AC-3: AEAD-tag corruption isolates failure to one plugin                           | TC-140     | 🚧 In Progress (unit)                                                  |
+| FR-016         | AC-4: every write produces 0o600 post-rename                                       | TC-141     | 🚧 In Progress (unit)                                                  |
+| FR-016         | AC-5: wide-perm secrets.key → SecretsIdentityPermissionsError                      | TC-142     | 🚧 In Progress (unit)                                                  |
+| FR-016         | AC-6: zero plaintext leaks across full lifecycle                                   | TC-143     | 🚧 In Progress (unit)                                                  |
+| FR-018         | AC-1: get omits plugin → defaults to "core"                                        | TC-150     | 🚧 In Progress (unit)                                                  |
+| FR-018         | AC-2: set persists; next ix local up observes value                                | TC-151     | 🚧 In Progress (integration)                                           |
+| FR-018         | AC-3: invalid set surfaces full four-tuple error                                   | TC-152     | 🚧 In Progress (unit)                                                  |
+| FR-018         | AC-4: edit re-prompts on validation failure                                        | TC-153     | 🚧 In Progress (unit)                                                  |
+| FR-018         | AC-5: doctor with mixed valid/invalid files exits non-zero                         | TC-154     | 🚧 In Progress (unit)                                                  |
+| FR-018         | AC-6: unknown plugin → UnknownPluginError + list of ids                            | TC-155     | 🚧 In Progress (unit)                                                  |
+| FR-018         | AC-7: concurrent set serialized via per-file lock                                  | TC-156     | 🚧 In Progress (unit)                                                  |
+| FR-018         | AC-8: non-JSON for array key → ConfigSetParseError                                 | TC-185     | 🚧 In Progress (unit)                                                  |
+| FR-019         | AC-1: list never renders secret values                                             | TC-157     | 🚧 In Progress (static + unit)                                         |
+| FR-019         | AC-2: set prints "stored <id> in <backend>" only                                   | TC-158     | 🚧 In Progress (unit)                                                  |
+| FR-019         | AC-3: which transitions: env / keyring / unset                                     | TC-159     | 🚧 In Progress (unit)                                                  |
+| FR-019         | AC-4: rm clears persisted value; warns if env set                                  | TC-160     | 🚧 In Progress (unit)                                                  |
+| FR-019         | AC-5: unknown id → UnknownSecretError                                              | TC-161     | 🚧 In Progress (unit)                                                  |
+| FR-019         | AC-6: zero secret values across lifecycle stdout/stderr                            | TC-162     | 🚧 In Progress (unit)                                                  |
+| FR-019         | AC-7: keyring denial → remediation surfaced; not echoed                            | TC-163     | 🚧 In Progress (unit)                                                  |
+| FR-020         | AC-1: empty env+file → full default object                                         | TC-187     | 🚧 In Progress (unit)                                                  |
+| FR-020         | AC-2: every leaf env binding takes precedence over file                            | TC-188     | 🚧 In Progress (unit)                                                  |
+| FR-020         | AC-3: secretsBackend=auto switches by probe outcome                                | TC-189     | 🚧 In Progress (unit)                                                  |
+| FR-020         | AC-4: secretsBackend=keyring + probe fail → KeyringUnavailableError                | TC-183     | 🚧 In Progress (unit)                                                  |
+| FR-020         | AC-5: unknown key (e.g. cluster.context) on core → strict reject                   | TC-190     | 🚧 In Progress (unit)                                                  |
+| FR-020         | AC-6: every declared SecretId registered + envVar honored                          | TC-191     | 🚧 In Progress (unit)                                                  |
+| FR-020         | AC-7: auth.expiresAt has no env binding (no IX_AUTH_EXPIRES_AT effect)             | TC-191     | 🚧 In Progress (unit)                                                  |
 
 ### Non-Functional Requirement Coverage
 
-| Non-Functional Req | Verification Method | Test Cases | Status |
-|--------------------|---------------------|------------|--------|
-| NFR-003-AC-1 | Static grep: no fs.write* of secret values outside backends/ | TC-164 | 🚧 In Progress (static) |
-| NFR-003-AC-2 | Round-trip leak scan: plaintext absent from .age + .key | TC-165 | 🚧 In Progress (unit) |
-| NFR-003-AC-3 | Integration: only-keychain or only-age-blob on disk | TC-166 | 🚧 In Progress (integration) |
-| NFR-004-AC-1 | Unit: umask 0022 yields 0o600 | TC-169 | 🚧 In Progress (unit) |
-| NFR-004-AC-2 | Unit: rename failure leaves target intact, temp removed | TC-170 | 🚧 In Progress (unit) |
-| NFR-004-AC-3 | Unit: 0o644 secrets.key → SecretsIdentityPermissionsError | TC-171 | 🚧 In Progress (unit) |
-| NFR-004-AC-4 | Unit: symlink to outside path rejected | TC-172 | 🚧 In Progress (unit) |
-| NFR-004-AC-5 | Static grep: only atomicWrite helper writes governed files | TC-173 | 🚧 In Progress (static) |
-| NFR-005-AC-1 | Unit: error contains plugin / keyPath / expectedType / filePath | TC-174 | 🚧 In Progress (unit) |
-| NFR-005-AC-2 | Unit: declared-secret value rendered as `<redacted>` | TC-175 | 🚧 In Progress (unit) |
-| NFR-005-AC-3 | Snapshot: doctor output stable order | TC-176 | 🚧 In Progress (unit) |
-| NFR-005-AC-4 | Static grep: no console.error for schema errors | TC-177 | 🚧 In Progress (static) |
-| NFR-005-AC-5 | Static grep: only formatSchemaError renders user strings | TC-178 | 🚧 In Progress (static) |
-| NFR-006-AC-1 | Unit: MemoryBackend registered + full lifecycle | TC-179 | 🚧 In Progress (unit) |
-| NFR-006-AC-2 | Unit: consumers unchanged across keyring↔age-file | TC-180 | 🚧 In Progress (unit) |
-| NFR-006-AC-3 | Static grep: no consumer imports backends/* | TC-181 | 🚧 In Progress (static) |
-| NFR-006-AC-4 | Unit: duplicate-id registration throws | TC-182 | 🚧 In Progress (unit) |
-| NFR-006-AC-5 | Unit: pinned keyring with failed probe → KeyringUnavailableError | TC-183 | 🚧 In Progress (unit) |
+| Non-Functional Req | Verification Method                                              | Test Cases | Status                       |
+| ------------------ | ---------------------------------------------------------------- | ---------- | ---------------------------- |
+| NFR-003-AC-1       | Static grep: no fs.write\* of secret values outside backends/    | TC-164     | 🚧 In Progress (static)      |
+| NFR-003-AC-2       | Round-trip leak scan: plaintext absent from .age + .key          | TC-165     | 🚧 In Progress (unit)        |
+| NFR-003-AC-3       | Integration: only-keychain or only-age-blob on disk              | TC-166     | 🚧 In Progress (integration) |
+| NFR-004-AC-1       | Unit: umask 0022 yields 0o600                                    | TC-169     | 🚧 In Progress (unit)        |
+| NFR-004-AC-2       | Unit: rename failure leaves target intact, temp removed          | TC-170     | 🚧 In Progress (unit)        |
+| NFR-004-AC-3       | Unit: 0o644 secrets.key → SecretsIdentityPermissionsError        | TC-171     | 🚧 In Progress (unit)        |
+| NFR-004-AC-4       | Unit: symlink to outside path rejected                           | TC-172     | 🚧 In Progress (unit)        |
+| NFR-004-AC-5       | Static grep: only atomicWrite helper writes governed files       | TC-173     | 🚧 In Progress (static)      |
+| NFR-005-AC-1       | Unit: error contains plugin / keyPath / expectedType / filePath  | TC-174     | 🚧 In Progress (unit)        |
+| NFR-005-AC-2       | Unit: declared-secret value rendered as `<redacted>`             | TC-175     | 🚧 In Progress (unit)        |
+| NFR-005-AC-3       | Snapshot: doctor output stable order                             | TC-176     | 🚧 In Progress (unit)        |
+| NFR-005-AC-4       | Static grep: no console.error for schema errors                  | TC-177     | 🚧 In Progress (static)      |
+| NFR-005-AC-5       | Static grep: only formatSchemaError renders user strings         | TC-178     | 🚧 In Progress (static)      |
+| NFR-006-AC-1       | Unit: MemoryBackend registered + full lifecycle                  | TC-179     | 🚧 In Progress (unit)        |
+| NFR-006-AC-2       | Unit: consumers unchanged across keyring↔age-file                | TC-180     | 🚧 In Progress (unit)        |
+| NFR-006-AC-3       | Static grep: no consumer imports backends/\*                     | TC-181     | 🚧 In Progress (static)      |
+| NFR-006-AC-4       | Unit: duplicate-id registration throws                           | TC-182     | 🚧 In Progress (unit)        |
+| NFR-006-AC-5       | Unit: pinned keyring with failed probe → KeyringUnavailableError | TC-183     | 🚧 In Progress (unit)        |
 
 ### Test Case Summary — packages/core
 
-| Test ID | Title | Type | Priority | Traces To | Status |
-|---------|-------|------|----------|-----------|--------|
-| TC-100 | ConfigService.forPlugin('a') reads only config.d/a.yaml | Unit | P1 | FR-010-AC-1 | 🚧 In Progress |
-| TC-101 | set() uses temp+rename; interrupted write leaves prior content | Unit | P1 | FR-010-AC-2 | 🚧 In Progress |
-| TC-102 | set() forces 0o600 under umask 0022 | Unit | P1 | FR-010-AC-3, NFR-004-AC-1 | 🚧 In Progress |
-| TC-103 | strict schema rejects unknownKey on set() | Unit | P1 | FR-010-AC-4, FR-013-AC-1 | 🚧 In Progress |
-| TC-104 | reset() deletes file; subsequent get() returns defaults | Unit | P1 | FR-010-AC-5 | 🚧 In Progress |
-| TC-105 | filePath() returns absolute path under XDG_CONFIG_HOME | Unit | P2 | FR-010-AC-6 | 🚧 In Progress |
-| TC-106 | Malformed config.d/local.yaml: elements load succeeds | Unit | P1 | FR-011-AC-1, StR-005 | 🚧 In Progress |
-| TC-107 | Defaulted load + first set rewrites valid YAML | Unit | P1 | FR-011-AC-2 | 🚧 In Progress |
-| TC-108 | doctor() aggregates errors per plugin without throwing | Unit | P1 | FR-011-AC-3, FR-018-AC-5 | 🚧 In Progress |
-| TC-109 | Concurrent set on same plugin serialized via lockfile | Unit | P1 | FR-011-AC-4, FR-018-AC-7 | 🚧 In Progress |
-| TC-110 | Concurrent set on different plugins both succeed | Unit | P1 | FR-011-AC-5 | 🚧 In Progress |
-| TC-111 | Stale lockfile (pid not running) reaped on next acquisition | Unit | P1 | FR-011-AC-6 | 🚧 In Progress |
-| TC-112 | Lock timeout → ConfigLockTimeoutError names plugin and lockfile | Unit | P1 | FR-011-AC-7 | 🚧 In Progress |
-| TC-113 | IX_LOG_LEVEL=debug + file=info → resolved=debug | Unit | P1 | FR-012-AC-1 | 🚧 In Progress |
-| TC-114 | Env unset + file=info → resolved=info | Unit | P1 | FR-012-AC-2 | 🚧 In Progress |
-| TC-115 | Env+file absent → schema defaults | Unit | P1 | FR-012-AC-3 | 🚧 In Progress |
-| TC-116 | IX_LOG_LEVEL=loud (invalid enum) → ConfigSchemaError naming env var | Unit | P1 | FR-012-AC-4 | 🚧 In Progress |
-| TC-117 | Non-core plugin attempting to write core file → rejected | Unit | P1 | FR-012-AC-5, FR-013-AC-4 | 🚧 In Progress |
-| TC-119 | Plugin with strict configSchema validates writes | Unit | P1 | FR-013-AC-1 | 🚧 In Progress |
-| TC-120 | Non-strict schema (.passthrough) → PluginRegistrationError | Unit | P1 | FR-013-AC-2 | 🚧 In Progress |
-| TC-121 | Duplicate plugin id → second registration throws | Unit | P1 | FR-013-AC-3 | 🚧 In Progress |
-| TC-122 | Third-party plugin using id "core" → rejected | Unit | P1 | FR-013-AC-4 | 🚧 In Progress |
-| TC-123 | Plugin registration failure: other plugins still load; doctor reports | Unit | P1 | FR-013-AC-5 | 🚧 In Progress |
-| TC-124 | secretsSchema envVar honored ahead of any backend | Unit | P1 | FR-013-AC-6, FR-014-AC-1 | 🚧 In Progress |
-| TC-125 | get(): IX_GHCR_TOKEN beats backend value | Unit | P1 | FR-014-AC-1 | 🚧 In Progress |
-| TC-126 | get(): backend value returned when env unset | Unit | P1 | FR-014-AC-2 | 🚧 In Progress |
-| TC-127 | get({prompt:true}) on TTY: masked input persisted to backend | Unit | P1 | FR-014-AC-3 | 🚧 In Progress |
-| TC-128 | get() without prompt and unset → null (no prompt) | Unit | P1 | FR-014-AC-4 | 🚧 In Progress |
-| TC-129 | set then delete → which() === "unset" | Unit | P1 | FR-014-AC-5 | 🚧 In Progress |
-| TC-130 | set() on env-bound secret with env set → SecretBackendImmutableError | Unit | P1 | FR-014-AC-6 | 🚧 In Progress |
-| TC-131 | Static + log scan: zero secret values across SecretsService output | Static | P1 | FR-014-AC-7, NFR-005-AC-2 | 🚧 In Progress |
-| TC-132 | macOS Keychain set/get round-trip | Integration | P1 | FR-015-AC-1 | ❌ Missing |
-| TC-133 | Linux libsecret set/get round-trip | Integration | P1 | FR-015-AC-2 | ❌ Missing |
-| TC-134 | DBUS_SESSION_BUS_ADDRESS unset → active backend = age-file | Integration | P1 | FR-015-AC-3, FR-016-AC-1 | 🚧 In Progress |
-| TC-135 | list() filters to service="ix-cli"; foreign entries ignored | Unit | P1 | FR-015-AC-4 | 🚧 In Progress |
-| TC-136 | Denied keyring prompt → KeyringAccessError with remediation | Unit | P1 | FR-015-AC-5 | 🚧 In Progress |
-| TC-137 | Capability probe cached: runs once per process | Unit | P2 | FR-015-AC-6 | 🚧 In Progress |
-| TC-138 | secrets.d/<id>.age + secrets.key created with mode 0o600 | Unit | P1 | FR-016-AC-1, NFR-004-AC-1 | 🚧 In Progress |
-| TC-139 | age blob bytes do not contain plaintext value | Unit | P1 | FR-016-AC-2, NFR-003-AC-2 | 🚧 In Progress |
-| TC-140 | Truncated secrets.d/local.age → local.* fails; elements.* still works | Unit | P1 | FR-016-AC-3 | 🚧 In Progress |
-| TC-141 | All age writes observe 0o600 post-rename | Unit | P2 | FR-016-AC-4 | 🚧 In Progress |
-| TC-142 | secrets.key with mode 0o644 → SecretsIdentityPermissionsError | Unit | P1 | FR-016-AC-5, NFR-004-AC-3 | 🚧 In Progress |
-| TC-143 | Full set/get/delete lifecycle: zero plaintext leaks in age files | Unit | P1 | FR-016-AC-6, NFR-003-AC-2 | 🚧 In Progress |
-| TC-150 | ix config get logLevel → reads core plugin config | Unit | P1 | FR-018-AC-1 | 🚧 In Progress |
-| TC-151 | ix config set local cluster.defaultTags → next ix local up observes | Integration | P1 | FR-018-AC-2 | 🚧 In Progress |
-| TC-152 | ix config set local cluster.defaultTags 42 → four-tuple error | Unit | P1 | FR-018-AC-3, NFR-005-AC-1 | 🚧 In Progress |
-| TC-153 | ix config edit: bad save → re-edit/discard prompt | Unit | P1 | FR-018-AC-4 | 🚧 In Progress |
-| TC-154 | ix config doctor: mixed valid/invalid → non-zero exit | Unit | P1 | FR-018-AC-5 | 🚧 In Progress |
-| TC-155 | ix config get unknown-plugin foo → UnknownPluginError lists ids | Unit | P1 | FR-018-AC-6 | 🚧 In Progress |
-| TC-156 | Concurrent ix config set local … both succeed serialized | Unit | P1 | FR-018-AC-7, FR-011-AC-4 | 🚧 In Progress |
-| TC-157 | ix secrets list: value column never populated | Static + Unit | P1 | FR-019-AC-1, FR-014-AC-7 | 🚧 In Progress |
-| TC-158 | ix secrets set local.ghcr-token: prints "stored ... in <backend>" only | Unit | P1 | FR-019-AC-2 | 🚧 In Progress |
-| TC-159 | ix secrets which transitions: keyring → unset → env | Unit | P1 | FR-019-AC-3 | 🚧 In Progress |
-| TC-160 | ix secrets rm: clears persisted; warns when env still satisfies | Unit | P1 | FR-019-AC-4 | 🚧 In Progress |
-| TC-161 | ix secrets which unknown.foo → UnknownSecretError lists registered | Unit | P1 | FR-019-AC-5 | 🚧 In Progress |
-| TC-162 | Lifecycle output scan: zero secret values in stdout/stderr | Unit | P1 | FR-019-AC-6, NFR-003-AC-2 | 🚧 In Progress |
-| TC-163 | Keyring denial during set: remediation surfaced; value not echoed | Unit | P1 | FR-019-AC-7, FR-015-AC-5 | 🚧 In Progress |
-| TC-164 | Static: no fs.write* of secret values outside backends/ | Static | P1 | NFR-003-AC-1 | 🚧 In Progress |
-| TC-165 | Round-trip leak scan: ciphertext does not contain plaintext | Unit | P1 | NFR-003-AC-2 | 🚧 In Progress |
-| TC-166 | Integration: only keychain entry OR age blob on disk; never both | Integration | P1 | NFR-003-AC-3 | 🚧 In Progress |
-| TC-169 | umask 0022 → governed files created mode 0o600 | Unit | P1 | NFR-004-AC-1 | 🚧 In Progress |
-| TC-170 | rename failure: target intact + temp removed | Unit | P1 | NFR-004-AC-2 | 🚧 In Progress |
-| TC-171 | secrets.key with mode 0o644 (fixture) → SecretsIdentityPermissionsError | Unit | P1 | NFR-004-AC-3, FR-016-AC-5 | 🚧 In Progress |
-| TC-172 | Symlinked governed file rejected on access | Unit | P1 | NFR-004-AC-4 | 🚧 In Progress |
-| TC-173 | Static: only atomicWrite helper writes governed files | Static | P1 | NFR-004-AC-5 | 🚧 In Progress |
-| TC-174 | Schema error contains plugin/keyPath/expectedType/filePath | Unit | P1 | NFR-005-AC-1, FR-018-AC-3 | 🚧 In Progress |
-| TC-175 | Declared-secret value redacted in error output | Unit | P1 | NFR-005-AC-2 | 🚧 In Progress |
-| TC-176 | doctor output stable byte-order across runs | Unit | P2 | NFR-005-AC-3 | 🚧 In Progress |
-| TC-177 | Static: zero console.error for schema errors | Static | P1 | NFR-005-AC-4 | 🚧 In Progress |
-| TC-178 | Static: only formatSchemaError builds user-facing strings | Static | P1 | NFR-005-AC-5 | 🚧 In Progress |
-| TC-179 | MemoryBackend registered: full lifecycle exercises SecretsService unchanged | Unit | P1 | NFR-006-AC-1 | 🚧 In Progress |
-| TC-180 | Consumers compile/pass under both keyring and age-file backends | Unit | P1 | NFR-006-AC-2 | 🚧 In Progress |
-| TC-181 | Static: zero imports of backends/* outside core/secrets/ | Static | P1 | NFR-006-AC-3 | 🚧 In Progress |
-| TC-182 | registerSecretsBackend: duplicate id throws on second registration | Unit | P2 | NFR-006-AC-4 | 🚧 In Progress |
-| TC-183 | core.secretsBackend=keyring + probe fail → KeyringUnavailableError everywhere | Unit | P1 | NFR-006-AC-5, FR-020-AC-4 | 🚧 In Progress |
-| TC-184 | secrets.key is exactly one AGE-SECRET-KEY-1… identity + single \n | Unit | P1 | FR-016-AC-2b | 🚧 In Progress |
-| TC-185 | ix config set local cluster.defaultTags 'a,b' (non-JSON) → ConfigSetParseError | Unit | P1 | FR-018-AC-8 | 🚧 In Progress |
-| TC-186 | get/set/delete with malformed SecretId throws InvalidSecretIdError | Unit | P1 | FR-014-AC-8 | 🚧 In Progress |
-| TC-187 | forPlugin('core', CoreConfigSchema).get() with empty env+file → full default object | Unit | P1 | FR-020-AC-1 | 🚧 In Progress |
-| TC-188 | Each declared env binding (IX_LOG_LEVEL, IX_THEME, …) overrides file value | Unit | P1 | FR-020-AC-2 | 🚧 In Progress |
-| TC-189 | secretsBackend=auto: keyring on probe-success; age-file on probe-fail | Unit | P1 | FR-020-AC-3 | 🚧 In Progress |
-| TC-190 | Setting cluster.context on core file → strict reject (belongs to local) | Unit | P1 | FR-020-AC-5 | 🚧 In Progress |
-| TC-191 | Each core SecretId registered with envVar precedence; auth.expiresAt has no env effect | Unit | P1 | FR-020-AC-6, FR-020-AC-7 | 🚧 In Progress |
-| TC-192 | Read-only ~/.config/ix/ → set() throws ConfigWriteError; prior content intact; no orphan temp | Unit | P1 | FR-010-AC-7 | 🚧 In Progress |
-| TC-193 | Mocked os.tmpdir() to a different volume — no governed-file write touches it | Unit | P1 | FR-010-AC-8 | 🚧 In Progress |
-| TC-194 | Pre-existing <target>.tmp.* sibling >30s old is pruned on next set(); younger orphans left | Unit | P1 | FR-010-AC-9 | 🚧 In Progress |
-| TC-195 | Plugin id "../foo" or "" or "Foo" → log+skip with reason "invalid-plugin-id"; doctor reports | Unit | P1 | FR-013-AC-7 | 🚧 In Progress |
-| TC-291 | Static: runDown body in index.tsx no longer throws "all" requires --from-source for image-mode all | Static | P1 | FR-035-AC-1 | 🚧 In Progress |
-| TC-292 | Unit: resolveDownReleases(["all"], registry, …) returns every deployable with `apps→auth→platform→system` tier order | Unit | P1 | FR-035-AC-1 | ✅ Complete |
-| TC-293 | Unit: resolveDownReleases includes umbrella + every subchart install for role=app, deduped | Unit | P1 | FR-035-AC-2 | ✅ Complete |
-| TC-294 | Unit: runDown(["all"], {}) — ConfirmPrompt declined → no helm uninstall, no kubectl delete | Unit | P1 | FR-035-AC-3 | ❌ Missing (integration) |
-| TC-295 | Unit: runDown(["all"], {yes: true}) → no prompt, full destructive sequence runs | Unit | P1 | FR-035-AC-4 | ❌ Missing (integration) |
-| TC-296 | Unit: resolveDownReleases(["build"], …) → only the named release, no expansion of others | Unit | P1 | FR-035-AC-5 | ✅ Complete |
-| TC-297 | Unit: runDown(["all", "build"], {}) → throws mixing error | Unit | P1 | FR-035-AC-6 | 🚧 In Progress |
-| TC-322 | Unit: resolveDownReleases sorts dependents-before-dependencies for "all" | Unit | P1 | FR-035-AC-1 | ✅ Complete |
-| TC-323 | Unit: resolveDownReleases preserves argv order for named services (no tier sort) | Unit | P1 | FR-035-AC-5 | ✅ Complete |
-| TC-324 | Unit: resolveDownReleases dedupe preserves first-occurrence position | Unit | P2 | FR-035-AC-1 | ✅ Complete |
-| TC-325 | Unit: resolveDownReleases ranks unknown namespaces last in tier order | Unit | P2 | FR-035-AC-1 | ✅ Complete |
-| TC-298 | Integration: after `ix local halt all --yes`, `helm list -A` returns no ix releases, PVCs deleted, PVs Available | Integration | P1 | FR-035-AC-7 | ❌ Missing |
-| TC-299 | Static: apps/ix/src/commands/local/halt.ts catch logs error message (no bare `catch {}`) | Static | P1 | FR-035-AC-8 | 🚧 In Progress |
-| TC-310 | Unit: runClusterStop runs `docker stop` on every node from `kind get nodes` | Unit | P1 | FR-036-AC-1 | 🚧 In Progress |
-| TC-311 | Unit: runClusterStart runs `docker start` then polls `kubectl get ns` until ok | Unit | P1 | FR-036-AC-2 | 🚧 In Progress |
-| TC-312 | Unit: runClusterStop idempotent — already-stopped node reports state without error | Unit | P1 | FR-036-AC-3 | ✅ Complete |
-| TC-313 | Unit: runClusterStart idempotent — already-running node reports state without error | Unit | P1 | FR-036-AC-3 | ✅ Complete |
-| TC-314 | Unit: runClusterStop with absent kind cluster renders failed listing, returns non-zero | Unit | P1 | FR-036-AC-4 | ✅ Complete |
-| TC-315 | Unit: runClusterStart with absent kind cluster renders failed listing, returns non-zero | Unit | P1 | FR-036-AC-4 | ✅ Complete |
-| TC-316 | Unit: both stop and start render a Listing with rows containing (node name, state) | Unit | P1 | FR-036-AC-5 | ✅ Complete |
-| TC-317 | Integration: stop → start round trip; previously-bound PVC re-attaches with prior data | Integration | P1 | FR-036-AC-6 | ❌ Missing |
-| TC-318 | Unit: runClusterStart with API-server timeout renders warn listing (not failed); exit 0 | Unit | P1 | FR-036-AC-7 | ✅ Complete |
-| TC-319 | Unit: runClusterDown — second prompt name-mismatch aborts before kind delete | Unit | P1 | FR-006-AC-6 | ✅ Complete |
-| TC-320 | Unit: runClusterDown({yes: true}) bypasses both ConfirmPrompt and TextPrompt | Unit | P1 | FR-006-AC-7 | ✅ Complete |
-| TC-321 | Static: index.ts exports runClusterStop and runClusterStart | Static | P1 | FR-001-AC-1, FR-036 | ✅ Complete |
-| TC-326 | Unit: runClusterStop — real docker error surfaces in row description, run continues | Unit | P2 | FR-036-AC-3 | ✅ Complete |
-| TC-327 | Unit: runClusterStop — kind-binary failure (missing/permissions) renders distinct error | Unit | P1 | FR-036-AC-4 | ✅ Complete |
-| TC-328 | Unit: runClusterStart — real docker error surfaces in row description, run continues | Unit | P2 | FR-036-AC-3 | ✅ Complete |
-| TC-329 | Unit: runClusterStart — kind-binary failure renders distinct error | Unit | P1 | FR-036-AC-4 | ✅ Complete |
-| TC-330 | Unit: runClusterDown — ESC during name retype reports Cancelled (warn), not name-mismatch | Unit | P2 | FR-006-AC-6 | ✅ Complete |
-| TC-331 | Unit: runClusterDown — name retype rejects on any non-match input (case-sensitive) | Unit | P2 | FR-006-AC-6 | ✅ Complete |
+| Test ID | Title                                                                                                                                                     | Type          | Priority | Traces To                  | Status                   |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------- | -------------------------- | ------------------------ |
+| TC-100  | ConfigService.forPlugin('a') reads only config.d/a.yaml                                                                                                   | Unit          | P1       | FR-010-AC-1                | 🚧 In Progress           |
+| TC-101  | set() uses temp+rename; interrupted write leaves prior content                                                                                            | Unit          | P1       | FR-010-AC-2                | 🚧 In Progress           |
+| TC-102  | set() forces 0o600 under umask 0022                                                                                                                       | Unit          | P1       | FR-010-AC-3, NFR-004-AC-1  | 🚧 In Progress           |
+| TC-103  | strict schema rejects unknownKey on set()                                                                                                                 | Unit          | P1       | FR-010-AC-4, FR-013-AC-1   | 🚧 In Progress           |
+| TC-104  | reset() deletes file; subsequent get() returns defaults                                                                                                   | Unit          | P1       | FR-010-AC-5                | 🚧 In Progress           |
+| TC-105  | filePath() returns absolute path under XDG_CONFIG_HOME                                                                                                    | Unit          | P2       | FR-010-AC-6                | 🚧 In Progress           |
+| TC-106  | Malformed config.d/local.yaml: elements load succeeds                                                                                                     | Unit          | P1       | FR-011-AC-1, StR-005       | 🚧 In Progress           |
+| TC-107  | Defaulted load + first set rewrites valid YAML                                                                                                            | Unit          | P1       | FR-011-AC-2                | 🚧 In Progress           |
+| TC-108  | doctor() aggregates errors per plugin without throwing                                                                                                    | Unit          | P1       | FR-011-AC-3, FR-018-AC-5   | 🚧 In Progress           |
+| TC-109  | Concurrent set on same plugin serialized via lockfile                                                                                                     | Unit          | P1       | FR-011-AC-4, FR-018-AC-7   | 🚧 In Progress           |
+| TC-110  | Concurrent set on different plugins both succeed                                                                                                          | Unit          | P1       | FR-011-AC-5                | 🚧 In Progress           |
+| TC-111  | Stale lockfile (pid not running) reaped on next acquisition                                                                                               | Unit          | P1       | FR-011-AC-6                | 🚧 In Progress           |
+| TC-112  | Lock timeout → ConfigLockTimeoutError names plugin and lockfile                                                                                           | Unit          | P1       | FR-011-AC-7                | 🚧 In Progress           |
+| TC-113  | IX_LOG_LEVEL=debug + file=info → resolved=debug                                                                                                           | Unit          | P1       | FR-012-AC-1                | 🚧 In Progress           |
+| TC-114  | Env unset + file=info → resolved=info                                                                                                                     | Unit          | P1       | FR-012-AC-2                | 🚧 In Progress           |
+| TC-115  | Env+file absent → schema defaults                                                                                                                         | Unit          | P1       | FR-012-AC-3                | 🚧 In Progress           |
+| TC-116  | IX_LOG_LEVEL=loud (invalid enum) → ConfigSchemaError naming env var                                                                                       | Unit          | P1       | FR-012-AC-4                | 🚧 In Progress           |
+| TC-117  | Non-core plugin attempting to write core file → rejected                                                                                                  | Unit          | P1       | FR-012-AC-5, FR-013-AC-4   | 🚧 In Progress           |
+| TC-119  | Plugin with strict configSchema validates writes                                                                                                          | Unit          | P1       | FR-013-AC-1                | 🚧 In Progress           |
+| TC-120  | Non-strict schema (.passthrough) → PluginRegistrationError                                                                                                | Unit          | P1       | FR-013-AC-2                | 🚧 In Progress           |
+| TC-121  | Duplicate plugin id → second registration throws                                                                                                          | Unit          | P1       | FR-013-AC-3                | 🚧 In Progress           |
+| TC-122  | Third-party plugin using id "core" → rejected                                                                                                             | Unit          | P1       | FR-013-AC-4                | 🚧 In Progress           |
+| TC-123  | Plugin registration failure: other plugins still load; doctor reports                                                                                     | Unit          | P1       | FR-013-AC-5                | 🚧 In Progress           |
+| TC-124  | secretsSchema envVar honored ahead of any backend                                                                                                         | Unit          | P1       | FR-013-AC-6, FR-014-AC-1   | 🚧 In Progress           |
+| TC-125  | get(): IX_GHCR_TOKEN beats backend value                                                                                                                  | Unit          | P1       | FR-014-AC-1                | 🚧 In Progress           |
+| TC-126  | get(): backend value returned when env unset                                                                                                              | Unit          | P1       | FR-014-AC-2                | 🚧 In Progress           |
+| TC-127  | get({prompt:true}) on TTY: masked input persisted to backend                                                                                              | Unit          | P1       | FR-014-AC-3                | 🚧 In Progress           |
+| TC-128  | get() without prompt and unset → null (no prompt)                                                                                                         | Unit          | P1       | FR-014-AC-4                | 🚧 In Progress           |
+| TC-129  | set then delete → which() === "unset"                                                                                                                     | Unit          | P1       | FR-014-AC-5                | 🚧 In Progress           |
+| TC-130  | set() on env-bound secret with env set → SecretBackendImmutableError                                                                                      | Unit          | P1       | FR-014-AC-6                | 🚧 In Progress           |
+| TC-131  | Static + log scan: zero secret values across SecretsService output                                                                                        | Static        | P1       | FR-014-AC-7, NFR-005-AC-2  | 🚧 In Progress           |
+| TC-132  | macOS Keychain set/get round-trip                                                                                                                         | Integration   | P1       | FR-015-AC-1                | ❌ Missing               |
+| TC-133  | Linux libsecret set/get round-trip                                                                                                                        | Integration   | P1       | FR-015-AC-2                | ❌ Missing               |
+| TC-134  | DBUS_SESSION_BUS_ADDRESS unset → active backend = age-file                                                                                                | Integration   | P1       | FR-015-AC-3, FR-016-AC-1   | 🚧 In Progress           |
+| TC-135  | list() filters to service="ix-cli"; foreign entries ignored                                                                                               | Unit          | P1       | FR-015-AC-4                | 🚧 In Progress           |
+| TC-136  | Denied keyring prompt → KeyringAccessError with remediation                                                                                               | Unit          | P1       | FR-015-AC-5                | 🚧 In Progress           |
+| TC-137  | Capability probe cached: runs once per process                                                                                                            | Unit          | P2       | FR-015-AC-6                | 🚧 In Progress           |
+| TC-138  | secrets.d/<id>.age + secrets.key created with mode 0o600                                                                                                  | Unit          | P1       | FR-016-AC-1, NFR-004-AC-1  | 🚧 In Progress           |
+| TC-139  | age blob bytes do not contain plaintext value                                                                                                             | Unit          | P1       | FR-016-AC-2, NFR-003-AC-2  | 🚧 In Progress           |
+| TC-140  | Truncated secrets.d/local.age → local._ fails; elements._ still works                                                                                     | Unit          | P1       | FR-016-AC-3                | 🚧 In Progress           |
+| TC-141  | All age writes observe 0o600 post-rename                                                                                                                  | Unit          | P2       | FR-016-AC-4                | 🚧 In Progress           |
+| TC-142  | secrets.key with mode 0o644 → SecretsIdentityPermissionsError                                                                                             | Unit          | P1       | FR-016-AC-5, NFR-004-AC-3  | 🚧 In Progress           |
+| TC-143  | Full set/get/delete lifecycle: zero plaintext leaks in age files                                                                                          | Unit          | P1       | FR-016-AC-6, NFR-003-AC-2  | 🚧 In Progress           |
+| TC-150  | ix config get logLevel → reads core plugin config                                                                                                         | Unit          | P1       | FR-018-AC-1                | 🚧 In Progress           |
+| TC-151  | ix config set local cluster.defaultTags → next ix local up observes                                                                                       | Integration   | P1       | FR-018-AC-2                | 🚧 In Progress           |
+| TC-152  | ix config set local cluster.defaultTags 42 → four-tuple error                                                                                             | Unit          | P1       | FR-018-AC-3, NFR-005-AC-1  | 🚧 In Progress           |
+| TC-153  | ix config edit: bad save → re-edit/discard prompt                                                                                                         | Unit          | P1       | FR-018-AC-4                | 🚧 In Progress           |
+| TC-154  | ix config doctor: mixed valid/invalid → non-zero exit                                                                                                     | Unit          | P1       | FR-018-AC-5                | 🚧 In Progress           |
+| TC-155  | ix config get unknown-plugin foo → UnknownPluginError lists ids                                                                                           | Unit          | P1       | FR-018-AC-6                | 🚧 In Progress           |
+| TC-156  | Concurrent ix config set local … both succeed serialized                                                                                                  | Unit          | P1       | FR-018-AC-7, FR-011-AC-4   | 🚧 In Progress           |
+| TC-157  | ix secrets list: value column never populated                                                                                                             | Static + Unit | P1       | FR-019-AC-1, FR-014-AC-7   | 🚧 In Progress           |
+| TC-158  | ix secrets set local.ghcr-token: prints "stored ... in <backend>" only                                                                                    | Unit          | P1       | FR-019-AC-2                | 🚧 In Progress           |
+| TC-159  | ix secrets which transitions: keyring → unset → env                                                                                                       | Unit          | P1       | FR-019-AC-3                | 🚧 In Progress           |
+| TC-160  | ix secrets rm: clears persisted; warns when env still satisfies                                                                                           | Unit          | P1       | FR-019-AC-4                | 🚧 In Progress           |
+| TC-161  | ix secrets which unknown.foo → UnknownSecretError lists registered                                                                                        | Unit          | P1       | FR-019-AC-5                | 🚧 In Progress           |
+| TC-162  | Lifecycle output scan: zero secret values in stdout/stderr                                                                                                | Unit          | P1       | FR-019-AC-6, NFR-003-AC-2  | 🚧 In Progress           |
+| TC-163  | Keyring denial during set: remediation surfaced; value not echoed                                                                                         | Unit          | P1       | FR-019-AC-7, FR-015-AC-5   | 🚧 In Progress           |
+| TC-164  | Static: no fs.write\* of secret values outside backends/                                                                                                  | Static        | P1       | NFR-003-AC-1               | 🚧 In Progress           |
+| TC-165  | Round-trip leak scan: ciphertext does not contain plaintext                                                                                               | Unit          | P1       | NFR-003-AC-2               | 🚧 In Progress           |
+| TC-166  | Integration: only keychain entry OR age blob on disk; never both                                                                                          | Integration   | P1       | NFR-003-AC-3               | 🚧 In Progress           |
+| TC-169  | umask 0022 → governed files created mode 0o600                                                                                                            | Unit          | P1       | NFR-004-AC-1               | 🚧 In Progress           |
+| TC-170  | rename failure: target intact + temp removed                                                                                                              | Unit          | P1       | NFR-004-AC-2               | 🚧 In Progress           |
+| TC-171  | secrets.key with mode 0o644 (fixture) → SecretsIdentityPermissionsError                                                                                   | Unit          | P1       | NFR-004-AC-3, FR-016-AC-5  | 🚧 In Progress           |
+| TC-172  | Symlinked governed file rejected on access                                                                                                                | Unit          | P1       | NFR-004-AC-4               | 🚧 In Progress           |
+| TC-173  | Static: only atomicWrite helper writes governed files                                                                                                     | Static        | P1       | NFR-004-AC-5               | 🚧 In Progress           |
+| TC-174  | Schema error contains plugin/keyPath/expectedType/filePath                                                                                                | Unit          | P1       | NFR-005-AC-1, FR-018-AC-3  | 🚧 In Progress           |
+| TC-175  | Declared-secret value redacted in error output                                                                                                            | Unit          | P1       | NFR-005-AC-2               | 🚧 In Progress           |
+| TC-176  | doctor output stable byte-order across runs                                                                                                               | Unit          | P2       | NFR-005-AC-3               | 🚧 In Progress           |
+| TC-177  | Static: zero console.error for schema errors                                                                                                              | Static        | P1       | NFR-005-AC-4               | 🚧 In Progress           |
+| TC-178  | Static: only formatSchemaError builds user-facing strings                                                                                                 | Static        | P1       | NFR-005-AC-5               | 🚧 In Progress           |
+| TC-179  | MemoryBackend registered: full lifecycle exercises SecretsService unchanged                                                                               | Unit          | P1       | NFR-006-AC-1               | 🚧 In Progress           |
+| TC-180  | Consumers compile/pass under both keyring and age-file backends                                                                                           | Unit          | P1       | NFR-006-AC-2               | 🚧 In Progress           |
+| TC-181  | Static: zero imports of backends/\* outside core/secrets/                                                                                                 | Static        | P1       | NFR-006-AC-3               | 🚧 In Progress           |
+| TC-182  | registerSecretsBackend: duplicate id throws on second registration                                                                                        | Unit          | P2       | NFR-006-AC-4               | 🚧 In Progress           |
+| TC-183  | core.secretsBackend=keyring + probe fail → KeyringUnavailableError everywhere                                                                             | Unit          | P1       | NFR-006-AC-5, FR-020-AC-4  | 🚧 In Progress           |
+| TC-184  | secrets.key is exactly one AGE-SECRET-KEY-1… identity + single \n                                                                                         | Unit          | P1       | FR-016-AC-2b               | 🚧 In Progress           |
+| TC-185  | ix config set local cluster.defaultTags 'a,b' (non-JSON) → ConfigSetParseError                                                                            | Unit          | P1       | FR-018-AC-8                | 🚧 In Progress           |
+| TC-186  | get/set/delete with malformed SecretId throws InvalidSecretIdError                                                                                        | Unit          | P1       | FR-014-AC-8                | 🚧 In Progress           |
+| TC-187  | forPlugin('core', CoreConfigSchema).get() with empty env+file → full default object                                                                       | Unit          | P1       | FR-020-AC-1                | 🚧 In Progress           |
+| TC-188  | Each declared env binding (IX_LOG_LEVEL, IX_THEME, …) overrides file value                                                                                | Unit          | P1       | FR-020-AC-2                | 🚧 In Progress           |
+| TC-189  | secretsBackend=auto: keyring on probe-success; age-file on probe-fail                                                                                     | Unit          | P1       | FR-020-AC-3                | 🚧 In Progress           |
+| TC-190  | Setting cluster.context on core file → strict reject (belongs to local)                                                                                   | Unit          | P1       | FR-020-AC-5                | 🚧 In Progress           |
+| TC-191  | Each core SecretId registered with envVar precedence; auth.expiresAt has no env effect                                                                    | Unit          | P1       | FR-020-AC-6, FR-020-AC-7   | 🚧 In Progress           |
+| TC-192  | Read-only ~/.config/ix/ → set() throws ConfigWriteError; prior content intact; no orphan temp                                                             | Unit          | P1       | FR-010-AC-7                | 🚧 In Progress           |
+| TC-193  | Mocked os.tmpdir() to a different volume — no governed-file write touches it                                                                              | Unit          | P1       | FR-010-AC-8                | 🚧 In Progress           |
+| TC-194  | Pre-existing <target>.tmp.\* sibling >30s old is pruned on next set(); younger orphans left                                                               | Unit          | P1       | FR-010-AC-9                | 🚧 In Progress           |
+| TC-195  | Plugin id "../foo" or "" or "Foo" → log+skip with reason "invalid-plugin-id"; doctor reports                                                              | Unit          | P1       | FR-013-AC-7                | 🚧 In Progress           |
+| TC-291  | Static: runDown body in index.tsx no longer throws "all" requires --from-source for image-mode all                                                        | Static        | P1       | FR-035-AC-1                | 🚧 In Progress           |
+| TC-292  | Unit: resolveDownReleases(["all"], registry, …) returns every deployable with `apps→auth→platform→system` tier order                                      | Unit          | P1       | FR-035-AC-1                | ✅ Complete              |
+| TC-293  | Unit: resolveDownReleases includes umbrella + every subchart install for role=app, deduped                                                                | Unit          | P1       | FR-035-AC-2                | ✅ Complete              |
+| TC-294  | Unit: runDown(["all"], {}) — ConfirmPrompt declined → no helm uninstall, no kubectl delete                                                                | Unit          | P1       | FR-035-AC-3                | ❌ Missing (integration) |
+| TC-295  | Unit: runDown(["all"], {yes: true}) → no prompt, full destructive sequence runs                                                                           | Unit          | P1       | FR-035-AC-4                | ❌ Missing (integration) |
+| TC-296  | Unit: resolveDownReleases(["build"], …) → only the named release, no expansion of others                                                                  | Unit          | P1       | FR-035-AC-5                | ✅ Complete              |
+| TC-297  | Unit: runDown(["all", "build"], {}) → throws mixing error                                                                                                 | Unit          | P1       | FR-035-AC-6                | 🚧 In Progress           |
+| TC-322  | Unit: resolveDownReleases sorts dependents-before-dependencies for "all"                                                                                  | Unit          | P1       | FR-035-AC-1                | ✅ Complete              |
+| TC-323  | Unit: resolveDownReleases preserves argv order for named services (no tier sort)                                                                          | Unit          | P1       | FR-035-AC-5                | ✅ Complete              |
+| TC-324  | Unit: resolveDownReleases dedupe preserves first-occurrence position                                                                                      | Unit          | P2       | FR-035-AC-1                | ✅ Complete              |
+| TC-325  | Unit: resolveDownReleases ranks unknown namespaces last in tier order                                                                                     | Unit          | P2       | FR-035-AC-1                | ✅ Complete              |
+| TC-298  | Integration: after `ix local halt all --yes`, `helm list -A` returns no ix releases, PVCs deleted, PVs Available                                          | Integration   | P1       | FR-035-AC-7                | ❌ Missing               |
+| TC-299  | Static: apps/ix/src/commands/local/halt.ts catch logs error message (no bare `catch {}`)                                                                  | Static        | P1       | FR-035-AC-8                | 🚧 In Progress           |
+| TC-310  | Unit: runClusterStop runs `docker stop` on every node from `kind get nodes`                                                                               | Unit          | P1       | FR-036-AC-1                | 🚧 In Progress           |
+| TC-311  | Unit: runClusterStart runs `docker start` then polls `kubectl get ns` until ok                                                                            | Unit          | P1       | FR-036-AC-2                | 🚧 In Progress           |
+| TC-312  | Unit: runClusterStop idempotent — already-stopped node reports state without error                                                                        | Unit          | P1       | FR-036-AC-3                | ✅ Complete              |
+| TC-313  | Unit: runClusterStart idempotent — already-running node reports state without error                                                                       | Unit          | P1       | FR-036-AC-3                | ✅ Complete              |
+| TC-314  | Unit: runClusterStop with absent kind cluster renders failed listing, returns non-zero                                                                    | Unit          | P1       | FR-036-AC-4                | ✅ Complete              |
+| TC-315  | Unit: runClusterStart with absent kind cluster renders failed listing, returns non-zero                                                                   | Unit          | P1       | FR-036-AC-4                | ✅ Complete              |
+| TC-316  | Unit: both stop and start render a Listing with rows containing (node name, state)                                                                        | Unit          | P1       | FR-036-AC-5                | ✅ Complete              |
+| TC-317  | Integration: stop → start round trip; previously-bound PVC re-attaches with prior data                                                                    | Integration   | P1       | FR-036-AC-6                | ❌ Missing               |
+| TC-318  | Unit: runClusterStart with API-server timeout renders warn listing (not failed); exit 0                                                                   | Unit          | P1       | FR-036-AC-7                | ✅ Complete              |
+| TC-319  | Unit: runClusterDown — second prompt name-mismatch aborts before kind delete                                                                              | Unit          | P1       | FR-006-AC-6                | ✅ Complete              |
+| TC-320  | Unit: runClusterDown({yes: true}) bypasses both ConfirmPrompt and TextPrompt                                                                              | Unit          | P1       | FR-006-AC-7                | ✅ Complete              |
+| TC-321  | Static: index.ts exports runClusterStop and runClusterStart                                                                                               | Static        | P1       | FR-001-AC-1, FR-036        | ✅ Complete              |
+| TC-326  | Unit: runClusterStop — real docker error surfaces in row description, run continues                                                                       | Unit          | P2       | FR-036-AC-3                | ✅ Complete              |
+| TC-327  | Unit: runClusterStop — kind-binary failure (missing/permissions) renders distinct error                                                                   | Unit          | P1       | FR-036-AC-4                | ✅ Complete              |
+| TC-328  | Unit: runClusterStart — real docker error surfaces in row description, run continues                                                                      | Unit          | P2       | FR-036-AC-3                | ✅ Complete              |
+| TC-329  | Unit: runClusterStart — kind-binary failure renders distinct error                                                                                        | Unit          | P1       | FR-036-AC-4                | ✅ Complete              |
+| TC-330  | Unit: runClusterDown — ESC during name retype reports Cancelled (warn), not name-mismatch                                                                 | Unit          | P2       | FR-006-AC-6                | ✅ Complete              |
+| TC-331  | Unit: runClusterDown — name retype rejects on any non-match input (case-sensitive)                                                                        | Unit          | P2       | FR-006-AC-6                | ✅ Complete              |
+| TC-400  | Unit: loadTunnelConfig with missing tunnel block returns documented defaults                                                                              | Unit          | P1       | FR-038-AC-1                | ✅ Complete              |
+| TC-401  | Unit: persisted tunnel block round-trips through loadTunnelConfig                                                                                         | Unit          | P1       | FR-038-AC-2                | ✅ Complete              |
+| TC-402  | Unit: invalid baseDomain falls back to schema default rather than throwing                                                                                | Unit          | P2       | FR-038-AC-4                | ✅ Complete              |
+| TC-403  | Unit: tunnel.autoStart string "true" coerced to boolean                                                                                                   | Unit          | P2       | FR-038-AC-3                | ✅ Complete              |
+| TC-403b | Unit: tunnel.autoStart string "false" coerced to boolean false                                                                                            | Unit          | P1       | FR-038-AC-3, FR-038-CON-1  | ✅ Complete              |
+| TC-404  | Unit: tunnel block independent of domain block — defaults coexist                                                                                         | Unit          | P2       | FR-038-AC-1                | ✅ Complete              |
+| TC-405  | Unit: deriveHostname produces `<app>.<baseDomain>`                                                                                                        | Unit          | P1       | FR-038-AC-8                | ✅ Complete              |
+| TC-406  | Unit: buildExposeOverlay({}) sets extraBaseDomains and ingress.exposeExtraHosts at top level                                                              | Unit          | P1       | FR-038-AC-8                | ✅ Complete              |
+| TC-407  | Unit: buildExposeOverlay idempotent — repeat baseDomain not duplicated                                                                                    | Unit          | P1       | FR-038-AC-9                | ✅ Complete              |
+| TC-408  | Unit: hostname override appended to ingress.extraHosts                                                                                                    | Unit          | P2       | FR-038-AC-8                | ✅ Complete              |
+| TC-409  | Unit: entry-key path routes ingress flip through subchart; siblings absent from overlay                                                                   | Unit          | P1       | FR-038-AC-10               | ✅ Complete              |
+| TC-410  | Unit: buildUnexposeOverlay removes baseDomain from extras and turns toggle off                                                                            | Unit          | P1       | FR-038-AC-11               | ✅ Complete              |
+| TC-411  | Unit: buildUnexposeOverlay strips matching extraHosts; preserves others                                                                                   | Unit          | P2       | FR-038-AC-11               | ✅ Complete              |
+| TC-412  | Unit: buildUnexposeOverlay targets entry subchart; siblings absent from overlay                                                                           | Unit          | P1       | FR-038-AC-11, FR-038-CON-2 | ✅ Complete              |
+| TC-413  | Unit: resolveCloudflareToken — env var beats backend                                                                                                      | Unit          | P1       | FR-038-AC-5                | ✅ Complete              |
+| TC-414  | Unit: resolveCloudflareToken — backend value used when env unset                                                                                          | Unit          | P1       | FR-038-AC-6                | ✅ Complete              |
+| TC-415  | Unit: requireCloudflareToken throws clear error when nothing resolves                                                                                     | Unit          | P1       | FR-038-AC-7                | ✅ Complete              |
+| TC-416  | Manual: `helm template charts/cloudflared` fails with explicit message when tunnelToken missing                                                           | Review        | P1       | FR-038-AC-12               | ✅ Complete              |
+| TC-417  | Unit: cluster-start with tunnel.autoStart=false skips tunnel call entirely                                                                                | Unit          | P1       | FR-038-AC-13, FR-038-CON-1 | ✅ Complete              |
+| TC-418  | Unit: cluster-start with autoStart=true + token invokes tunnel install and renders passed tunnel Listing                                                  | Unit          | P1       | FR-038-AC-14               | ✅ Complete              |
+| TC-419  | Unit: cluster-start with autoStart=true + no token renders warn-tail Listing, returns success                                                             | Unit          | P1       | FR-038-AC-15, FR-038-CON-4 | ✅ Complete              |
+| TC-420  | Unit: tunnel-install failure inside cluster-start hook is swallowed                                                                                       | Unit          | P1       | FR-038-AC-16               | ✅ Complete              |
+| TC-421  | Unit: `ix tunnel expose <missing-app>` surfaces actionable error and expose/unexpose pass chart ref/version to `helm upgrade`                             | Unit          | P1       | FR-038-AC-17               | ✅ Complete              |
+| TC-422  | Unit: `ix tunnel down` idempotent on missing release                                                                                                      | Unit          | P2       | FR-038-AC-18               | ✅ Complete              |
+| TC-423  | Unit: tunnel auto-start path skips when GHCR token is absent instead of prompting                                                                         | Unit          | P1       | FR-038-AC-15, FR-038-CON-4 | ✅ Complete              |
+| TC-424  | Static: every `apps/ix/src/commands/**/*.ts(x)` command file has a matching Vite build entry; `ix up --from-source --expose` does not run tunnel exposure | Static        | P1       | FR-038-AC-19               | ✅ Complete              |
+| TC-430  | Unit: firstRunSetup({ isTTY: false }) with no resolvable token throws TunnelCredentialsError naming the env var and the no-TTY refusal              | Unit          | P1       | FR-038-AC-20, FR-038-CON-4 | ✅ Complete              |
+| TC-431  | Unit: firstRunSetup({ isTTY: false }) with token already set returns without prompting and without writes                                            | Unit          | P1       | FR-038-AC-21               | ✅ Complete              |
+| TC-432  | Unit: firstRunSetup({ isTTY: true }) prompts for token + base domain; token persists to SecretsService, base domain to local.yaml                    | Unit          | P1       | FR-038-AC-22               | ✅ Complete              |
+| TC-433  | Unit: firstRunSetup is idempotent when both token and base domain are already configured                                                              | Unit          | P1       | FR-038-AC-23               | ✅ Complete              |
+| TC-434  | Unit: setTunnelBaseDomain persists a valid base domain via ConfigService                                                                              | Unit          | P1       | FR-038-AC-24               | ✅ Complete              |
+| TC-435  | Unit: setTunnelBaseDomain rejects invalid base domain (single label) with TunnelCredentialsError; no write                                            | Unit          | P2       | FR-038-AC-24               | ✅ Complete              |
+| TC-436  | Integration: `ix tunnel domain` read prints current; `ix tunnel domain <value>` writes and confirms with CNAME reminder                              | Integration   | P2       | FR-038-AC-25               | ❌ Missing               |
 
 ---
 

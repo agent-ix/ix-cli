@@ -7,6 +7,8 @@
 import { execa } from "execa";
 import { Item, Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "../config.js";
+import { loadTunnelConfig, type TunnelConfig } from "../config.js";
+import { runTunnelUp, type TunnelInstallResult } from "../tunnel/install.js";
 
 const HEADER = "ix local cluster start";
 
@@ -17,6 +19,11 @@ export interface ClusterStartDeps {
   exec?: typeof execa;
   /** Test seam — overrides the wait-for-API loop with deterministic behavior. */
   waitForApi?: (timeoutMs: number) => Promise<boolean>;
+  loadTunnelConfig?: () => TunnelConfig;
+  runTunnelUp?: (
+    config: IxConfig,
+    opts: { requireToken?: boolean },
+  ) => Promise<TunnelInstallResult>;
 }
 
 async function defaultWaitForApi(timeoutMs: number): Promise<boolean> {
@@ -118,4 +125,59 @@ export async function runClusterStart(
       )}
     </Listing>,
   );
+
+  // FR-038: opt-in cloudflared auto-start. The hook is silent on the
+  // happy path (and on the silent-skip when no token is configured) so
+  // a cluster without Cloudflare creds boots exactly as it does today.
+  if (apiReady) {
+    await maybeAutoStartTunnel(config, deps);
+  }
+}
+
+const TUNNEL_AUTOSTART_HEADER = "ix local cluster start · tunnel";
+
+async function maybeAutoStartTunnel(
+  config: IxConfig,
+  deps: ClusterStartDeps,
+): Promise<void> {
+  const tunnelCfg = (deps.loadTunnelConfig ?? loadTunnelConfig)();
+  if (!tunnelCfg.autoStart) return;
+
+  try {
+    const result = await (deps.runTunnelUp ?? runTunnelUp)(config, {
+      requireToken: false,
+    });
+    if (!result.installed) {
+      // Silent skip is the contract when creds aren't set — emit a
+      // single Listing for visibility but don't escalate.
+      await renderStatic(
+        <Listing
+          header={TUNNEL_AUTOSTART_HEADER}
+          status="passed"
+          tailVariant="warn"
+          tail={`Skipped: ${result.skippedReason}.`}
+        />,
+      );
+      return;
+    }
+    await renderStatic(
+      <Listing
+        header={TUNNEL_AUTOSTART_HEADER}
+        status="passed"
+        tail={`cloudflared installed (autoStart=true).`}
+      />,
+    );
+  } catch (err) {
+    // FR-038: tunnel auto-start MUST NOT abort cluster bringup. Surface
+    // the failure as a warn-level Listing and continue.
+    const msg = err instanceof Error ? err.message : String(err);
+    await renderStatic(
+      <Listing
+        header={TUNNEL_AUTOSTART_HEADER}
+        status="failed"
+        tailVariant="warn"
+        tail={`Tunnel auto-start failed (cluster is up): ${msg}`}
+      />,
+    );
+  }
 }

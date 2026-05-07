@@ -37,6 +37,9 @@
       },
       "secrets": {
         "description": "Manage plugin secrets in the OS keyring or age-encrypted fallback (list, set, rm, which)."
+      },
+      "tunnel": {
+        "description": "Cloudflare Tunnel subcommands for exposing apps externally (up, down, status, domain, expose, unexpose)."
       }
     }
   },
@@ -52,7 +55,7 @@
     "@agent-ix/ix-cli-core": "workspace:*",
     "@agent-ix/ix-cli-elements": "workspace:*",
     "@agent-ix/ix-cli-local": "workspace:*",
-    "@agent-ix/ix-ui-cli": "^0.4.0",
+    "@agent-ix/ix-ui-cli": "local",
     "@oclif/core": ">=4.10.6",
     "picocolors": ">=1.1.1",
     "zod": ">=4.0.0",

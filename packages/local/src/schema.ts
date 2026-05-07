@@ -32,6 +32,14 @@ const BaseDomainSchema = z
     "must be a fully-qualified domain with at least two labels (e.g. dev.ix)",
   );
 
+const StrictBooleanSchema = z.preprocess((raw) => {
+  if (typeof raw !== "string") return raw;
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  return raw;
+}, z.boolean());
+
 export const LocalConfigSchema = z
   .object({
     cluster: z
@@ -91,6 +99,32 @@ export const LocalConfigSchema = z
         external: null,
         publicBaseUrl: null,
       }),
+    /**
+     * Cloudflare Tunnel — opt-in external exposure (FR-038).
+     *
+     * `autoStart` controls whether `ix cluster start` brings up the
+     * shared `cloudflared` deployment after the cluster is reachable.
+     * Even when true, bringup is a no-op if no Cloudflare token can
+     * be resolved (env var or SecretsService) — the cluster never
+     * fails because of a missing tunnel credential.
+     *
+     * `baseDomain` is the wildcard suffix the tunnel terminates
+     * (must match the `*.<baseDomain>` CNAME in the Cloudflare zone).
+     * `tunnelId` is informational — useful for `ix tunnel status`
+     * output — and is NOT used by the install path.
+     */
+    tunnel: z
+      .object({
+        autoStart: StrictBooleanSchema.default(false),
+        baseDomain: BaseDomainSchema.default("agent-ix.dev"),
+        tunnelId: z.string().nullable().default(null),
+      })
+      .strict()
+      .default({
+        autoStart: false,
+        baseDomain: "agent-ix.dev",
+        tunnelId: null,
+      }),
   })
   .strict();
 
@@ -113,6 +147,13 @@ export const LocalSecretsSchema = [
     description: "GitHub Container Registry token (read:packages)",
     required: false,
     envVar: "IX_GHCR_TOKEN",
+  },
+  {
+    name: "cloudflare-tunnel-token",
+    description:
+      "Cloudflare Tunnel token issued by the CF dashboard (Zero Trust → Tunnels). Required by `ix tunnel up`.",
+    required: false,
+    envVar: "IX_CF_TUNNEL_TOKEN",
   },
 ] as const;
 

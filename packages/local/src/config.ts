@@ -48,6 +48,25 @@ export function loadClusterConfig(): ClusterConfig {
   return cfg.get().cluster;
 }
 
+/** FR-038 — Cloudflare Tunnel opt-in exposure config */
+export interface TunnelConfig {
+  autoStart: boolean;
+  baseDomain: string;
+  tunnelId: string | null;
+}
+
+/**
+ * Load the `tunnel:` section of `~/.config/ix/config.d/local.yaml`. Pure
+ * config read — no credential resolution and no cluster I/O. The
+ * Cloudflare token lives in the SecretsService (see `tunnel/credentials.ts`).
+ */
+export function loadTunnelConfig(): TunnelConfig {
+  const cfg = ConfigService.forPlugin(LOCAL_PLUGIN_ID, LocalConfigSchema, {
+    envBindings: LocalEnvBindings,
+  });
+  return cfg.get().tunnel;
+}
+
 export interface IxConfig {
   /**
    * Full ingress host suffix list. Length >= 1. Every service

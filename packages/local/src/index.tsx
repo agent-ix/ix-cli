@@ -54,6 +54,34 @@ export { runClusterStatus } from "./commands/cluster-status.js";
 export { runInitCluster } from "./commands/init-cluster.js";
 export { runClusterRefreshCert } from "./commands/cluster-refresh-cert.js";
 export { ensureClusterCertCoversHosts } from "./cluster-cert.js";
+export {
+  runTunnelUpCommand,
+  runTunnelDownCommand,
+  runTunnelStatusCommand,
+  runTunnelExposeCommand,
+  runTunnelUnexposeCommand,
+  runTunnelDomainCommand,
+} from "./tunnel/runner.js";
+export {
+  runTunnelUp,
+  runTunnelDown,
+  getTunnelStatus,
+  TUNNEL_NAMESPACE,
+} from "./tunnel/install.js";
+export {
+  exposeApp,
+  unexposeApp,
+  deriveHostname,
+  buildExposeOverlay,
+  buildUnexposeOverlay,
+} from "./tunnel/expose.js";
+export {
+  resolveCloudflareToken,
+  requireCloudflareToken,
+  firstRunSetup,
+  setTunnelBaseDomain,
+  TunnelCredentialsError,
+} from "./tunnel/credentials.js";
 export { runList } from "./commands/list.js";
 export { loadRegistry, findDeployable } from "./registry.js";
 export { resolveGhcrToken } from "./credentials.js";
