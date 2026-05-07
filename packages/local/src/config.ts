@@ -86,7 +86,13 @@ export function updateTunnelExposed(
     envBindings: LocalEnvBindings,
   });
   const current = cfg.get();
-  cfg.set({
+  // Use `replace` rather than `set`: ConfigService.set deep-merges the
+  // patch into the existing file, which means absent keys mean "no
+  // change" — so a mutate that DELETES an entry from `exposed` would
+  // never propagate to disk. `replace` writes the full validated value,
+  // letting deletions take effect.
+  cfg.replace({
+    ...current,
     tunnel: {
       ...current.tunnel,
       exposed: mutate(current.tunnel.exposed ?? {}),
