@@ -134,13 +134,20 @@ async function renderExposeResult(
   result: ExposeResult,
   hostnameOverride: string | null,
 ): Promise<void> {
-  const derivedOrOverride =
-    hostnameOverride ?? `${result.release}.${baseDomain}`;
+  // The release name is NOT the hostname for umbrella apps — the entry
+  // subchart's fullname is. Source the tail line from the actual hosts
+  // we read back from the rendered Ingress (`result.hostsAdded`),
+  // falling back to the explicit override or — last resort — to the
+  // release name (only correct for single-service releases).
+  const tailHost =
+    hostnameOverride ??
+    result.hostsAdded[0] ??
+    `${result.release}.${baseDomain}`;
   await renderStatic(
     <Listing
       header={header}
       status="passed"
-      tail={`Tunnel-routed at https://${derivedOrOverride}`}
+      tail={`Tunnel-routed at https://${tailHost}`}
     >
       <Item name="release" description={result.release} />
       <Item name="namespace" description={result.namespace} />
