@@ -201,7 +201,7 @@ describe("buildTunnelSetArgs — per-app expose intent (FR-038)", () => {
     expect(args).toEqual([]);
   });
 
-  it("TC-042: single-service release (entryKey=null) toggles at top level", async () => {
+  it("TC-042: single-service release (entryKey=null) targets ix-service subchart", async () => {
     const { buildTunnelSetArgs } = await import("../src/config.js");
     const args = buildTunnelSetArgs(
       {
@@ -212,45 +212,49 @@ describe("buildTunnelSetArgs — per-app expose intent (FR-038)", () => {
       null,
     );
     expect(args).toContain("global.tunnelBaseDomains[0]=agent-ix.dev");
-    expect(args).toContain("ingress.exposeOnTunnel=true");
-    // No subchart prefix, no override extraHosts.
+    // Toggle MUST land on `ix-service.ingress.<key>`, not the wrapper
+    // chart's bare `ingress.<key>` — wrapper-chart values aren't read
+    // by ix-service, so a bare-path toggle is a silent no-op.
+    expect(args).toContain("ix-service.ingress.exposeOnTunnel=true");
+    expect(args).not.toContain("ingress.exposeOnTunnel=true");
     expect(
-      args.find((a) => a.includes(".ingress.exposeOnTunnel")),
-    ).toBeUndefined();
-    expect(
-      args.find((a) => a.startsWith("ingress.extraHosts")),
+      args.find((a) => a.startsWith("ix-service.ingress.extraHosts")),
     ).toBeUndefined();
   });
 
-  it("TC-043: umbrella release prefixes the entry subchart key", async () => {
+  it("TC-043: umbrella release prefixes <entry>.ix-service", async () => {
     const { buildTunnelSetArgs } = await import("../src/config.js");
     const args = buildTunnelSetArgs(
       {
         ...baseTunnel,
-        exposed: { "cloud-manager-ui": { hostname: null } },
+        exposed: { "cloud-manager-app": { hostname: null } },
       },
-      "cloud-manager-ui",
+      "cloud-manager-app",
       "cloud-manager-ui",
     );
-    expect(args).toContain("cloud-manager-ui.ingress.exposeOnTunnel=true");
-    // Top-level toggle MUST NOT also be set — that would leak to siblings.
-    expect(args).not.toContain("ingress.exposeOnTunnel=true");
+    expect(args).toContain(
+      "cloud-manager-ui.ix-service.ingress.exposeOnTunnel=true",
+    );
+    // Wrapper-level toggle MUST NOT be set — silent no-op that would
+    // mask the actual gate.
+    expect(args).not.toContain("cloud-manager-ui.ingress.exposeOnTunnel=true");
+    expect(args).not.toContain("ix-service.ingress.exposeOnTunnel=true");
   });
 
-  it("TC-044: hostname override appends to entry subchart's extraHosts[0]", async () => {
+  it("TC-044: hostname override appends to entry's ix-service.ingress.extraHosts[0]", async () => {
     const { buildTunnelSetArgs } = await import("../src/config.js");
     const args = buildTunnelSetArgs(
       {
         ...baseTunnel,
         exposed: {
-          "cloud-manager-ui": { hostname: "vanity.agent-ix.dev" },
+          "cloud-manager-app": { hostname: "vanity.agent-ix.dev" },
         },
       },
-      "cloud-manager-ui",
+      "cloud-manager-app",
       "cloud-manager-ui",
     );
     expect(args).toContain(
-      "cloud-manager-ui.ingress.extraHosts[0]=vanity.agent-ix.dev",
+      "cloud-manager-ui.ix-service.ingress.extraHosts[0]=vanity.agent-ix.dev",
     );
   });
 });

@@ -226,17 +226,25 @@ foo.example.com, tunnelId: abc-123 }` round-trips through
   `requireCloudflareToken()` throws a `TunnelCredentialsError` whose
   message names the env var.
 - **FR-038-AC-8**: `buildExposeOverlay({}, "agent-ix.dev", null,
-null)` returns `{ global: { tunnelBaseDomains: ["agent-ix.dev"] },
-ingress: { exposeOnTunnel: true } }`. The overlay never writes
-  `extraBaseDomains` or `exposeExtraHosts` — those are the LAN scope
-  and remain operator-managed.
+null)` writes `global.tunnelBaseDomains: ["agent-ix.dev"]` and
+  `ix-service.ingress.exposeOnTunnel: true`. The toggle MUST land on
+  the `ix-service.ingress` path because every service-wrapper chart
+  at this org composes ix-service as a named subchart — writing at
+  the wrapper-chart's bare `ingress.<key>` would silently no-op,
+  which for a security gate is worse than not having the flag at
+  all. The overlay never writes `extraBaseDomains` or
+  `exposeExtraHosts` — those are the LAN scope and remain
+  operator-managed.
 - **FR-038-AC-9**: `buildExposeOverlay` is idempotent — re-exposing a
   release whose `global.tunnelBaseDomains` already contains the base
   domain does not duplicate it.
 - **FR-038-AC-10**: When given an `entryKey`, `buildExposeOverlay`
-  routes the ingress flip through `<entryKey>.ingress`. The overlay
-  MUST NOT contain entries for sibling subcharts so
+  routes the ingress flip through `<entryKey>.ix-service.ingress`
+  (the actual ix-service subchart values inside the wrapper). The
+  overlay MUST NOT contain entries for sibling subcharts so
   `helm upgrade --reuse-values -f <file>` keeps their values intact.
+  Other keys inside the same `<entryKey>.ix-service` block (e.g.
+  `fullnameOverride`) round-trip unchanged.
 - **FR-038-AC-11**: `buildUnexposeOverlay` removes the base domain
   from `global.tunnelBaseDomains`, sets `ingress.exposeOnTunnel:
 false`, and strips any `ingress.extraHosts` entries that end with
@@ -296,14 +304,16 @@ namespace '<ns>'. Run \`ix up <app>\` first.`
 - **FR-038-AC-27**: `buildTunnelSetArgs(tunnel, release, null)` for an
   exposed single-service release emits
   `global.tunnelBaseDomains[0]=<base>` and
-  `ingress.exposeOnTunnel=true`. With a non-null `entryKey`, the
-  toggle is prefixed (`<entryKey>.ingress.exposeOnTunnel=true`) and
-  the top-level toggle is NOT set — non-entry subcharts must never
-  inherit exposure.
+  `ix-service.ingress.exposeOnTunnel=true`. With a non-null
+  `entryKey`, the toggle is `<entryKey>.ix-service.ingress.exposeOnTunnel=true`
+  and the wrapper-level/top-level forms are NOT set — non-entry
+  subcharts must never inherit exposure, and a wrapper-level toggle
+  would silently no-op (the value isn't read by ix-service).
 - **FR-038-AC-28**: `buildTunnelSetArgs` with a non-null
   `tunnel.exposed[release].hostname` appends
-  `<entryKey>.ingress.extraHosts[0]=<override>` (or the unprefixed
-  form for single-service releases).
+  `<entryKey>.ix-service.ingress.extraHosts[0]=<override>` (or
+  `ix-service.ingress.extraHosts[0]=<override>` for single-service
+  releases). Same `ix-service.` prefix rationale as AC-8.
 - **FR-038-AC-29**: `runTunnelExposeCommand` persists the release's
   intent into `tunnel.exposed` after the helm upgrade succeeds.
   `runTunnelUnexposeCommand` removes the entry. Subsequent

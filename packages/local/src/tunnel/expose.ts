@@ -106,11 +106,21 @@ export function buildExposeOverlay(
     },
   };
 
-  const entryBlock = entryKey
+  // Service-wrapper charts at this org compose ix-service as a named
+  // subchart, so per-service ingress keys live one level deeper than
+  // the wrapper-chart's own values: `ix-service.ingress.<key>` for a
+  // single-service release, `<entry>.ix-service.ingress.<key>` for an
+  // umbrella. Writing at the wrapper level (e.g. `<entry>.ingress`)
+  // would land on values ix-service never reads — a silent no-op
+  // that, for a security-sensitive toggle, is worse than not having
+  // the flag at all.
+  const wrapperBlock = entryKey
     ? ((current[entryKey] as Record<string, unknown> | undefined) ?? {})
     : current;
+  const ixSvcBlock =
+    (wrapperBlock["ix-service"] as Record<string, unknown> | undefined) ?? {};
   const entryIngress =
-    (entryBlock.ingress as Record<string, unknown> | undefined) ?? {};
+    (ixSvcBlock.ingress as Record<string, unknown> | undefined) ?? {};
   const existingExtraHosts = ensureStringArray(entryIngress.extraHosts);
   const nextExtraHosts =
     hostnameOverride && !existingExtraHosts.includes(hostnameOverride)
@@ -122,11 +132,12 @@ export function buildExposeOverlay(
     exposeOnTunnel: true,
     ...(nextExtraHosts.length > 0 ? { extraHosts: nextExtraHosts } : {}),
   };
+  const updatedIxSvc = { ...ixSvcBlock, ingress: updatedIngress };
 
   if (entryKey) {
-    overlay[entryKey] = { ...entryBlock, ingress: updatedIngress };
+    overlay[entryKey] = { ...wrapperBlock, "ix-service": updatedIxSvc };
   } else {
-    overlay.ingress = updatedIngress;
+    overlay["ix-service"] = updatedIxSvc;
   }
 
   return overlay;
@@ -153,11 +164,17 @@ export function buildUnexposeOverlay(
     },
   };
 
-  const entryBlock = entryKey
+  // Symmetric to buildExposeOverlay — toggle lives at
+  // `[<entry>.]ix-service.ingress.exposeOnTunnel`, not at the
+  // wrapper-chart level. See comment in buildExposeOverlay for the
+  // security rationale.
+  const wrapperBlock = entryKey
     ? ((current[entryKey] as Record<string, unknown> | undefined) ?? {})
     : current;
+  const ixSvcBlock =
+    (wrapperBlock["ix-service"] as Record<string, unknown> | undefined) ?? {};
   const entryIngress =
-    (entryBlock.ingress as Record<string, unknown> | undefined) ?? {};
+    (ixSvcBlock.ingress as Record<string, unknown> | undefined) ?? {};
   const suffix = `.${baseDomain}`;
   const remainingExtraHosts = ensureStringArray(entryIngress.extraHosts).filter(
     (h) => !h.endsWith(suffix),
@@ -170,11 +187,12 @@ export function buildUnexposeOverlay(
       ? { extraHosts: remainingExtraHosts }
       : { extraHosts: [] }),
   };
+  const updatedIxSvc = { ...ixSvcBlock, ingress: updatedIngress };
 
   if (entryKey) {
-    overlay[entryKey] = { ...entryBlock, ingress: updatedIngress };
+    overlay[entryKey] = { ...wrapperBlock, "ix-service": updatedIxSvc };
   } else {
-    overlay.ingress = updatedIngress;
+    overlay["ix-service"] = updatedIxSvc;
   }
 
   return overlay;

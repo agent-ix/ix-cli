@@ -192,11 +192,18 @@ export function buildGlobalSetArgs(config: IxConfig): string[] {
  * release. Returns `[]` when this release isn't in `tunnel.exposed`,
  * so the install paths can append unconditionally.
  *
- * `entryKey` is the umbrella subchart name whose ingress should serve
- * the tunnel host; pass `null` for single-service releases (toggle
- * applies at the top level). When `tunnel.exposed[release].hostname`
- * is set, it goes into `<entryKey>.ingress.extraHosts[0]` so the
- * chart renders the explicit FQDN alongside the auto-derived one.
+ * Every service-wrapper chart at this org composes ix-service as a
+ * named subchart, so per-service ingress keys live at
+ * `ix-service.ingress.<key>` (single-service release) or
+ * `<entry>.ix-service.ingress.<key>` (umbrella release). That double
+ * prefix is intentional and deploy-specific — flipping
+ * `exposeOnTunnel` MUST hit the actual ix-service values, not the
+ * wrapper-chart's own values, otherwise the toggle silently no-ops
+ * (which would be a security trap).
+ *
+ * `entryKey` is the umbrella subchart name; pass `null` for
+ * single-service releases. The `hostname` override, when set, is
+ * appended to the same prefix's `ingress.extraHosts[0]`.
  */
 export function buildTunnelSetArgs(
   tunnel: TunnelConfig,
@@ -205,7 +212,7 @@ export function buildTunnelSetArgs(
 ): string[] {
   const entry = tunnel.exposed[releaseName];
   if (!entry) return [];
-  const prefix = entryKey ? `${entryKey}.` : "";
+  const prefix = entryKey ? `${entryKey}.ix-service.` : "ix-service.";
   const args = [
     "--set-string",
     `global.tunnelBaseDomains[0]=${tunnel.baseDomain}`,
