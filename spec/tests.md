@@ -46,6 +46,7 @@ Tests fall into four types:
 | US-007     | `ix local refresh` shows per-chart diff rows for changed/new charts         | TC-300–TC-308  | ✅ Complete (static + unit) |
 | US-008     | `ix local halt all` (image mode): list, confirm, uninstall every deployable | TC-291–TC-299  | 🚧 In Progress              |
 | US-009     | `ix local cluster stop`/`start`: pause and resume kind containers           | TC-310–TC-318  | 🚧 In Progress              |
+| US-011     | Operator exposes a local app on a public hostname via Cloudflare Tunnel     | TC-405–TC-435 (unit/static; live-cluster smoke ❌ Missing) | ⚠️ Partial (unit complete; integration pending) |
 
 ### Functional Requirement Coverage
 
