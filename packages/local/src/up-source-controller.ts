@@ -6,7 +6,12 @@ import pc from "picocolors";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { ServiceRow } from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "./config.js";
-import { IX_APPS_NAMESPACE, buildGlobalSetArgs } from "./config.js";
+import {
+  IX_APPS_NAMESPACE,
+  buildGlobalSetArgs,
+  buildTunnelSetArgs,
+  loadTunnelConfig,
+} from "./config.js";
 import { resolveGhcrToken } from "./credentials.js";
 import {
   buildHelmSetArgs,
@@ -325,6 +330,10 @@ function buildLocalHelmArgs(
   for (const valuesFile of install.valuesFiles) args.push("-f", valuesFile);
   args.push("--set-string", `global.imageTag=${imageTag}`);
   args.push(...buildGlobalSetArgs(config));
+  // Source mode installs each child as its own helm release. Tunnel
+  // intent is keyed by release name (which equals the entry-service
+  // name for an exposed app), so toggle at top level (entryKey=null).
+  args.push(...buildTunnelSetArgs(loadTunnelConfig(), install.name, null));
   args.push(...buildHelmSetArgs(resolveCatalog()));
   return args;
 }

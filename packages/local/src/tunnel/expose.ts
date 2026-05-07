@@ -59,10 +59,12 @@ export function deriveHostname(appName: string, baseDomain: string): string {
 interface CurrentValues {
   global?: {
     extraBaseDomains?: unknown;
+    tunnelBaseDomains?: unknown;
     [k: string]: unknown;
   };
   ingress?: {
     exposeExtraHosts?: boolean;
+    exposeOnTunnel?: boolean;
     extraHosts?: unknown;
     [k: string]: unknown;
   };
@@ -92,15 +94,15 @@ export function buildExposeOverlay(
   entryKey: string | null,
   hostnameOverride: string | null,
 ): Record<string, unknown> {
-  const extras = ensureStringArray(current.global?.extraBaseDomains);
-  const nextExtras = extras.includes(baseDomain)
-    ? extras
-    : [...extras, baseDomain];
+  const tunnels = ensureStringArray(current.global?.tunnelBaseDomains);
+  const nextTunnels = tunnels.includes(baseDomain)
+    ? tunnels
+    : [...tunnels, baseDomain];
 
   const overlay: Record<string, unknown> = {
     global: {
       ...(current.global ?? {}),
-      extraBaseDomains: nextExtras,
+      tunnelBaseDomains: nextTunnels,
     },
   };
 
@@ -117,7 +119,7 @@ export function buildExposeOverlay(
 
   const updatedIngress = {
     ...entryIngress,
-    exposeExtraHosts: true,
+    exposeOnTunnel: true,
     ...(nextExtraHosts.length > 0 ? { extraHosts: nextExtraHosts } : {}),
   };
 
@@ -141,13 +143,13 @@ export function buildUnexposeOverlay(
   baseDomain: string,
   entryKey: string | null,
 ): Record<string, unknown> {
-  const extras = ensureStringArray(current.global?.extraBaseDomains);
-  const nextExtras = extras.filter((d) => d !== baseDomain);
+  const tunnels = ensureStringArray(current.global?.tunnelBaseDomains);
+  const nextTunnels = tunnels.filter((d) => d !== baseDomain);
 
   const overlay: Record<string, unknown> = {
     global: {
       ...(current.global ?? {}),
-      extraBaseDomains: nextExtras,
+      tunnelBaseDomains: nextTunnels,
     },
   };
 
@@ -163,7 +165,7 @@ export function buildUnexposeOverlay(
 
   const updatedIngress = {
     ...entryIngress,
-    exposeExtraHosts: false,
+    exposeOnTunnel: false,
     ...(remainingExtraHosts.length > 0
       ? { extraHosts: remainingExtraHosts }
       : { extraHosts: [] }),

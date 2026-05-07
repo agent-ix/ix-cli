@@ -27,7 +27,7 @@ export const TUNNEL_CHART_PATH = "agent-ix/helm-charts/cloudflared";
 // Tracks the helm-charts monorepo version (the tag drives every chart's
 // published version regardless of Chart.yaml; bump this whenever the
 // helm-charts repo cuts a new tag).
-export const TUNNEL_CHART_VERSION = "0.10.2";
+export const TUNNEL_CHART_VERSION = "0.11.0";
 
 export interface TunnelInstallOptions {
   /** Override resolved chart version (testing / pinning). */
@@ -107,6 +107,12 @@ export async function runTunnelUp(
       "--set-string",
       `tunnelToken=${token}`,
       "--wait",
+      // Helm's 5min default isn't enough on slow image pulls or when
+      // QUIC handshake to the Cloudflare edge takes a beat. Without
+      // this the command exits "context deadline exceeded" while the
+      // pod is still converging.
+      "--timeout",
+      "10m",
     ],
     { all: true },
   );

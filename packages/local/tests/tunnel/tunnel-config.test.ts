@@ -33,24 +33,26 @@ afterEach(() => {
 });
 
 describe("loadTunnelConfig", () => {
-  it("TC-400: missing tunnel block returns defaults (autoStart=false, baseDomain=agent-ix.dev, tunnelId=null)", async () => {
+  it("TC-400: missing tunnel block returns defaults (autoStart=false, baseDomain=agent-ix.dev, tunnelId=null, exposed={})", async () => {
     const { loadTunnelConfig } = await import("../../src/config.js");
     expect(loadTunnelConfig()).toEqual({
       autoStart: false,
       baseDomain: "agent-ix.dev",
       tunnelId: null,
+      exposed: {},
     });
   });
 
   it("TC-401: persisted tunnel block round-trips", async () => {
     seedLocalYaml(
-      "tunnel:\n  autoStart: true\n  baseDomain: foo.example.com\n  tunnelId: abc-123\n",
+      "tunnel:\n  autoStart: true\n  baseDomain: foo.example.com\n  tunnelId: abc-123\n  exposed:\n    cloud-manager-ui:\n      hostname: null\n",
     );
     const { loadTunnelConfig } = await import("../../src/config.js");
     expect(loadTunnelConfig()).toEqual({
       autoStart: true,
       baseDomain: "foo.example.com",
       tunnelId: "abc-123",
+      exposed: { "cloud-manager-ui": { hostname: null } },
     });
   });
 

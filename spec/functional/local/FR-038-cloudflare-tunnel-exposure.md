@@ -26,14 +26,21 @@ relationships:
 
 ## Behavior
 
-External app exposure rides on the existing FR-037 multi-host ingress
-machinery: a shared `cloudflared` Deployment terminates a wildcard
-hostname (default `*.agent-ix.dev`) and forwards every request to
-`ingress-nginx` with the original `Host` header preserved. Per-app
-hostnames are emitted by toggling `ingress.exposeExtraHosts: true` on
-the entry-point service and listing the tunnel base domain in
-`global.extraBaseDomains`. No template changes are needed in
-`ix-service`.
+External app exposure rides on a shared `cloudflared` Deployment that
+terminates a wildcard hostname (default `*.agent-ix.dev`) and forwards
+every request to `ingress-nginx` with the original `Host` header
+preserved. Per-app hostnames are emitted by toggling
+`ingress.exposeOnTunnel: true` on the entry-point service and listing
+the tunnel base domain in `global.tunnelBaseDomains` (ix-service ≥
+v0.11.0).
+
+Tunnel scope is **independent** of FR-037 LAN extras: `extraBaseDomains`
+/ `exposeExtraHosts` cover LAN-friendly multi-host fan-out (e.g.
+`luna.ix`), and `tunnelBaseDomains` / `exposeOnTunnel` cover public
+internet exposure. A service can opt into either, both, or neither. The
+two never feed each other — adding `agent-ix.dev` to a release does
+NOT make any LAN-exposed backend public unless that service also flips
+`exposeOnTunnel`.
 
 ### Schema (persistent, `local` plugin)
 
@@ -44,8 +51,20 @@ tunnel: {
   autoStart: boolean; // default false
   baseDomain: string; // default "agent-ix.dev"; same rules as domain.hosts entries
   tunnelId: string | null; // informational only — not used by install
+  exposed: Record<string, { hostname: string | null }>; // per-app intent
 }
 ```
+
+`tunnel.exposed` is operator intent: each map key is a release name
+(equal to the umbrella name in image mode, or the entry-service name
+in source mode) that should be tunnel-routed. `hostname: null` means
+"derive `<release>.<baseDomain>`"; a string overrides with an explicit
+FQDN. The map is mutated by `ix tunnel expose` / `unexpose` and is the
+source of truth — the helm release values are the *effect*, not the
+intent. Every `ix up` install pass reads this map and emits the
+matching `--set-string` flags so tunnel exposure survives `ix down`
++ `ix up`. `ix tunnel up` walks the map after cloudflared is healthy
+and re-applies any drifted overlays.
 
 Persisted at `~/.config/ix/config.d/local.yaml`. `ix config get/set
 local tunnel.<key>` operates through the standard FR-018 surface. The
@@ -156,12 +175,12 @@ token cannot be resolved, the hook skips with a warn-tail Listing.
 ### Expose semantics (umbrella vs. service)
 
 Apps published as umbrella charts (role=app, with `entry` pointing at
-the user-facing subchart) flip `ingress.exposeExtraHosts: true` on
+the user-facing subchart) flip `ingress.exposeOnTunnel: true` on
 **only** the entry subchart's values. Single-service releases
 (role=service) flip the toggle at the top level. This is required by
 the FR-037 security boundary: backends that did not opt in must
 remain unreachable on the public suffix even when the suffix is in
-`global.extraBaseDomains`.
+`global.tunnelBaseDomains`.
 
 Implementation reads the current values via
 `helm get values <release> -o json --all`, computes a YAML overlay,
@@ -207,20 +226,23 @@ foo.example.com, tunnelId: abc-123 }` round-trips through
   `requireCloudflareToken()` throws a `TunnelCredentialsError` whose
   message names the env var.
 - **FR-038-AC-8**: `buildExposeOverlay({}, "agent-ix.dev", null,
-null)` returns `{ global: { extraBaseDomains: ["agent-ix.dev"] },
-ingress: { exposeExtraHosts: true } }`.
+null)` returns `{ global: { tunnelBaseDomains: ["agent-ix.dev"] },
+ingress: { exposeOnTunnel: true } }`. The overlay never writes
+  `extraBaseDomains` or `exposeExtraHosts` — those are the LAN scope
+  and remain operator-managed.
 - **FR-038-AC-9**: `buildExposeOverlay` is idempotent — re-exposing a
-  release whose `global.extraBaseDomains` already contains the base
+  release whose `global.tunnelBaseDomains` already contains the base
   domain does not duplicate it.
 - **FR-038-AC-10**: When given an `entryKey`, `buildExposeOverlay`
   routes the ingress flip through `<entryKey>.ingress`. The overlay
   MUST NOT contain entries for sibling subcharts so
   `helm upgrade --reuse-values -f <file>` keeps their values intact.
 - **FR-038-AC-11**: `buildUnexposeOverlay` removes the base domain
-  from `global.extraBaseDomains`, sets `ingress.exposeExtraHosts:
+  from `global.tunnelBaseDomains`, sets `ingress.exposeOnTunnel:
 false`, and strips any `ingress.extraHosts` entries that end with
   `.<baseDomain>` (operator-supplied hosts under other suffixes are
-  preserved).
+  preserved). LAN keys (`extraBaseDomains`, `exposeExtraHosts`) are
+  not touched.
 - **FR-038-AC-12**: `helm template charts/cloudflared --set
 tunnelToken=...` renders a Deployment, ConfigMap, and Secret. With
   `tunnelToken` empty/missing, the template fails with the exact
@@ -267,6 +289,30 @@ namespace '<ns>'. Run \`ix up <app>\` first.`
 - **FR-038-AC-19**: Every `apps/ix/src/commands/tunnel/*.ts` command has
   a matching `apps/ix/vite.config.ts` build entry and is emitted under
   `dist/commands/tunnel/*`.
+- **FR-038-AC-26**: `buildTunnelSetArgs(tunnel, release, null)` returns
+  `[]` when `tunnel.exposed[release]` is absent (so install paths can
+  append the result unconditionally without leaking tunnel keys onto
+  releases that have no expose intent).
+- **FR-038-AC-27**: `buildTunnelSetArgs(tunnel, release, null)` for an
+  exposed single-service release emits
+  `global.tunnelBaseDomains[0]=<base>` and
+  `ingress.exposeOnTunnel=true`. With a non-null `entryKey`, the
+  toggle is prefixed (`<entryKey>.ingress.exposeOnTunnel=true`) and
+  the top-level toggle is NOT set — non-entry subcharts must never
+  inherit exposure.
+- **FR-038-AC-28**: `buildTunnelSetArgs` with a non-null
+  `tunnel.exposed[release].hostname` appends
+  `<entryKey>.ingress.extraHosts[0]=<override>` (or the unprefixed
+  form for single-service releases).
+- **FR-038-AC-29**: `runTunnelExposeCommand` persists the release's
+  intent into `tunnel.exposed` after the helm upgrade succeeds.
+  `runTunnelUnexposeCommand` removes the entry. Subsequent
+  `loadTunnelConfig()` reads reflect the change.
+- **FR-038-AC-30**: After cloudflared install succeeds,
+  `runTunnelUpCommand` reconciles every entry in `tunnel.exposed` by
+  calling `exposeApp` (idempotent). Releases that don't exist yet
+  produce a `skipped` row and do not fail the reconcile; helm errors
+  produce a `failed` row and the command exits non-zero.
 
 ## Constraints
 
@@ -274,11 +320,16 @@ namespace '<ns>'. Run \`ix up <app>\` first.`
   `ix cluster start` MUST NOT install it unless `tunnel.autoStart`
   is true. This preserves the project invariant that a cluster
   without Cloudflare creds boots and stays usable.
-- **FR-038-CON-2**: For umbrella apps, `ingress.exposeExtraHosts`
-  MUST be flipped on the entry subchart's values only, never via
+- **FR-038-CON-2**: For umbrella apps, `ingress.exposeOnTunnel` MUST
+  be flipped on the entry subchart's values only, never via
   `global.*`. Routing the toggle through globals would breach the
   FR-037 security boundary by exposing every backend on the public
   suffix.
+- **FR-038-CON-5**: Tunnel and LAN scopes are independent. The CLI
+  install paths (`buildGlobalSetArgs`, `buildTunnelSetArgs`) and the
+  expose overlays MUST NOT cross-pollinate the two key sets:
+  `extraBaseDomains` / `exposeExtraHosts` are LAN-only, and
+  `tunnelBaseDomains` / `exposeOnTunnel` are tunnel-only.
 - **FR-038-CON-3**: The Cloudflare tunnel token MUST NOT be
   persisted in `~/.config/ix/config.d/local.yaml`. It lives in the
   SecretsService backend (FR-014) or in `IX_CF_TUNNEL_TOKEN`.
@@ -298,11 +349,17 @@ removed in a follow-up. The decision is documented inline on the
 ConfigMap template.
 
 The FR-037-CON-3 boundary continues to hold: backends without
-`ingress.exposeExtraHosts: true` remain unreachable from the tunnel
+`ingress.exposeOnTunnel: true` remain unreachable from the tunnel
 even when cloudflared is up and the base domain is in
-`global.extraBaseDomains`. External traffic to backend services
+`global.tunnelBaseDomains`. External traffic to backend services
 MUST still be funneled through an opted-in gateway service's
 `apiGateway.routes`.
+
+CORS allow-lists (`ix-service.serviceOrigins`) intentionally do NOT
+include tunnel hosts: the `/g/<service>` gateway pattern keeps tunnel
+traffic same-origin from the browser, so backends never see a tunnel
+`Origin` header. Including tunnel origins in CORS would weaken the
+LAN-only allow-list with no compensating benefit.
 
 The tunnel token is a bearer credential giving anyone holding it the
 ability to publish traffic on the configured Cloudflare zone.

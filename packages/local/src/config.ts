@@ -49,10 +49,15 @@ export function loadClusterConfig(): ClusterConfig {
 }
 
 /** FR-038 — Cloudflare Tunnel opt-in exposure config */
+export interface TunnelExposedEntry {
+  hostname: string | null;
+}
+
 export interface TunnelConfig {
   autoStart: boolean;
   baseDomain: string;
   tunnelId: string | null;
+  exposed: Record<string, TunnelExposedEntry>;
 }
 
 /**
@@ -65,6 +70,28 @@ export function loadTunnelConfig(): TunnelConfig {
     envBindings: LocalEnvBindings,
   });
   return cfg.get().tunnel;
+}
+
+/**
+ * Persist a mutation to `tunnel.exposed`. Called by `ix tunnel expose`
+ * / `unexpose` to record operator intent. Uses ConfigService's edit
+ * pathway so the file remains schema-validated on write.
+ */
+export function updateTunnelExposed(
+  mutate: (
+    current: Record<string, TunnelExposedEntry>,
+  ) => Record<string, TunnelExposedEntry>,
+): void {
+  const cfg = ConfigService.forPlugin(LOCAL_PLUGIN_ID, LocalConfigSchema, {
+    envBindings: LocalEnvBindings,
+  });
+  const current = cfg.get();
+  cfg.set({
+    tunnel: {
+      ...current.tunnel,
+      exposed: mutate(current.tunnel.exposed ?? {}),
+    },
+  });
 }
 
 export interface IxConfig {
@@ -156,6 +183,40 @@ export function buildGlobalSetArgs(config: IxConfig): string[] {
   }
   if (config.publicBaseUrl) {
     args.push("--set-string", `global.publicBaseUrl=${config.publicBaseUrl}`);
+  }
+  return args;
+}
+
+/**
+ * Helm `--set-string` flags that turn on tunnel exposure for one
+ * release. Returns `[]` when this release isn't in `tunnel.exposed`,
+ * so the install paths can append unconditionally.
+ *
+ * `entryKey` is the umbrella subchart name whose ingress should serve
+ * the tunnel host; pass `null` for single-service releases (toggle
+ * applies at the top level). When `tunnel.exposed[release].hostname`
+ * is set, it goes into `<entryKey>.ingress.extraHosts[0]` so the
+ * chart renders the explicit FQDN alongside the auto-derived one.
+ */
+export function buildTunnelSetArgs(
+  tunnel: TunnelConfig,
+  releaseName: string,
+  entryKey: string | null,
+): string[] {
+  const entry = tunnel.exposed[releaseName];
+  if (!entry) return [];
+  const prefix = entryKey ? `${entryKey}.` : "";
+  const args = [
+    "--set-string",
+    `global.tunnelBaseDomains[0]=${tunnel.baseDomain}`,
+    "--set-string",
+    `${prefix}ingress.exposeOnTunnel=true`,
+  ];
+  if (entry.hostname) {
+    args.push(
+      "--set-string",
+      `${prefix}ingress.extraHosts[0]=${entry.hostname}`,
+    );
   }
   return args;
 }

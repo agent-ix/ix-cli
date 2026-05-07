@@ -6,7 +6,11 @@ import pc from "picocolors";
 import { parse as parseYaml } from "yaml";
 import type { ServiceRow } from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "./config.js";
-import { buildGlobalSetArgs } from "./config.js";
+import {
+  buildGlobalSetArgs,
+  buildTunnelSetArgs,
+  loadTunnelConfig,
+} from "./config.js";
 import type { Deployable } from "./discovery.js";
 import { resolveDeployableNamespace } from "./discovery.js";
 import { resolveGhcrToken } from "./credentials.js";
@@ -170,6 +174,11 @@ function buildHelmInstallArgs(
     "--take-ownership",
   ];
   args.push(...buildGlobalSetArgs(config));
+  // Single-service release: tunnel toggle, when present, applies at
+  // top-level (entryKey=null). buildTunnelSetArgs returns [] when the
+  // release isn't in tunnel.exposed, so this is a no-op for the common
+  // case.
+  args.push(...buildTunnelSetArgs(loadTunnelConfig(), install.name, null));
   if (imageTagOverride) {
     args.push("--set-string", `ix-service.image.tag=${imageTagOverride}`);
   }
@@ -191,6 +200,7 @@ function buildUmbrellaInstallArgs(
   config: IxConfig,
   imageTagOverride: string | null,
   childInstalls: ChildInstall[],
+  entryKey: string | null,
 ): string[] {
   const args = [
     "upgrade",
@@ -203,6 +213,10 @@ function buildUmbrellaInstallArgs(
     "--take-ownership",
   ];
   args.push(...buildGlobalSetArgs(config));
+  // Umbrella release: tunnel toggle (when intent is recorded) goes on
+  // the entry subchart only — non-entry subcharts stay LAN-scoped per
+  // FR-037-AC-7.
+  args.push(...buildTunnelSetArgs(loadTunnelConfig(), releaseName, entryKey));
   if (imageTagOverride) {
     args.push("--set-string", `global.imageTag=${imageTagOverride}`);
   }
@@ -564,6 +578,7 @@ export async function runAppInstallPipeline({
         config,
         tagOverride,
         installs,
+        deployable.role === "app" ? (deployable.entry ?? null) : null,
       );
       const hookFailureRef: { current: HookStatus | null } = { current: null };
       const subprocess = execa("helm", args, { all: true });

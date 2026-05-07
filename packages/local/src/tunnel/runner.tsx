@@ -7,7 +7,11 @@
  */
 
 import { Item, Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
-import { loadConfig, loadTunnelConfig } from "../config.js";
+import {
+  loadConfig,
+  loadTunnelConfig,
+  updateTunnelExposed,
+} from "../config.js";
 import { resolveGhcrToken } from "../credentials.js";
 import { loadRegistry } from "../registry.js";
 import { setTunnelBaseDomain } from "./credentials.js";
@@ -49,6 +53,9 @@ export async function runTunnelUpCommand(): Promise<void> {
         <Item name="namespace" description={TUNNEL_NAMESPACE} />
       </Listing>,
     );
+    if (result.installed) {
+      await reconcileExposedReleases();
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     await renderStatic(
@@ -61,6 +68,73 @@ export async function runTunnelUpCommand(): Promise<void> {
     );
     throw err;
   }
+}
+
+/**
+ * Walk `tunnel.exposed` and reapply each app's overlay. Idempotent
+ * (`exposeApp` uses `helm upgrade --reuse-values`), so a release that's
+ * already correctly exposed is a no-op. Releases that don't exist yet
+ * (operator hasn't run `ix up <app>` since recording intent) get a
+ * skip row rather than failing the whole reconcile.
+ */
+async function reconcileExposedReleases(): Promise<void> {
+  const tunnelCfg = loadTunnelConfig();
+  const exposedNames = Object.keys(tunnelCfg.exposed);
+  if (exposedNames.length === 0) return;
+
+  const { config, registry } = await loadRegistryForTunnel();
+  const rows: Array<{
+    app: string;
+    status: "ok" | "skipped" | "failed";
+    detail: string;
+  }> = [];
+  for (const appName of exposedNames) {
+    const entry = tunnelCfg.exposed[appName];
+    try {
+      const result = await exposeApp(
+        appName,
+        registry,
+        config,
+        tunnelCfg.baseDomain,
+        { hostname: entry.hostname ?? undefined },
+      );
+      rows.push({
+        app: appName,
+        status: "ok",
+        detail: `reapplied → ${result.hostsAdded.join(", ")}`,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // No release yet → operator hasn't installed this app since
+      // recording intent. Don't fail the reconcile; report and continue.
+      if (/release: not found|No helm release named/i.test(msg)) {
+        rows.push({
+          app: appName,
+          status: "skipped",
+          detail: "no release yet — `ix up` will pick up intent",
+        });
+        continue;
+      }
+      rows.push({ app: appName, status: "failed", detail: msg });
+    }
+  }
+  const anyFailed = rows.some((r) => r.status === "failed");
+  await renderStatic(
+    <Listing
+      header={`${HEADER_UP}: reconcile`}
+      status={anyFailed ? "failed" : "passed"}
+      tailVariant={anyFailed ? "error" : undefined}
+      tail={`Reconciled ${rows.length} exposed app(s).`}
+    >
+      {rows.map((r) => (
+        <Item
+          key={r.app}
+          name={r.app}
+          description={`${r.status} — ${r.detail}`}
+        />
+      ))}
+    </Listing>,
+  );
 }
 
 export async function runTunnelDownCommand(): Promise<void> {
@@ -176,6 +250,12 @@ export async function runTunnelExposeCommand(
     const result = await exposeApp(appName, registry, config, baseDomain, {
       hostname: hostnameOverride ?? undefined,
     });
+    // Persist intent so it survives `ix down` + `ix up` and can be
+    // reapplied by future install passes / `ix tunnel up` reconcile.
+    updateTunnelExposed((current) => ({
+      ...current,
+      [result.release]: { hostname: hostnameOverride },
+    }));
     await renderExposeResult(HEADER_EXPOSE, baseDomain, result, hostname);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -247,6 +327,11 @@ export async function runTunnelUnexposeCommand(appName: string): Promise<void> {
       config,
       tunnelCfg.baseDomain,
     );
+    updateTunnelExposed((current) => {
+      const next = { ...current };
+      delete next[result.release];
+      return next;
+    });
     await renderStatic(
       <Listing
         header={HEADER_UNEXPOSE}

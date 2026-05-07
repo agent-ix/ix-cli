@@ -184,6 +184,77 @@ describe("buildGlobalSetArgs — extraBaseDomains (FR-037)", () => {
   });
 });
 
+describe("buildTunnelSetArgs — per-app expose intent (FR-038)", () => {
+  const baseTunnel = {
+    autoStart: false,
+    baseDomain: "agent-ix.dev",
+    tunnelId: null,
+  };
+
+  it("TC-041: returns [] when release is not in tunnel.exposed", async () => {
+    const { buildTunnelSetArgs } = await import("../src/config.js");
+    const args = buildTunnelSetArgs(
+      { ...baseTunnel, exposed: {} },
+      "cloud-manager-ui",
+      null,
+    );
+    expect(args).toEqual([]);
+  });
+
+  it("TC-042: single-service release (entryKey=null) toggles at top level", async () => {
+    const { buildTunnelSetArgs } = await import("../src/config.js");
+    const args = buildTunnelSetArgs(
+      {
+        ...baseTunnel,
+        exposed: { "spec-editor": { hostname: null } },
+      },
+      "spec-editor",
+      null,
+    );
+    expect(args).toContain("global.tunnelBaseDomains[0]=agent-ix.dev");
+    expect(args).toContain("ingress.exposeOnTunnel=true");
+    // No subchart prefix, no override extraHosts.
+    expect(
+      args.find((a) => a.includes(".ingress.exposeOnTunnel")),
+    ).toBeUndefined();
+    expect(
+      args.find((a) => a.startsWith("ingress.extraHosts")),
+    ).toBeUndefined();
+  });
+
+  it("TC-043: umbrella release prefixes the entry subchart key", async () => {
+    const { buildTunnelSetArgs } = await import("../src/config.js");
+    const args = buildTunnelSetArgs(
+      {
+        ...baseTunnel,
+        exposed: { "cloud-manager-ui": { hostname: null } },
+      },
+      "cloud-manager-ui",
+      "cloud-manager-ui",
+    );
+    expect(args).toContain("cloud-manager-ui.ingress.exposeOnTunnel=true");
+    // Top-level toggle MUST NOT also be set — that would leak to siblings.
+    expect(args).not.toContain("ingress.exposeOnTunnel=true");
+  });
+
+  it("TC-044: hostname override appends to entry subchart's extraHosts[0]", async () => {
+    const { buildTunnelSetArgs } = await import("../src/config.js");
+    const args = buildTunnelSetArgs(
+      {
+        ...baseTunnel,
+        exposed: {
+          "cloud-manager-ui": { hostname: "vanity.agent-ix.dev" },
+        },
+      },
+      "cloud-manager-ui",
+      "cloud-manager-ui",
+    );
+    expect(args).toContain(
+      "cloud-manager-ui.ingress.extraHosts[0]=vanity.agent-ix.dev",
+    );
+  });
+});
+
 describe("computeEffectiveDeploySet", () => {
   const makeApp = (name: string, tags: string[]) => ({
     name,

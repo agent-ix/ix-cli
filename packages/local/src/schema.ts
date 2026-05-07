@@ -118,12 +118,33 @@ export const LocalConfigSchema = z
         autoStart: StrictBooleanSchema.default(false),
         baseDomain: BaseDomainSchema.default("agent-ix.dev"),
         tunnelId: z.string().nullable().default(null),
+        // Per-app tunnel-exposure intent (FR-038). The map key is the
+        // release/app name; presence means "this release should serve
+        // its entry on the tunnel base domain." `hostname` overrides
+        // the auto-derived `<app>.<baseDomain>` when set.
+        //
+        // Source of truth lives here, not on the helm release: every
+        // install pass (image or source) consults this to decide
+        // whether to emit `global.tunnelBaseDomains` /
+        // `<entry>.ingress.exposeOnTunnel` flags. This makes tunnel
+        // exposure survive `ix down` + `ix up` cleanly.
+        exposed: z
+          .record(
+            z.string(),
+            z
+              .object({
+                hostname: z.string().nullable().default(null),
+              })
+              .strict(),
+          )
+          .default({}),
       })
       .strict()
       .default({
         autoStart: false,
         baseDomain: "agent-ix.dev",
         tunnelId: null,
+        exposed: {},
       }),
   })
   .strict();
