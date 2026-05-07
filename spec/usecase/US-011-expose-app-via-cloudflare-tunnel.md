@@ -131,7 +131,7 @@ again until the operator re-runs `ix tunnel expose cloud-manager`.
 |---|---|
 | US-011-AC-1 | TC-432 (firstRunSetup TTY prompts + persists), TC-433 (idempotent on second invocation). |
 | US-011-AC-2 | TC-430 (firstRunSetup non-TTY throws CI-safe error). |
-| US-011-AC-3 | TC-434, TC-435 (setTunnelBaseDomain unit). TC-436 (`ix tunnel domain` integration) ❌ Missing. |
+| US-011-AC-3 | TC-434, TC-435 (setTunnelBaseDomain), TC-436 (`ix tunnel domain` runner — read/write/reject). |
 | US-011-AC-4 | TC-405–TC-409 (overlay merge + entry-subchart targeting). Live-cluster smoke ❌ Missing. |
 | US-011-AC-5 | TC-410–TC-412 (unexpose overlay strips base domain + matching extraHosts). |
 | US-011-AC-6 | TC-409, TC-412 (siblings absent from overlay; FR-037-CON-3 boundary preserved). |

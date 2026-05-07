@@ -31,7 +31,7 @@ Tests fall into four types:
 | StR-002         | US-002 → NFR-001, FR-002; US-007 → FR-034                    | TC-007–TC-010, TC-300–TC-308 (static + unit)      | ✅ Partial (static + unit; integration pending)                     |
 | StR-003         | US-003/004/005/008/009 → FR-004–007, FR-035, FR-036, NFR-002 | TC-022–TC-043, TC-291–TC-321 (unit + integration) | ⚠️ Partial (existing unit complete; new ACs pending implementation) |
 | StR-004         | US-006 → FR-008, FR-009                                      | TC-022–TC-031 (unit)                              | ✅ Complete (unit)                                                  |
-| StR-007         | US-010 → FR-037; FR-038 (Cloudflare tunnel exposure)         | TC-400–TC-424, TC-430–TC-435 (unit/static)        | ✅ Complete (unit/static; live-cluster smoke still useful)          |
+| StR-007         | US-010 → FR-037; FR-038 (Cloudflare tunnel exposure)         | TC-400–TC-424, TC-430–TC-438 (unit/static)        | ✅ Complete (unit/static; live-cluster smoke still useful)          |
 
 ### User Story Coverage
 
@@ -46,7 +46,7 @@ Tests fall into four types:
 | US-007     | `ix local refresh` shows per-chart diff rows for changed/new charts         | TC-300–TC-308  | ✅ Complete (static + unit) |
 | US-008     | `ix local halt all` (image mode): list, confirm, uninstall every deployable | TC-291–TC-299  | 🚧 In Progress              |
 | US-009     | `ix local cluster stop`/`start`: pause and resume kind containers           | TC-310–TC-318  | 🚧 In Progress              |
-| US-011     | Operator exposes a local app on a public hostname via Cloudflare Tunnel     | TC-405–TC-435 (unit/static; live-cluster smoke ❌ Missing) | ⚠️ Partial (unit complete; integration pending) |
+| US-011     | Operator exposes a local app on a public hostname via Cloudflare Tunnel     | TC-405–TC-438 (unit/static; live-cluster smoke ❌ Missing) | ⚠️ Partial (unit complete; integration pending) |
 
 ### Functional Requirement Coverage
 
@@ -147,8 +147,8 @@ Tests fall into four types:
 | FR-038         | AC-14: cluster start with autoStart=true + token resolves runs tunnel install                                                                                                                                          | TC-418                 | ✅ Complete (unit)                                                 |
 | FR-038         | AC-15: autoStart=true + no token renders warn-tail Listing, returns success                                                                                                                                            | TC-419, TC-423         | ✅ Complete (unit)                                                 |
 | FR-038         | AC-16: tunnel-install failure inside cluster-start hook is swallowed (cluster start exits 0)                                                                                                                           | TC-420                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-17: ix tunnel expose with absent release surfaces actionable error                                                                                                                                                  | TC-421                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-18: ix tunnel down idempotent on missing release                                                                                                                                                                    | TC-422                 | ✅ Complete (unit)                                                 |
+| FR-038         | AC-17: ix tunnel expose with absent release surfaces actionable error                                                                                                                                                  | TC-421, TC-437         | ✅ Complete (unit)                                                 |
+| FR-038         | AC-18: ix tunnel down idempotent on missing release                                                                                                                                                                    | TC-422, TC-438         | ✅ Complete (unit)                                                 |
 | FR-038         | AC-19: tunnel command files are registered as Vite build entries                                                                                                                                                       | TC-424                 | ✅ Complete (static)                                               |
 | FR-038         | hostname derivation `<app>.<baseDomain>` is pure                                                                                                                                                                       | TC-405                 | ✅ Complete (unit)                                                 |
 | FR-038         | hostname override appended to ingress.extraHosts                                                                                                                                                                       | TC-408                 | ✅ Complete (unit)                                                 |
@@ -157,7 +157,7 @@ Tests fall into four types:
 | FR-038         | AC-22: firstRunSetup TTY prompts for token + base domain, persists both                                                                                                                                                | TC-432                 | ✅ Complete (unit)                                                 |
 | FR-038         | AC-23: firstRunSetup idempotent when both already configured                                                                                                                                                           | TC-433                 | ✅ Complete (unit)                                                 |
 | FR-038         | AC-24: setTunnelBaseDomain validates and writes; rejects invalid                                                                                                                                                       | TC-434, TC-435         | ✅ Complete (unit)                                                 |
-| FR-038         | AC-25: ix tunnel domain read/write convenience                                                                                                                                                                         | TC-436                 | ❌ Missing (integration)                                           |
+| FR-038         | AC-25: ix tunnel domain read/write convenience                                                                                                                                                                         | TC-436                 | ✅ Complete (unit)                                                 |
 
 ### Non-Functional Requirement Coverage
 
@@ -623,7 +623,9 @@ Tests fall into four types:
 | TC-433  | Unit: firstRunSetup is idempotent when both token and base domain are already configured                                                              | Unit          | P1       | FR-038-AC-23               | ✅ Complete              |
 | TC-434  | Unit: setTunnelBaseDomain persists a valid base domain via ConfigService                                                                              | Unit          | P1       | FR-038-AC-24               | ✅ Complete              |
 | TC-435  | Unit: setTunnelBaseDomain rejects invalid base domain (single label) with TunnelCredentialsError; no write                                            | Unit          | P2       | FR-038-AC-24               | ✅ Complete              |
-| TC-436  | Integration: `ix tunnel domain` read prints current; `ix tunnel domain <value>` writes and confirms with CNAME reminder                              | Integration   | P2       | FR-038-AC-25               | ❌ Missing               |
+| TC-436  | Unit: `ix tunnel domain` read prints current; `ix tunnel domain <value>` writes via setTunnelBaseDomain and rejects invalid                          | Unit          | P2       | FR-038-AC-25               | ✅ Complete              |
+| TC-437  | Unit: exposeApp surfaces `Run \`ix up <name>\` first` when `helm get values` fails with "release: not found"                                          | Unit          | P1       | FR-038-AC-17               | ✅ Complete              |
+| TC-438  | Unit: runTunnelDown swallows "release: not found" from helm uninstall; re-throws unrelated errors                                                    | Unit          | P1       | FR-038-AC-18               | ✅ Complete              |
 
 ---
 
