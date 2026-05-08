@@ -13,8 +13,8 @@ import {
 } from "./auth-identity.js";
 import {
   GLYPH_DIM_DOT,
+  Info,
   Listing,
-  Note,
   Text,
   blue,
   renderStatic,
@@ -101,8 +101,8 @@ export async function runAuthUninvite(
           : `No outstanding invites for ${blue(resp.email)}.`
       }
     >
-      <Note>{`User:    ${blue(resp.email)}`}</Note>
-      <Note>{`Revoked: ${resp.revoked} token(s)`}</Note>
+      <Info name="User" description={blue(resp.email)} />
+      <Info name="Revoked" description={`${resp.revoked} token(s)`} />
     </Listing>,
   );
 }

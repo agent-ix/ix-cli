@@ -21,8 +21,8 @@ import {
 } from "./auth-identity.js";
 import {
   GLYPH_DIM_DOT,
+  Info,
   Listing,
-  Note,
   Text,
   blue,
   renderStatic,
@@ -124,10 +124,10 @@ export async function runAuthResetUser(
       }
       tail="Password reset."
     >
-      <Note>{`User:       ${blue(resetResp.email)}`}</Note>
-      <Note>{`Expires:    ${resetResp.expires_at}`}</Note>
-      <Note>{`Reset URL:  ${blue(resetResp.reset_url)}`}</Note>
-      <Note>{`Email sent: ${resetResp.email_sent}`}</Note>
+      <Info name="User" description={blue(resetResp.email)} />
+      <Info name="Expires" description={resetResp.expires_at} />
+      <Info name="Reset URL" description={blue(resetResp.reset_url)} />
+      <Info name="Email sent" description={String(resetResp.email_sent)} />
     </Listing>,
   );
 }

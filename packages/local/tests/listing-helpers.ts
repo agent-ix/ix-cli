@@ -19,6 +19,7 @@ export interface ListingCall {
   variant?: string;
   notes: string[];
   items: { name?: unknown; description?: unknown }[];
+  infos: { name?: unknown; description?: unknown }[];
   groups: { name?: unknown }[];
   texts: string[];
 }
@@ -66,6 +67,7 @@ export function makeListingMock(extra: Record<string, unknown> = {}) {
   const Listing = "Listing" as unknown as React.FC;
   const Note = "Note" as unknown as React.FC;
   const Item = "Item" as unknown as React.FC;
+  const Info = "Info" as unknown as React.FC;
   const Group = "Group" as unknown as React.FC;
   const Text = "Text" as unknown as React.FC;
   const Box = "Box" as unknown as React.FC;
@@ -85,6 +87,7 @@ export function makeListingMock(extra: Record<string, unknown> = {}) {
       variant: el.props.variant,
       notes: [],
       items: [],
+      infos: [],
       groups: [],
       texts: [],
     };
@@ -92,6 +95,11 @@ export function makeListingMock(extra: Record<string, unknown> = {}) {
       if (c.type === Note) call.notes.push(childText(c));
       else if (c.type === Item)
         call.items.push({
+          name: c.props.name,
+          description: c.props.description,
+        });
+      else if (c.type === Info)
+        call.infos.push({
           name: c.props.name,
           description: c.props.description,
         });
@@ -110,6 +118,7 @@ export function makeListingMock(extra: Record<string, unknown> = {}) {
     Listing,
     Note,
     Item,
+    Info,
     Group,
     Text,
     Box,

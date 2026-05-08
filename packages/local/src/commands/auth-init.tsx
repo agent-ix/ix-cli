@@ -25,8 +25,8 @@ import {
 } from "./auth-identity.js";
 import {
   GLYPH_DIM_DOT,
+  Info,
   Listing,
-  Note,
   Text,
   blue,
   renderStatic,
@@ -205,10 +205,16 @@ export async function runAuthInit(
       }
       tail="Admin account created."
     >
-      <Note>{`Username:      admin`}</Note>
-      <Note>{`Temp password: ${resp.password}     (expires ${formatExpiry(resp.expires_at)})`}</Note>
-      <Note>{`Log in at:     ${blue(resp.login_url)}`}</Note>
-      <Note>{`Secret:        ${IX_SYSTEM_NAMESPACE}/admin-bootstrap`}</Note>
+      <Info name="Username" description="admin" />
+      <Info
+        name="Temp password"
+        description={`${resp.password}     (expires ${formatExpiry(resp.expires_at)})`}
+      />
+      <Info name="Log in at" description={blue(resp.login_url)} />
+      <Info
+        name="Secret"
+        description={`${IX_SYSTEM_NAMESPACE}/admin-bootstrap`}
+      />
     </Listing>,
   );
 }

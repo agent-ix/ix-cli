@@ -32,7 +32,12 @@ const resetResp = {
 };
 
 function notesIn(): string[] {
-  return calls.flatMap((c) => c.notes);
+  return calls.flatMap((c) => [
+    ...c.notes,
+    ...c.infos.map(
+      (i) => `${String(i.name ?? "")} ${String(i.description ?? "")}`,
+    ),
+  ]);
 }
 
 beforeEach(() => {

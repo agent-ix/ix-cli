@@ -21,8 +21,8 @@ import {
 } from "./auth-identity.js";
 import {
   GLYPH_DIM_DOT,
+  Info,
   Listing,
-  Note,
   Text,
   blue,
   renderStatic,
@@ -177,11 +177,17 @@ export async function runAuthResetAdmin(
       }
       tail={`Secret ${blue(`${IX_SYSTEM_NAMESPACE}/admin-bootstrap`)} written.`}
     >
-      <Note>{`User ID:       ${resetResp.user_id}`}</Note>
-      <Note>{`Username:      ${resetResp.username ?? "admin"}`}</Note>
-      <Note>{`Email:         ${blue(resetResp.email ?? resetResp.username ?? "admin")}`}</Note>
-      <Note>{`Temp password: ${resetResp.password}`}</Note>
-      <Note>{`Expires at:    ${formatExpiresAt(resetResp.expires_at)}`}</Note>
+      <Info name="User ID" description={resetResp.user_id} />
+      <Info name="Username" description={resetResp.username ?? "admin"} />
+      <Info
+        name="Email"
+        description={blue(resetResp.email ?? resetResp.username ?? "admin")}
+      />
+      <Info name="Temp password" description={resetResp.password} />
+      <Info
+        name="Expires"
+        description={formatExpiresAt(resetResp.expires_at)}
+      />
     </Listing>,
   );
 }

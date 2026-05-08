@@ -53,10 +53,13 @@ describe("runAuthInit — happy path", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].status).toBe("passed");
     expect(calls[0].tail).toBe("Admin account created.");
-    expect(calls[0].notes.some((n) => n.includes("admin"))).toBe(true);
-    expect(calls[0].notes.some((n) => n.includes("tmp-pass"))).toBe(true);
+    const infoText = calls[0].infos.map(
+      (i) => `${String(i.name ?? "")} ${String(i.description ?? "")}`,
+    );
+    expect(infoText.some((n) => n.includes("admin"))).toBe(true);
+    expect(infoText.some((n) => n.includes("tmp-pass"))).toBe(true);
     expect(
-      calls[0].notes.some((n) => n.includes("https://identity.dev.ix/login")),
+      infoText.some((n) => n.includes("https://identity.dev.ix/login")),
     ).toBe(true);
   });
 });

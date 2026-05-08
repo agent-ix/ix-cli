@@ -21,6 +21,7 @@ import {
 } from "./auth-identity.js";
 import {
   GLYPH_DIM_DOT,
+  Info,
   Listing,
   Note,
   Text,
@@ -171,10 +172,10 @@ export async function runAuthInvite(
       }
       tail="Invite created."
     >
-      <Note>{`User:        ${blue(inviteResp.email)}`}</Note>
-      <Note>{`Expires:     ${inviteResp.expires_at}`}</Note>
-      <Note>{`Invite URL:  ${blue(inviteResp.invite_url)}`}</Note>
-      <Note>{`Email sent:  ${emailLine}`}</Note>
+      <Info name="User" description={blue(inviteResp.email)} />
+      <Info name="Expires" description={inviteResp.expires_at} />
+      <Info name="Invite URL" description={blue(inviteResp.invite_url)} />
+      <Info name="Email sent" description={emailLine} />
       {!inviteResp.email_sent && (
         <Note>Share the URL above with the user; it is single-use.</Note>
       )}
