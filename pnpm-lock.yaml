@@ -43,7 +43,7 @@ importers:
         version: link:../../packages/local
       '@agent-ix/ix-ui-cli':
         specifier: '>=0.4.2-0'
-        version: 0.4.2(@types/react@19.2.14)
+        version: 0.4.3(@types/react@19.2.14)
       '@oclif/core':
         specifier: '>=4.10.6'
         version: 4.11.1
@@ -74,7 +74,7 @@ importers:
     dependencies:
       '@agent-ix/ix-ui-cli':
         specifier: '>=0.4.2-0'
-        version: 0.4.2(@types/react@19.2.14)
+        version: 0.4.3(@types/react@19.2.14)
       '@clack/prompts':
         specifier: '>=1.3.0'
         version: 1.3.0
@@ -117,7 +117,7 @@ importers:
         version: link:../core
       '@agent-ix/ix-ui-cli':
         specifier: '>=0.4.2-0'
-        version: 0.4.2(@types/react@19.2.14)
+        version: 0.4.3(@types/react@19.2.14)
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.3.0
@@ -154,7 +154,7 @@ importers:
         version: link:../core
       '@agent-ix/ix-ui-cli':
         specifier: '>=0.4.2-0'
-        version: 0.4.2(@types/react@19.2.14)
+        version: 0.4.3(@types/react@19.2.14)
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.3.0
@@ -198,11 +198,11 @@ importers:
 
 packages:
 
-  '@agent-ix/ix-ui-cli@0.4.2':
-    resolution: {integrity: sha512-mWE3effqfwVt2Vs95vXNwOpo59KM/eIhaMFAbSxAGnipwWWCoJQBvRjtBlat/14lcxwnZ/sX0RLeG7yt+83I/A==, tarball: https://npm.ix/@agent-ix/ix-ui-cli/-/bbd4361cc6d2e6a5a8d7dcca286cf5f458ae0833}
+  '@agent-ix/ix-ui-cli@0.4.3':
+    resolution: {integrity: sha512-fSvGgaWzYBQM+vT/r43eCAdpma4AzHWRLTeiNvoLki2EjruhGp0tS1A31XkmtyR/BZ2Bk86SQdybHsRGmyKEjA==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-ui-cli/0.4.3/bb94e5770d5e49a3e34a59a2e11ea6864132f1d0}
 
-  '@agent-ix/ix-ui-semantic@0.4.2':
-    resolution: {integrity: sha512-hd2zhCU1QihVt0mjS5MLC1yBYXorzs8BALKNkJWkocNQCt1/F1uBdzptQvy/2wn/2R1ojL1iSWxLjLTnjBbOkQ==, tarball: https://npm.ix/@agent-ix/ix-ui-semantic/-/cff89c948b6feea2f558ee90fb2652cc61fb791b}
+  '@agent-ix/ix-ui-semantic@0.4.3':
+    resolution: {integrity: sha512-X4wND4JKDLG2AtpCjXNB3/wN+qUucK9L9g1YNQMuS9hjZlvP+basLW3Vpq4ASbUVi/FJ+ZxPFucmpETw13mkxQ==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-ui-semantic/0.4.3/2f9f753f311467989309c50fe5feab4addf248b7}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     resolution: {integrity: sha512-p+CMKJ93HFmLkjXKlXiVGlMQEuRb6H0MokBSwUsX+S6BRX8eV5naFZpQJFfJHjRZY0Hmnqy1/r6UWl3x+19zYA==}
@@ -1723,9 +1723,9 @@ packages:
 
 snapshots:
 
-  '@agent-ix/ix-ui-cli@0.4.2(@types/react@19.2.14)':
+  '@agent-ix/ix-ui-cli@0.4.3(@types/react@19.2.14)':
     dependencies:
-      '@agent-ix/ix-ui-semantic': 0.4.2
+      '@agent-ix/ix-ui-semantic': 0.4.3
       execa: 9.6.1
       ink: 7.0.2(@types/react@19.2.14)(react@19.2.6)
       ink-select-input: 6.2.0(ink@7.0.2(@types/react@19.2.14)(react@19.2.6))(react@19.2.6)
@@ -1739,7 +1739,7 @@ snapshots:
       - react-devtools-core
       - utf-8-validate
 
-  '@agent-ix/ix-ui-semantic@0.4.2': {}
+  '@agent-ix/ix-ui-semantic@0.4.3': {}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     dependencies:
