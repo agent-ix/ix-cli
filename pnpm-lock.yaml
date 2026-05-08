@@ -42,8 +42,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/local
       '@agent-ix/ix-ui-cli':
-        specifier: local
-        version: 0.4.2-20260507.021526-16d8a2e.1d89eb03(@types/react@19.2.14)
+        specifier: ^0.4.1
+        version: 0.4.1(@types/react@19.2.14)
       '@oclif/core':
         specifier: '>=4.10.6'
         version: 4.11.1
@@ -201,14 +201,8 @@ packages:
   '@agent-ix/ix-ui-cli@0.4.1':
     resolution: {integrity: sha512-FBLtFYb4ca8vX7wWjkW/hPVopF47KAimzpmTd7xc3XRbftjcdhaIBg0kNDt6hHDOk8B61uFyoN5Del7qGiuKWg==, tarball: http://npm.ix/@agent-ix/ix-ui-cli/-/e8d36fdeea5c26c1d579d178f98e965cdc0de78a}
 
-  '@agent-ix/ix-ui-cli@0.4.2-20260507.021526-16d8a2e.1d89eb03':
-    resolution: {integrity: sha512-z85QpVHlJfzXkR3f2abuMB22YG6f4258h0c5zIjh8KVV6BnxJNj0el4AmgFgfyH+RU4+UgfLoqK6Rs8sMrUNZw==}
-
   '@agent-ix/ix-ui-semantic@0.4.1':
     resolution: {integrity: sha512-X3RTncbKiToWprhj7Cv44Tv4ctDUto2sfeupOcuw8wBYvtH7knwDRmcnS27OwFT8nLvWtGYPHA4qFaw4qFE1QQ==, tarball: http://npm.ix/@agent-ix/ix-ui-semantic/-/8e5f303dce0b2f36f90e43b6431964f45f0ba16b}
-
-  '@agent-ix/ix-ui-semantic@0.4.2-20260507.021526-16d8a2e.1d89eb03':
-    resolution: {integrity: sha512-ibv16agNBVkQDE8HjP6bskjAtdSHwvLKteRlmPYxwePFIOw+LNDFOcfAb+5aN8ihrYoXS4OK555ejATAIVmc3Q==}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     resolution: {integrity: sha512-p+CMKJ93HFmLkjXKlXiVGlMQEuRb6H0MokBSwUsX+S6BRX8eV5naFZpQJFfJHjRZY0Hmnqy1/r6UWl3x+19zYA==}
@@ -1745,25 +1739,7 @@ snapshots:
       - react-devtools-core
       - utf-8-validate
 
-  '@agent-ix/ix-ui-cli@0.4.2-20260507.021526-16d8a2e.1d89eb03(@types/react@19.2.14)':
-    dependencies:
-      '@agent-ix/ix-ui-semantic': 0.4.2-20260507.021526-16d8a2e.1d89eb03
-      execa: 9.6.1
-      ink: 7.0.2(@types/react@19.2.14)(react@19.2.6)
-      ink-select-input: 6.2.0(ink@7.0.2(@types/react@19.2.14)(react@19.2.6))(react@19.2.6)
-      ink-spinner: 5.0.0(ink@7.0.2(@types/react@19.2.14)(react@19.2.6))(react@19.2.6)
-      ink-text-input: 6.0.0(ink@7.0.2(@types/react@19.2.14)(react@19.2.6))(react@19.2.6)
-      picocolors: 1.1.1
-      react: 19.2.6
-    transitivePeerDependencies:
-      - '@types/react'
-      - bufferutil
-      - react-devtools-core
-      - utf-8-validate
-
   '@agent-ix/ix-ui-semantic@0.4.1': {}
-
-  '@agent-ix/ix-ui-semantic@0.4.2-20260507.021526-16d8a2e.1d89eb03': {}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     dependencies:
