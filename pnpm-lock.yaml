@@ -43,7 +43,7 @@ importers:
         version: link:../../packages/local
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.4.3-20260508.043004-ab4d96a.86259f39(@types/react@19.2.14)
+        version: 0.4.3-20260508.043853-04e6542(@types/react@19.2.14)
       '@oclif/core':
         specifier: '>=4.10.6'
         version: 4.11.1
@@ -74,7 +74,7 @@ importers:
     dependencies:
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.4.3-20260508.043004-ab4d96a.86259f39(@types/react@19.2.14)
+        version: 0.4.3-20260508.043853-04e6542(@types/react@19.2.14)
       '@clack/prompts':
         specifier: '>=1.3.0'
         version: 1.3.0
@@ -117,7 +117,7 @@ importers:
         version: link:../core
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.4.3-20260508.043004-ab4d96a.86259f39(@types/react@19.2.14)
+        version: 0.4.3-20260508.043853-04e6542(@types/react@19.2.14)
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.3.0
@@ -154,7 +154,7 @@ importers:
         version: link:../core
       '@agent-ix/ix-ui-cli':
         specifier: local
-        version: 0.4.3-20260508.043004-ab4d96a.86259f39(@types/react@19.2.14)
+        version: 0.4.3-20260508.043853-04e6542(@types/react@19.2.14)
       '@clack/prompts':
         specifier: '>=1.1.0'
         version: 1.3.0
@@ -198,11 +198,11 @@ importers:
 
 packages:
 
-  '@agent-ix/ix-ui-cli@0.4.3-20260508.043004-ab4d96a.86259f39':
-    resolution: {integrity: sha512-bv7I0fPIgqOMAmHErvbr4lCfv7AgKAnmh4AFfWqLBX0euGphDfuQEjnlc62TMH1rivJhnLqhr6+5LSt7abgoaQ==}
+  '@agent-ix/ix-ui-cli@0.4.3-20260508.043853-04e6542':
+    resolution: {integrity: sha512-0WqeLtJVglxK+qACCsbu7kHszCQE+T4QT6EZ3+r4VINQq46XmcoyRQ0zs72MYPUvtIIpplkVZtnZYptxxxu4WQ==}
 
-  '@agent-ix/ix-ui-semantic@0.4.3-20260508.043004-ab4d96a.86259f39':
-    resolution: {integrity: sha512-9HJ8fKkznXawnotH2ombK+0znwbtWLy/cdV9USgyAsq+chk3XTShwq10q58hCUMySujqNsGtEKyxXM35+soXpw==}
+  '@agent-ix/ix-ui-semantic@0.4.3-20260508.043853-04e6542':
+    resolution: {integrity: sha512-SwwDoi5hyyUM0LjyG34HcVKduokcIKbhLNlIVByXE+VGruqOcaimaa0sFJiPrRCgCQ/amZzviMD/M8IanDng/g==}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     resolution: {integrity: sha512-p+CMKJ93HFmLkjXKlXiVGlMQEuRb6H0MokBSwUsX+S6BRX8eV5naFZpQJFfJHjRZY0Hmnqy1/r6UWl3x+19zYA==}
@@ -1723,9 +1723,9 @@ packages:
 
 snapshots:
 
-  '@agent-ix/ix-ui-cli@0.4.3-20260508.043004-ab4d96a.86259f39(@types/react@19.2.14)':
+  '@agent-ix/ix-ui-cli@0.4.3-20260508.043853-04e6542(@types/react@19.2.14)':
     dependencies:
-      '@agent-ix/ix-ui-semantic': 0.4.3-20260508.043004-ab4d96a.86259f39
+      '@agent-ix/ix-ui-semantic': 0.4.3-20260508.043853-04e6542
       execa: 9.6.1
       ink: 7.0.2(@types/react@19.2.14)(react@19.2.6)
       ink-select-input: 6.2.0(ink@7.0.2(@types/react@19.2.14)(react@19.2.6))(react@19.2.6)
@@ -1739,7 +1739,7 @@ snapshots:
       - react-devtools-core
       - utf-8-validate
 
-  '@agent-ix/ix-ui-semantic@0.4.3-20260508.043004-ab4d96a.86259f39': {}
+  '@agent-ix/ix-ui-semantic@0.4.3-20260508.043853-04e6542': {}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     dependencies:
