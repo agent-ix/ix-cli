@@ -199,10 +199,10 @@ importers:
 packages:
 
   '@agent-ix/ix-ui-cli@0.4.4':
-    resolution: {integrity: sha512-TPoA9WPo9BhYuzXFPtSIUBa94FPWy2aGQ1t579Ph2xvUj0pQCG2PYG4LhNMPRVW4D8FM4LLLiwfmNkmmIHGZ6Q==}
+    resolution: {integrity: sha512-TPoA9WPo9BhYuzXFPtSIUBa94FPWy2aGQ1t579Ph2xvUj0pQCG2PYG4LhNMPRVW4D8FM4LLLiwfmNkmmIHGZ6Q==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-ui-cli/0.4.4/015e35f19ff236f3a597ea5f669fbd30cc136267}
 
   '@agent-ix/ix-ui-semantic@0.4.4':
-    resolution: {integrity: sha512-ZAn+yeqxiDW0WpSraPllUdWyq3PJ6RKO9SA2OpDRC/GpwRt5pFUUd5mCU8p+PrpXYTe9VnWYZMm2yyPQ7nu32A==}
+    resolution: {integrity: sha512-ZAn+yeqxiDW0WpSraPllUdWyq3PJ6RKO9SA2OpDRC/GpwRt5pFUUd5mCU8p+PrpXYTe9VnWYZMm2yyPQ7nu32A==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-ui-semantic/0.4.4/b644c7f131211f0fafd794dc47c32b95501c8fbb}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     resolution: {integrity: sha512-p+CMKJ93HFmLkjXKlXiVGlMQEuRb6H0MokBSwUsX+S6BRX8eV5naFZpQJFfJHjRZY0Hmnqy1/r6UWl3x+19zYA==}
