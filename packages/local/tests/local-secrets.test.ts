@@ -184,7 +184,8 @@ describe("local secret contracts", () => {
       mockExeca.mockResolvedValueOnce({
         exitCode: 1,
         stdout: "",
-        stderr: 'Error from server (NotFound): secrets "auth-service-secrets" not found',
+        stderr:
+          'Error from server (NotFound): secrets "auth-service-secrets" not found',
       } as never);
 
       await expect(loadSecretContract(dir)).rejects.toThrow(

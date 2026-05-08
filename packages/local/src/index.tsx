@@ -4,6 +4,9 @@ import {
   Item,
   Listing,
   Note,
+  Text,
+  blue,
+  GLYPH_DIM_DOT,
   render,
   renderStatic,
   useEffect,
@@ -24,7 +27,7 @@ import {
   readCachedDeployables,
 } from "./registry.js";
 import { resolveGhcrToken } from "./credentials.js";
-import { diffRegistry, formatRefreshChange } from "./refresh-diff.js";
+import { diffRegistry, type RefreshChange } from "./refresh-diff.js";
 import { ensureClusterCertCoversHosts } from "./cluster-cert.js";
 
 // Schema + plugin metadata (consumed by apps/ix init hook).
@@ -500,6 +503,12 @@ export async function runRefresh(
       <Listing
         header={header}
         status="passed"
+        variant="flow"
+        pre={
+          <Text>
+            {` ${GLYPH_DIM_DOT} Refreshing helm charts from ${blue(config.helmChartRegistry)}`}
+          </Text>
+        }
         tail={
           changes.length === 0
             ? `Registry up to date · ${reg.length} deployable(s).`
@@ -507,7 +516,7 @@ export async function runRefresh(
         }
       >
         {changes.map((change, i) => (
-          <Item key={i} name={formatRefreshChange(change)} />
+          <Item key={i} name={renderRefreshChangeName(change)} />
         ))}
       </Listing>,
     );
@@ -523,6 +532,26 @@ export async function runRefresh(
     );
     throw err;
   }
+}
+
+function renderRefreshChangeName(change: RefreshChange): React.ReactNode {
+  if (change.kind === "added") {
+    return (
+      <>
+        {`${change.role}:${change.displayName} (new) `}
+        <Text>{blue(change.newVersion)}</Text>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {`${change.role}:${change.displayName} `}
+      <Text dimColor>{change.oldVersion}</Text>
+      {" -> "}
+      <Text>{blue(change.newVersion)}</Text>
+    </>
+  );
 }
 
 async function loadRegistryForCommand(config: import("./config.js").IxConfig) {

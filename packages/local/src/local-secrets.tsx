@@ -198,7 +198,10 @@ function parseSecretKeyRef(
   const ref = vf.secretKeyRef as SecretKeyRefSpec;
   const fieldNames = ["namespace", "name", "key"] as const;
   for (const field of fieldNames) {
-    if (typeof ref[field] !== "string" || (ref[field] as string).trim() === "") {
+    if (
+      typeof ref[field] !== "string" ||
+      (ref[field] as string).trim() === ""
+    ) {
       throw new Error(
         `valueFrom.secretKeyRef.${field} is required for key '${secretKey}' in '${secretName}' (${repoDir}/${SECRETS_FILENAME})`,
       );
@@ -211,9 +214,11 @@ function parseSecretKeyRef(
   };
 }
 
-async function readClusterSecretValue(
-  ref: { namespace: string; name: string; key: string },
-): Promise<string | null> {
+async function readClusterSecretValue(ref: {
+  namespace: string;
+  name: string;
+  key: string;
+}): Promise<string | null> {
   const result = await execa(
     "kubectl",
     [

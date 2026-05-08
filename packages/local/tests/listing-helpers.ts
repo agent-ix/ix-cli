@@ -16,6 +16,7 @@ export interface ListingCall {
   status?: string;
   tail?: unknown;
   tailVariant?: string;
+  variant?: string;
   notes: string[];
   items: { name?: unknown; description?: unknown }[];
   groups: { name?: unknown }[];
@@ -34,6 +35,8 @@ interface ListingElement {
     status?: string;
     tail?: unknown;
     tailVariant?: string;
+    variant?: string;
+    pre?: unknown;
     children?: unknown;
   };
 }
@@ -79,6 +82,7 @@ export function makeListingMock(extra: Record<string, unknown> = {}) {
       status: el.props.status,
       tail: el.props.tail,
       tailVariant: el.props.tailVariant,
+      variant: el.props.variant,
       notes: [],
       items: [],
       groups: [],
@@ -118,6 +122,13 @@ export function makeListingMock(extra: Record<string, unknown> = {}) {
     useRenderResult: () => ({ exit: () => {}, setResult: () => {} }),
     useEffect: () => {},
     useState: <T>(initial: T): [T, (next: T) => void] => [initial, () => {}],
+    blue: (s: string) => s,
+    colors: {
+      dim: (s: string) => s,
+      cyan: (s: string) => s,
+      bold: (s: string) => s,
+    },
+    GLYPH_DIM_DOT: "•",
     __calls: calls,
     __reset: () => {
       calls.length = 0;

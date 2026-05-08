@@ -382,10 +382,10 @@ describe("FR-034: ix local refresh diff output", () => {
     );
   });
 
-  it("TC-301: runRefresh emits diff rows via <Item> children", () => {
+  it("TC-301: runRefresh emits diff rows via flow <Item> children", () => {
     const src = readSrc("index.ts");
     expect(src).toMatch(
-      /diffRegistry\(prior,\s*reg\)[\s\S]*?<Item[\s\S]*?formatRefreshChange/,
+      /diffRegistry\(prior,\s*reg\)[\s\S]*variant="flow"[\s\S]*?<Item[\s\S]*?renderRefreshChangeName/,
     );
   });
 
