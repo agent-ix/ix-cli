@@ -15,6 +15,7 @@ export interface PhaseTableFinalFrame {
   tail?: React.ReactNode;
   tailVariant?: TailVariant;
   tailIngressUrls?: string[];
+  tailIngressHosts?: string[];
   tailEntry?: { name: string; baseDomain: string };
 }
 
@@ -89,6 +90,7 @@ export async function renderPhaseTableRun<P extends string, R>({
         tail={finalFrame?.tail}
         tailVariant={finalFrame?.tailVariant}
         tailIngressUrls={finalFrame?.tailIngressUrls}
+        tailIngressHosts={finalFrame?.tailIngressHosts}
         tailEntry={finalFrame?.tailEntry}
       />
     );

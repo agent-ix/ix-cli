@@ -66,11 +66,11 @@ renders the label in dim text alongside a yellow `0` — never red — because
 
 ```
  ⊚  [ ix local up · auth ]
+ |
+ • Loading Helm charts from ghcr.io
+ |
+ • Starting App: auth
  └──┐
-    • Loading Helm charts from ghcr.io
-    • Starting App: auth
-    |
-
     ⠦ auth-service        0/1·init       2.1s
     ⠦ identity            0/1·start      2.4s
     ⠦ permission-service  1/3            3.0s
@@ -124,10 +124,17 @@ updateRevision`).
   receives plain `"1/1"`.
 - **FR-031-AC-15**: On successful umbrella app install, ix-cli reads final
   ingress URLs from `helm get manifest <app-name> -n <namespace>` and passes
-  every rendered Ingress host to the PhaseTable ingress section. TLS-covered
-  hosts render with `https://`; non-TLS hosts render with `http://`.
-- **FR-031-AC-16**: When the rendered umbrella manifest contains multiple
-  configured ingress hostnames, all are shown in chart-rendered order (for
-  example `https://auth.dev.ix` and `https://auth.luna.ix`).
+  every rendered Ingress host to the PhaseTable ingress section as a flat
+  list via `tailIngressUrls`, alongside `tailIngressHosts = config.hosts`
+  for per-host grouping. TLS-covered hosts render with `https://`; non-TLS
+  hosts render with `http://`.
+- **FR-031-AC-16**: When the rendered umbrella manifest contains URLs
+  spanning multiple configured ingress hostnames, each URL is rendered
+  under its `◎ Ingress · <host>` block (PhaseTable grouping per
+  FR-004-AC-9). Within each group, URLs preserve chart-rendered order;
+  groups are rendered in the order their first URL appears in the
+  rendered manifest. Example with `config.hosts = ["dev.ix", "luna.ix"]`:
+  `https://auth.dev.ix` under `◎ Ingress · dev.ix`, then
+  `https://auth.luna.ix` under `◎ Ingress · luna.ix`.
 - **FR-031-AC-17**: If the rendered manifest contains no Ingress hosts,
   ix-cli SHALL NOT synthesize a fallback URL from `<release>.<domain>`.

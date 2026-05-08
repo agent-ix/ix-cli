@@ -48,6 +48,13 @@ interface SecretKeySpec {
   prompt?: unknown;
   required?: unknown;
   generate?: unknown;
+  valueFrom?: unknown;
+}
+
+interface SecretKeyRefSpec {
+  namespace?: unknown;
+  name?: unknown;
+  key?: unknown;
 }
 
 interface RegistrySpec {
@@ -169,6 +176,69 @@ function readEnvFirstHit(envNames: string[]): string | null {
   return null;
 }
 
+function parseSecretKeyRef(
+  raw: unknown,
+  secretKey: string,
+  secretName: string,
+  repoDir: string,
+): { namespace: string; name: string; key: string } | null {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== "object") {
+    throw new Error(
+      `Invalid valueFrom for key '${secretKey}' in '${secretName}' (${repoDir}/${SECRETS_FILENAME}): must be an object`,
+    );
+  }
+  const vf = raw as { secretKeyRef?: unknown };
+  if (vf.secretKeyRef === undefined) return null;
+  if (typeof vf.secretKeyRef !== "object" || vf.secretKeyRef === null) {
+    throw new Error(
+      `Invalid valueFrom.secretKeyRef for key '${secretKey}' in '${secretName}' (${repoDir}/${SECRETS_FILENAME}): must be an object with namespace, name, key`,
+    );
+  }
+  const ref = vf.secretKeyRef as SecretKeyRefSpec;
+  const fieldNames = ["namespace", "name", "key"] as const;
+  for (const field of fieldNames) {
+    if (typeof ref[field] !== "string" || (ref[field] as string).trim() === "") {
+      throw new Error(
+        `valueFrom.secretKeyRef.${field} is required for key '${secretKey}' in '${secretName}' (${repoDir}/${SECRETS_FILENAME})`,
+      );
+    }
+  }
+  return {
+    namespace: (ref.namespace as string).trim(),
+    name: (ref.name as string).trim(),
+    key: (ref.key as string).trim(),
+  };
+}
+
+async function readClusterSecretValue(
+  ref: { namespace: string; name: string; key: string },
+): Promise<string | null> {
+  const result = await execa(
+    "kubectl",
+    [
+      "get",
+      "secret",
+      "-n",
+      ref.namespace,
+      ref.name,
+      "-o",
+      `jsonpath={.data.${ref.key}}`,
+    ],
+    { reject: false },
+  );
+  if (result.exitCode !== 0) {
+    const stderr = (result.stderr ?? "").toString();
+    if (/NotFound|not found/i.test(stderr)) return null;
+    throw new Error(
+      `kubectl get secret ${ref.namespace}/${ref.name} failed: ${stderr.trim() || `exit ${result.exitCode}`}`,
+    );
+  }
+  const encoded = (result.stdout ?? "").toString().trim();
+  if (!encoded) return null;
+  return Buffer.from(encoded, "base64").toString("utf-8");
+}
+
 async function resolveSecretKey(
   repoDir: string,
   secretName: string,
@@ -184,6 +254,22 @@ async function resolveSecretKey(
   const envValue = readEnvFirstHit(envNames);
   if (envValue) {
     return { secretKey: raw.secretKey, value: envValue };
+  }
+
+  const ref = parseSecretKeyRef(
+    raw.valueFrom,
+    raw.secretKey,
+    secretName,
+    repoDir,
+  );
+  if (ref) {
+    const value = await readClusterSecretValue(ref);
+    if (value === null || value === "") {
+      throw new Error(
+        `Source secret ${ref.namespace}/${ref.name} (key '${ref.key}') for '${raw.secretKey}' in '${secretName}' not found. Bring up the owning service first.`,
+      );
+    }
+    return { secretKey: raw.secretKey, value };
   }
 
   const generator = parseGenerateSpec(raw.generate);

@@ -49,9 +49,15 @@ const display = new PhaseTable<Phase>(serviceNames, {
   phases: PHASES,
   phaseLabels: PHASE_LABELS,
   header: `ix local up · ${app.name}`,
+  tailIngressHosts: config.hosts,
   initialLineCount: appHeaderText && process.stdout.isTTY ? 1 : 0,
 });
 ```
+
+`tailIngressHosts` MUST be the configured `IxConfig.hosts` (FR-037) in
+priority order. PhaseTable performs the per-host suffix grouping in the
+final ingress section (FR-004-AC-9); `packages/local` does NOT pre-group
+URLs.
 
 ## Behavior
 
@@ -70,21 +76,24 @@ registry appears only in preflight, followed by the deploy target kind:
 
 ```
  ⊙  [ ix local up · auth ]
+ |
+ • Loading Helm charts from ghcr.io
+ |
+ • Starting App: auth
  └──┐
-    • Loading Helm charts from ghcr.io
-    • Starting App: auth
-    |
-
     • auth-service 0.9.3        1/1                           12.1s
     • identity 0.10.2           1/1                           12.1s
     • permission-service 0.4.9  1/1                           12.1s
-
     • elapsed 12.1s · 3/3 ready
-    |
 
-    ◎ Ingress
-    └─→  https://auth.dev.ix
-    └─→  https://auth.luna.ix
+ ◎ Ingress · dev.ix
+ └──┐
+    →  https://auth.dev.ix
+    →  https://identity.dev.ix
+
+ ◎ Ingress · luna.ix
+ └──┐
+    →  https://auth.luna.ix
 ```
 
 The ingress URLs shown in the final section SHALL come from the rendered Helm
@@ -106,4 +115,4 @@ inferred from the suffix list.
 - **FR-002-AC-3**: `grep -r "AppDisplay" packages/local/src/` returns zero matches.
 - **FR-002-AC-4**: The `Phase` type and `PHASES` constant are defined in `src/phases.ts` and not duplicated elsewhere in the package.
 - **FR-002-AC-5**: The header for `ix up <target>` is `ix local up · <target>` and SHALL NOT include the Helm registry.
-- **FR-002-AC-6**: The success frame passes all rendered ingress URLs to `PhaseTable` via `tailIngressUrls`; if no Ingress exists, no ingress section is rendered.
+- **FR-002-AC-6**: The success frame passes all rendered ingress URLs to `PhaseTable` via `tailIngressUrls` (flat list, in chart-rendered order) AND the configured hosts via `tailIngressHosts = config.hosts`. PhaseTable groups URLs into per-host `◎ Ingress · <host>` blocks via longest-host-suffix match (FR-004-AC-9). If no Ingress exists, no ingress section is rendered.

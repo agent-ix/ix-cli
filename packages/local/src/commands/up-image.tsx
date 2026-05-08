@@ -44,10 +44,10 @@ export async function runImageModeUp(
   const preflight = (
     <>
       <Text>
-        {`    ${GLYPH_DIM_DOT} ${colors.dim("Loading Helm charts from")} ${blue(config.helmChartRegistry)}`}
+        {` ${GLYPH_DIM_DOT} ${colors.dim("Loading Helm charts from")} ${blue(config.helmChartRegistry)}`}
       </Text>
       <Text>
-        {`    ${GLYPH_DIM_DOT} ${colors.dim(
+        {` ${GLYPH_DIM_DOT} ${colors.dim(
           deployable.role === "app" ? "Starting App:" : "Starting Service:",
         )} ${blue(deployable.name)}`}
       </Text>
@@ -83,6 +83,7 @@ export async function runImageModeUp(
             : {
                 status: "passed",
                 tailIngressUrls: ingressUrls,
+                tailIngressHosts: config.hosts,
               },
         frameForError: (err) => ({
           status: "failed",
@@ -128,6 +129,7 @@ export async function runImageModeUp(
         : {
             status: "passed",
             tailIngressUrls: ingressUrls,
+            tailIngressHosts: config.hosts,
           },
     frameForError: (err) => ({
       status: "failed",

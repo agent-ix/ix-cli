@@ -41,10 +41,10 @@ export async function runSourceModeUp(
       preflight: (
         <>
           <Text>
-            {`    ${GLYPH_DIM_DOT} ${colors.dim("Loading Helm charts from")} ${blue(config.helmChartRegistry)}`}
+            {` ${GLYPH_DIM_DOT} ${colors.dim("Loading Helm charts from")} ${blue(config.helmChartRegistry)}`}
           </Text>
           <Text>
-            {`    ${GLYPH_DIM_DOT} ${colors.dim(
+            {` ${GLYPH_DIM_DOT} ${colors.dim(
               plan.installs.length > 1 ? "Starting App:" : "Starting Service:",
             )} ${blue(services.join(", "))}`}
           </Text>
@@ -62,6 +62,7 @@ export async function runSourceModeUp(
           : {
               status: "passed",
               tailIngressUrls: ingressUrls,
+              tailIngressHosts: config.hosts,
             },
       frameForError: (err) => ({
         status: "failed",

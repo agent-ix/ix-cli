@@ -111,6 +111,90 @@ describe("local secret contracts", () => {
     expect(leaked).toEqual([]);
   });
 
+  it("resolves a key value from another namespace via valueFrom.secretKeyRef", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-secrets-test-"));
+    try {
+      fs.writeFileSync(
+        path.join(dir, "ix-local.secrets.yaml"),
+        [
+          "secrets:",
+          "  - name: cloudmanager-local-sync-secrets",
+          "    keys:",
+          "      - secretKey: INTERNAL_AUTH_SECRET",
+          "        valueFrom:",
+          "          secretKeyRef:",
+          "            namespace: auth",
+          "            name: auth-service-secrets",
+          "            key: INTERNAL_AUTH_SECRET",
+          "",
+        ].join("\n"),
+      );
+      mockExeca.mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: b64("shared-internal-auth-value"),
+        stderr: "",
+      } as never);
+
+      const contract = await loadSecretContract(dir);
+
+      expect(mockExeca).toHaveBeenNthCalledWith(
+        1,
+        "kubectl",
+        [
+          "get",
+          "secret",
+          "-n",
+          "auth",
+          "auth-service-secrets",
+          "-o",
+          "jsonpath={.data.INTERNAL_AUTH_SECRET}",
+        ],
+        { reject: false },
+      );
+      expect(contract).not.toBeNull();
+      const secret = contract!.secrets[0];
+      if (secret.type !== "opaque") throw new Error("expected opaque");
+      expect(secret.keys[0]).toEqual({
+        secretKey: "INTERNAL_AUTH_SECRET",
+        value: "shared-internal-auth-value",
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("hard-fails when a valueFrom.secretKeyRef source secret is missing", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-secrets-test-"));
+    try {
+      fs.writeFileSync(
+        path.join(dir, "ix-local.secrets.yaml"),
+        [
+          "secrets:",
+          "  - name: cloudmanager-local-sync-secrets",
+          "    keys:",
+          "      - secretKey: INTERNAL_AUTH_SECRET",
+          "        valueFrom:",
+          "          secretKeyRef:",
+          "            namespace: auth",
+          "            name: auth-service-secrets",
+          "            key: INTERNAL_AUTH_SECRET",
+          "",
+        ].join("\n"),
+      );
+      mockExeca.mockResolvedValueOnce({
+        exitCode: 1,
+        stdout: "",
+        stderr: 'Error from server (NotFound): secrets "auth-service-secrets" not found',
+      } as never);
+
+      await expect(loadSecretContract(dir)).rejects.toThrow(
+        /auth\/auth-service-secrets.*not found.*Bring up the owning service first/,
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("reuses existing generated secret keys instead of rotating them", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ix-secrets-test-"));
     try {
