@@ -1,4 +1,10 @@
-import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import {
+  GLYPH_DIM_DOT,
+  Listing,
+  Note,
+  Text,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 
 export async function runElementsNew(_name: string): Promise<void> {
   // FR-013: authoring a new element type (spec + cookiecutter scaffold)
@@ -7,10 +13,11 @@ export async function runElementsNew(_name: string): Promise<void> {
     <Listing
       header="ix elements new"
       status="passed"
-      tail="See above for manual steps."
+      variant="flow"
+      pre={<Text>{` ${GLYPH_DIM_DOT} Authoring a new element type`}</Text>}
+      tail="Not yet implemented — see manual steps above."
       tailVariant="warn"
     >
-      <Note>ix elements new is not yet implemented.</Note>
       <Note>To create a new element type:</Note>
       <Note>
         {"  1. Create a new repo named <type>-cookiecutter (or <type>-element)"}

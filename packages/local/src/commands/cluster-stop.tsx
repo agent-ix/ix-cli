@@ -4,7 +4,14 @@
  */
 
 import { execa } from "execa";
-import { Item, Listing, renderStatic } from "@agent-ix/ix-ui-cli";
+import {
+  GLYPH_DIM_DOT,
+  Item,
+  Listing,
+  Text,
+  blue,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "../config.js";
 
 const HEADER = "ix local cluster stop";
@@ -86,7 +93,13 @@ export async function runClusterStop(
     <Listing
       header={HEADER}
       status="passed"
-      tail={`Stopped ${rows.length} node(s). Cluster paused; data preserved.`}
+      variant="flow"
+      pre={
+        <Text>
+          {` ${GLYPH_DIM_DOT} Stopping ${blue(String(rows.length))} node(s)`}
+        </Text>
+      }
+      tail={`Stopped ${rows.length} node(s) · data preserved.`}
     >
       {rows.map((r) => (
         <Item key={r.node} name={r.node} description={r.state} />

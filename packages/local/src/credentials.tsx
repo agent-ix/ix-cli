@@ -15,9 +15,12 @@
 
 import type React from "react";
 import {
+  GLYPH_DIM_DOT,
   Listing,
   Note,
   PasswordPrompt,
+  Text,
+  blue,
   render,
   renderStatic,
   useEffect,
@@ -57,7 +60,13 @@ async function promptForToken(activeBackend: string): Promise<string | null> {
     <Listing
       header="ix local: GHCR token required"
       status="passed"
-      tail={`The token will be stored via 'ix secrets' (active backend = ${activeBackend}).`}
+      variant="flow"
+      pre={
+        <Text>
+          {` ${GLYPH_DIM_DOT} Storing GHCR token via ${blue(activeBackend)}`}
+        </Text>
+      }
+      tail={`The token will be stored via 'ix secrets' (active backend = ${blue(activeBackend)}).`}
     >
       <Note>
         To pull charts and images from GHCR, a GitHub Personal Access Token

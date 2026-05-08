@@ -19,7 +19,14 @@ import {
   identityServicePath,
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
-import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import {
+  GLYPH_DIM_DOT,
+  Listing,
+  Note,
+  Text,
+  blue,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 
 type RawFn = typeof kubectlRaw;
 export interface IdentityDeps {
@@ -153,10 +160,20 @@ export async function runAuthInvite(
       : "no";
 
   await renderStatic(
-    <Listing header={HEADER} status="passed" tail="Invite created.">
-      <Note>{`User:        ${inviteResp.email}`}</Note>
+    <Listing
+      header={HEADER}
+      status="passed"
+      variant="flow"
+      pre={
+        <Text>
+          {` ${GLYPH_DIM_DOT} Creating invite for ${blue(inviteResp.email)}`}
+        </Text>
+      }
+      tail="Invite created."
+    >
+      <Note>{`User:        ${blue(inviteResp.email)}`}</Note>
       <Note>{`Expires:     ${inviteResp.expires_at}`}</Note>
-      <Note>{`Invite URL:  ${inviteResp.invite_url}`}</Note>
+      <Note>{`Invite URL:  ${blue(inviteResp.invite_url)}`}</Note>
       <Note>{`Email sent:  ${emailLine}`}</Note>
       {!inviteResp.email_sent && (
         <Note>Share the URL above with the user; it is single-use.</Note>

@@ -9,7 +9,15 @@ import { execa } from "execa";
 import type { IxConfig } from "../config.js";
 import { IX_AUTH_NAMESPACE } from "./auth-identity.js";
 import { buildSecretManifest as buildContractSecretManifest } from "../local-secrets.js";
-import { Item, Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import {
+  GLYPH_DIM_DOT,
+  Item,
+  Listing,
+  Note,
+  Text,
+  blue,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -222,7 +230,13 @@ export async function runAuthConfigEmailEnable(
       <Listing
         header={header}
         status="passed"
-        tail="Email configuration enabled and identity restarted."
+        variant="flow"
+        pre={
+          <Text>
+            {` ${GLYPH_DIM_DOT} Enabling email login via ${blue(opts.smtpHost)}`}
+          </Text>
+        }
+        tail="Email login enabled."
       />,
     );
   } catch (err) {
@@ -253,7 +267,9 @@ export async function runAuthConfigEmailDisable(
       <Listing
         header={header}
         status="passed"
-        tail="Email configuration disabled and identity restarted."
+        variant="flow"
+        pre={<Text>{` ${GLYPH_DIM_DOT} Disabling email login`}</Text>}
+        tail="Email login disabled."
       />,
     );
   } catch (err) {
@@ -307,7 +323,11 @@ export async function runAuthConfigEmailTest(
       <Listing
         header={header}
         status="passed"
-        tail={`Test email sent to ${to}.`}
+        variant="flow"
+        pre={
+          <Text>{` ${GLYPH_DIM_DOT} Sending test email to ${blue(to)}`}</Text>
+        }
+        tail={`Sent · check ${blue(to)}.`}
       />,
     );
   } catch (err) {
@@ -361,7 +381,13 @@ export async function runAuthConfigPasswordResetSet(
       <Listing
         header={header}
         status="passed"
-        tail={`Password reset mode set to '${mode}' and identity restarted.`}
+        variant="flow"
+        pre={
+          <Text>
+            {` ${GLYPH_DIM_DOT} Updating password-reset mode to ${blue(mode)}`}
+          </Text>
+        }
+        tail={`Password reset mode set to ${blue(mode)}.`}
       />,
     );
   } catch (err) {
@@ -512,7 +538,13 @@ export async function runAuthConfigSocialAdd(
       <Listing
         header={header}
         status="passed"
-        tail={`Social provider '${id}' added and identity restarted.`}
+        variant="flow"
+        pre={
+          <Text>
+            {` ${GLYPH_DIM_DOT} Adding ${blue(id)} (${opts.type}) provider`}
+          </Text>
+        }
+        tail={`Added social provider ${blue(id)}.`}
       />,
     );
   } catch (err) {
@@ -555,7 +587,9 @@ export async function runAuthConfigSocialRemove(
       <Listing
         header={header}
         status="passed"
-        tail={`Social provider '${id}' removed and identity restarted.`}
+        variant="flow"
+        pre={<Text>{` ${GLYPH_DIM_DOT} Removing ${blue(id)}`}</Text>}
+        tail={`Removed social provider ${blue(id)}.`}
       />,
     );
   } catch (err) {
@@ -681,7 +715,13 @@ export async function runAuthConfigRegistrationSet(
       <Listing
         header={header}
         status="passed"
-        tail={`Registration mode set to '${mode}' and identity restarted.`}
+        variant="flow"
+        pre={
+          <Text>
+            {` ${GLYPH_DIM_DOT} Updating registration mode to ${blue(mode)}`}
+          </Text>
+        }
+        tail={`Registration mode set to ${blue(mode)}.`}
       />,
     );
   } catch (err) {

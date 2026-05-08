@@ -11,7 +11,14 @@ import {
   identityServicePath,
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
-import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import {
+  GLYPH_DIM_DOT,
+  Listing,
+  Note,
+  Text,
+  blue,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 
 type RawFn = typeof kubectlRaw;
 export interface IdentityDeps {
@@ -82,13 +89,19 @@ export async function runAuthUninvite(
     <Listing
       header="ix local auth uninvite"
       status="passed"
+      variant="flow"
+      pre={
+        <Text>
+          {` ${GLYPH_DIM_DOT} Revoking invites for ${blue(resp.email)}`}
+        </Text>
+      }
       tail={
         resp.revoked > 0
-          ? "Outstanding invites revoked."
-          : "No outstanding invites; nothing to revoke."
+          ? `Revoked ${resp.revoked} invite(s) for ${blue(resp.email)}.`
+          : `No outstanding invites for ${blue(resp.email)}.`
       }
     >
-      <Note>{`User:    ${resp.email}`}</Note>
+      <Note>{`User:    ${blue(resp.email)}`}</Note>
       <Note>{`Revoked: ${resp.revoked} token(s)`}</Note>
     </Listing>,
   );

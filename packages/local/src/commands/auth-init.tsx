@@ -23,7 +23,14 @@ import {
   IX_SYSTEM_NAMESPACE,
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
-import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import {
+  GLYPH_DIM_DOT,
+  Listing,
+  Note,
+  Text,
+  blue,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 
 type ExecFn = typeof kubectlExecJson;
 type EnsureIdentityFn = (config: IxConfig) => Promise<void>;
@@ -187,10 +194,20 @@ export async function runAuthInit(
 
   // FR-015-B6: print to stdout once — never to a log (NFR-004-AC-2)
   await renderStatic(
-    <Listing header={HEADER} status="passed" tail="Admin account created.">
+    <Listing
+      header={HEADER}
+      status="passed"
+      variant="flow"
+      pre={
+        <Text>
+          {` ${GLYPH_DIM_DOT} Bootstrapping admin in ${blue(IX_SYSTEM_NAMESPACE)}`}
+        </Text>
+      }
+      tail="Admin account created."
+    >
       <Note>{`Username:      admin`}</Note>
       <Note>{`Temp password: ${resp.password}     (expires ${formatExpiry(resp.expires_at)})`}</Note>
-      <Note>{`Log in at:     ${resp.login_url}`}</Note>
+      <Note>{`Log in at:     ${blue(resp.login_url)}`}</Note>
       <Note>{`Secret:        ${IX_SYSTEM_NAMESPACE}/admin-bootstrap`}</Note>
     </Listing>,
   );

@@ -19,7 +19,14 @@ import {
   identityServicePath,
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
-import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import {
+  GLYPH_DIM_DOT,
+  Listing,
+  Note,
+  Text,
+  blue,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 
 type RawFn = typeof kubectlRaw;
 export interface IdentityDeps {
@@ -106,10 +113,20 @@ export async function runAuthResetUser(
   }
 
   await renderStatic(
-    <Listing header={HEADER} status="passed" tail="Password reset.">
-      <Note>{`User:       ${resetResp.email}`}</Note>
+    <Listing
+      header={HEADER}
+      status="passed"
+      variant="flow"
+      pre={
+        <Text>
+          {` ${GLYPH_DIM_DOT} Resetting password for ${blue(resetResp.email)}`}
+        </Text>
+      }
+      tail="Password reset."
+    >
+      <Note>{`User:       ${blue(resetResp.email)}`}</Note>
       <Note>{`Expires:    ${resetResp.expires_at}`}</Note>
-      <Note>{`Reset URL:  ${resetResp.reset_url}`}</Note>
+      <Note>{`Reset URL:  ${blue(resetResp.reset_url)}`}</Note>
       <Note>{`Email sent: ${resetResp.email_sent}`}</Note>
     </Listing>,
   );

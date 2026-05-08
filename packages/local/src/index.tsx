@@ -176,11 +176,20 @@ export async function executeLocals(services: string[], action: "up" | "down") {
       await execa("make", [cmd], { cwd: serviceDir, stdio: "inherit" });
     }
 
+    const targetLabel = services.includes("all")
+      ? "all services"
+      : `${services.length} service(s)`;
     await renderStatic(
       <Listing
         header={header}
         status="passed"
-        tail={`Successfully ${action === "up" ? "started" : "stopped"} everything.`}
+        variant="flow"
+        pre={
+          <Text>
+            {` ${GLYPH_DIM_DOT} ${action === "up" ? "Bringing up" : "Tearing down"} ${blue(targetLabel)}`}
+          </Text>
+        }
+        tail={`${action === "up" ? "Started" : "Stopped"} ${targetLabel}.`}
       />,
     );
   } catch (err) {

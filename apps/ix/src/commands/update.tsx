@@ -1,7 +1,14 @@
 import { Command, Flags } from "@oclif/core";
 import { spawn } from "node:child_process";
-import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
-import pc from "picocolors";
+import {
+  GLYPH_DIM_DOT,
+  Listing,
+  Note,
+  Text,
+  blue,
+  colors,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 
 const DEFAULT_REGISTRY = "https://npm.pkg.github.com/";
 
@@ -49,8 +56,8 @@ export default class Update extends Command {
 
     const baseNotes = (
       <>
-        <Note>{`registry ${pc.cyan(registry)}`}</Note>
-        <Note>{`current  ${pc.cyan(current)}`}</Note>
+        <Note>{`registry ${blue(registry)}`}</Note>
+        <Note>{`current  ${blue(current)}`}</Note>
       </>
     );
 
@@ -81,10 +88,17 @@ export default class Update extends Command {
 
     if (current === latest) {
       await renderStatic(
-        <Listing header="ix update" status="passed" tail="Already up to date.">
-          {baseNotes}
-          <Note>{`latest   ${pc.cyan(latest)}`}</Note>
-        </Listing>,
+        <Listing
+          header="ix update"
+          status="passed"
+          variant="flow"
+          pre={
+            <Text>
+              {` ${GLYPH_DIM_DOT} ${blue(current)} from ${blue(registry)}`}
+            </Text>
+          }
+          tail={`Already up to date · ${blue(latest)}`}
+        />,
       );
       return;
     }
@@ -94,12 +108,15 @@ export default class Update extends Command {
         <Listing
           header="ix update"
           status="passed"
-          tail={`Update available: ${pc.cyan(latest)}`}
+          variant="flow"
+          pre={
+            <Text>
+              {` ${GLYPH_DIM_DOT} ${blue(current)} from ${blue(registry)}`}
+            </Text>
+          }
+          tail={`Update available · ${blue(latest)}`}
           tailVariant="warn"
-        >
-          {baseNotes}
-          <Note>{`latest   ${pc.cyan(latest)}`}</Note>
-        </Listing>,
+        />,
       );
       return;
     }
@@ -124,7 +141,7 @@ export default class Update extends Command {
           tailVariant="error"
         >
           {baseNotes}
-          <Note>{`latest   ${pc.cyan(latest)}`}</Note>
+          <Note>{`latest   ${blue(latest)}`}</Note>
         </Listing>,
       );
       this.exit(1);
@@ -135,11 +152,14 @@ export default class Update extends Command {
       <Listing
         header="ix update"
         status="passed"
-        tail={`Updated to ${pc.cyan(latest)}`}
-      >
-        {baseNotes}
-        <Note>{`latest   ${pc.cyan(latest)}`}</Note>
-      </Listing>,
+        variant="flow"
+        pre={
+          <Text>
+            {` ${GLYPH_DIM_DOT} ${colors.dim(current)} → ${blue(latest)} via ${blue(registry)}`}
+          </Text>
+        }
+        tail={`Updated to ${blue(latest)}.`}
+      />,
     );
   }
 }

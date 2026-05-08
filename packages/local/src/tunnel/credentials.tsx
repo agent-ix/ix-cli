@@ -20,10 +20,13 @@
 
 import type React from "react";
 import {
+  GLYPH_DIM_DOT,
   Listing,
   Note,
   PasswordPrompt,
+  Text,
   TextPrompt,
+  blue,
   render,
   renderStatic,
   useEffect,
@@ -103,7 +106,13 @@ async function defaultPromptToken(
     <Listing
       header="ix tunnel up: first-run setup"
       status="passed"
-      tail={`Token will be stored via 'ix secrets' (active backend = ${activeBackend}).`}
+      variant="flow"
+      pre={
+        <Text>
+          {` ${GLYPH_DIM_DOT} Storing Cloudflare tunnel token via ${blue(activeBackend)}`}
+        </Text>
+      }
+      tail={`Token will be stored via 'ix secrets' (active backend = ${blue(activeBackend)}).`}
     >
       <Note>
         Create a tunnel in the Cloudflare dashboard (Zero Trust → Networks

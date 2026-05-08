@@ -4,7 +4,14 @@
  * useful when `domain.hosts` was changed after `init-cluster`.
  */
 
-import { Item, Listing, renderStatic } from "@agent-ix/ix-ui-cli";
+import {
+  GLYPH_DIM_DOT,
+  Item,
+  Listing,
+  Text,
+  blue,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "../config.js";
 import {
   applyClusterCerts,
@@ -61,7 +68,17 @@ export async function runClusterRefreshCert(
     : `Cert already covers configured hosts (${config.hosts.join(", ")}); no action.`;
 
   await renderStatic(
-    <Listing header={HEADER} status="passed" tail={tail}>
+    <Listing
+      header={HEADER}
+      status="passed"
+      variant="flow"
+      pre={
+        <Text>
+          {` ${GLYPH_DIM_DOT} ${refreshed ? "Re-issuing" : "Verifying"} ${blue(INGRESS_TLS_SECRET)} for ${blue(config.hosts.join(", "))}`}
+        </Text>
+      }
+      tail={tail}
+    >
       {sans.map((dns) => (
         <Item key={dns} name={dns} description="DNS SAN" />
       ))}

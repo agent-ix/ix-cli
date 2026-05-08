@@ -5,7 +5,15 @@
  */
 
 import { execa } from "execa";
-import { Item, Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import {
+  GLYPH_DIM_DOT,
+  Item,
+  Listing,
+  Note,
+  Text,
+  blue,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "../config.js";
 import { loadTunnelConfig, type TunnelConfig } from "../config.js";
 import { runTunnelUp, type TunnelInstallResult } from "../tunnel/install.js";
@@ -108,11 +116,17 @@ export async function runClusterStart(
     <Listing
       header={HEADER}
       status="passed"
+      variant="flow"
+      pre={
+        <Text>
+          {` ${GLYPH_DIM_DOT} Starting ${blue(String(rows.length))} kind node(s)`}
+        </Text>
+      }
       tailVariant={apiReady ? undefined : "warn"}
       tail={
         apiReady
-          ? `Started ${rows.length} node(s). API server reachable.`
-          : `Started ${rows.length} node(s). API server did not respond within ${API_TIMEOUT_MS / 1000}s — check cluster manually.`
+          ? `Started ${rows.length} node(s) · API reachable.`
+          : `Started ${rows.length} node(s) · API not ready in ${API_TIMEOUT_MS / 1000}s.`
       }
     >
       {rows.map((r) => (

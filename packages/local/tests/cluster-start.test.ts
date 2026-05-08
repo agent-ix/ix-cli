@@ -114,7 +114,7 @@ describe("runClusterStart", () => {
     const last = calls[calls.length - 1];
     expect(last.status).toBe("passed");
     expect(last.tailVariant).toBe("warn");
-    expect(last.tail).toEqual(expect.stringContaining("did not respond"));
+    expect(last.tail).toEqual(expect.stringContaining("API not ready"));
   });
 
   it("TC-417: tunnel autoStart=false skips tunnel install entirely", async () => {

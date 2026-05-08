@@ -19,7 +19,14 @@ import {
   IX_SYSTEM_NAMESPACE,
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
-import { Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import {
+  GLYPH_DIM_DOT,
+  Listing,
+  Note,
+  Text,
+  blue,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 
 function buildInitArgv(email: string): string[] {
   return [
@@ -162,11 +169,17 @@ export async function runAuthResetAdmin(
     <Listing
       header={HEADER}
       status="passed"
-      tail={`Secret ${IX_SYSTEM_NAMESPACE}/admin-bootstrap written.`}
+      variant="flow"
+      pre={
+        <Text>
+          {` ${GLYPH_DIM_DOT} Resetting admin in ${blue(IX_SYSTEM_NAMESPACE)}`}
+        </Text>
+      }
+      tail={`Secret ${blue(`${IX_SYSTEM_NAMESPACE}/admin-bootstrap`)} written.`}
     >
       <Note>{`User ID:       ${resetResp.user_id}`}</Note>
       <Note>{`Username:      ${resetResp.username ?? "admin"}`}</Note>
-      <Note>{`Email:         ${resetResp.email ?? resetResp.username ?? "admin"}`}</Note>
+      <Note>{`Email:         ${blue(resetResp.email ?? resetResp.username ?? "admin")}`}</Note>
       <Note>{`Temp password: ${resetResp.password}`}</Note>
       <Note>{`Expires at:    ${formatExpiresAt(resetResp.expires_at)}`}</Note>
     </Listing>,

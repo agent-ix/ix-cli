@@ -6,7 +6,15 @@
  * tunnel commands match the look of the rest of the CLI.
  */
 
-import { Item, Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
+import {
+  GLYPH_DIM_DOT,
+  Item,
+  Listing,
+  Note,
+  Text,
+  blue,
+  renderStatic,
+} from "@agent-ix/ix-ui-cli";
 import {
   loadConfig,
   loadTunnelConfig,
@@ -43,10 +51,16 @@ export async function runTunnelUpCommand(): Promise<void> {
       <Listing
         header={HEADER_UP}
         status="passed"
+        variant="flow"
+        pre={
+          <Text>
+            {` ${GLYPH_DIM_DOT} Installing cloudflared in ${blue(TUNNEL_NAMESPACE)}`}
+          </Text>
+        }
         tail={
           result.installed
-            ? `cloudflared installed in namespace '${TUNNEL_NAMESPACE}'.`
-            : `Skipped: ${result.skippedReason}.`
+            ? `Cloudflared installed in ${blue(TUNNEL_NAMESPACE)}.`
+            : `Skipped · ${result.skippedReason}.`
         }
       >
         <Item name="release" description="cloudflared" />
@@ -119,12 +133,23 @@ async function reconcileExposedReleases(): Promise<void> {
     }
   }
   const anyFailed = rows.some((r) => r.status === "failed");
+  const ok = rows.filter((r) => r.status === "ok").length;
+  const skipped = rows.filter((r) => r.status === "skipped").length;
+  const failed = rows.filter((r) => r.status === "failed").length;
   await renderStatic(
     <Listing
       header={`${HEADER_UP}: reconcile`}
       status={anyFailed ? "failed" : "passed"}
+      variant={anyFailed ? undefined : "flow"}
+      pre={
+        anyFailed ? undefined : (
+          <Text>
+            {` ${GLYPH_DIM_DOT} Reconciling ${blue(String(rows.length))} exposed release(s)`}
+          </Text>
+        )
+      }
       tailVariant={anyFailed ? "error" : undefined}
-      tail={`Reconciled ${rows.length} exposed app(s).`}
+      tail={`Reconciled ${ok} ok · ${skipped} skipped · ${failed} failed.`}
     >
       {rows.map((r) => (
         <Item
@@ -144,7 +169,13 @@ export async function runTunnelDownCommand(): Promise<void> {
       <Listing
         header={HEADER_DOWN}
         status="passed"
-        tail="cloudflared release uninstalled (idempotent)."
+        variant="flow"
+        pre={
+          <Text>
+            {` ${GLYPH_DIM_DOT} Removing cloudflared from ${blue(TUNNEL_NAMESPACE)}`}
+          </Text>
+        }
+        tail="Tunnel torn down (idempotent)."
       />,
     );
   } catch (err) {
@@ -221,7 +252,13 @@ async function renderExposeResult(
     <Listing
       header={header}
       status="passed"
-      tail={`Tunnel-routed at https://${tailHost}`}
+      variant="flow"
+      pre={
+        <Text>
+          {` ${GLYPH_DIM_DOT} Exposing ${blue(result.release)} at ${blue(tailHost)}`}
+        </Text>
+      }
+      tail={`Tunnel-routed at ${blue(`https://${tailHost}`)}`}
     >
       <Item name="release" description={result.release} />
       <Item name="namespace" description={result.namespace} />
@@ -294,10 +331,14 @@ export async function runTunnelDomainCommand(
       <Listing
         header={HEADER_DOMAIN}
         status="passed"
+        variant="flow"
+        pre={
+          <Text>{` ${GLYPH_DIM_DOT} ${blue(before)} → ${blue(after)}`}</Text>
+        }
         tail={
           before === after
-            ? `Unchanged: tunnel base domain is ${after}.`
-            : `Tunnel base domain set to ${after}. Confirm the *.${after} CNAME exists in your Cloudflare zone.`
+            ? `Unchanged · base domain is ${blue(after)}.`
+            : `Tunnel base domain set to ${blue(after)}. Confirm the *.${after} CNAME exists in your Cloudflare zone.`
         }
       >
         <Item name="base-domain" description={after} />
@@ -336,7 +377,11 @@ export async function runTunnelUnexposeCommand(appName: string): Promise<void> {
       <Listing
         header={HEADER_UNEXPOSE}
         status="passed"
-        tail={`Removed *.${tunnelCfg.baseDomain} hosts from release '${result.release}'.`}
+        variant="flow"
+        pre={
+          <Text>{` ${GLYPH_DIM_DOT} Unexposing ${blue(result.release)}`}</Text>
+        }
+        tail={`Removed *.${tunnelCfg.baseDomain} hosts from ${blue(result.release)}.`}
       >
         <Item name="release" description={result.release} />
         <Item name="namespace" description={result.namespace} />
