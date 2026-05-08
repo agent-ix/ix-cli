@@ -199,10 +199,10 @@ importers:
 packages:
 
   '@agent-ix/ix-ui-cli@0.4.1':
-    resolution: {integrity: sha512-FBLtFYb4ca8vX7wWjkW/hPVopF47KAimzpmTd7xc3XRbftjcdhaIBg0kNDt6hHDOk8B61uFyoN5Del7qGiuKWg==, tarball: http://npm.ix/@agent-ix/ix-ui-cli/-/e8d36fdeea5c26c1d579d178f98e965cdc0de78a}
+    resolution: {integrity: sha512-FBLtFYb4ca8vX7wWjkW/hPVopF47KAimzpmTd7xc3XRbftjcdhaIBg0kNDt6hHDOk8B61uFyoN5Del7qGiuKWg==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-ui-cli/0.4.1/e8d36fdeea5c26c1d579d178f98e965cdc0de78a}
 
   '@agent-ix/ix-ui-semantic@0.4.1':
-    resolution: {integrity: sha512-X3RTncbKiToWprhj7Cv44Tv4ctDUto2sfeupOcuw8wBYvtH7knwDRmcnS27OwFT8nLvWtGYPHA4qFaw4qFE1QQ==, tarball: http://npm.ix/@agent-ix/ix-ui-semantic/-/8e5f303dce0b2f36f90e43b6431964f45f0ba16b}
+    resolution: {integrity: sha512-X3RTncbKiToWprhj7Cv44Tv4ctDUto2sfeupOcuw8wBYvtH7knwDRmcnS27OwFT8nLvWtGYPHA4qFaw4qFE1QQ==, tarball: https://npm.pkg.github.com/download/@agent-ix/ix-ui-semantic/0.4.1/8e5f303dce0b2f36f90e43b6431964f45f0ba16b}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     resolution: {integrity: sha512-p+CMKJ93HFmLkjXKlXiVGlMQEuRb6H0MokBSwUsX+S6BRX8eV5naFZpQJFfJHjRZY0Hmnqy1/r6UWl3x+19zYA==}
