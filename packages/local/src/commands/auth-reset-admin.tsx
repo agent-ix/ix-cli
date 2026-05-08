@@ -19,14 +19,8 @@ import {
   IX_SYSTEM_NAMESPACE,
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
-import {
-  GLYPH_DIM_DOT,
-  Info,
-  Listing,
-  Text,
-  blue,
-  renderStatic,
-} from "@agent-ix/ix-ui-cli";
+import { GLYPH_DIM_DOT, Info, Text, blue } from "@agent-ix/ix-ui-cli";
+import { runWithLiveListing } from "../live-listing-runner.js";
 
 function buildInitArgv(email: string): string[] {
   return [
@@ -108,17 +102,6 @@ function diagnoseExecError(err: KubectlExecError): string {
   return `identity reset-admin failed (exit ${err.exitCode}): ${stderr || err.message}`;
 }
 
-async function renderFailure(msg: string): Promise<void> {
-  await renderStatic(
-    <Listing
-      header={HEADER}
-      status="failed"
-      tail={`auth reset-admin failed: ${msg}`}
-      tailVariant="error"
-    />,
-  );
-}
-
 export async function runAuthResetAdmin(
   config: IxConfig,
   opts: { user?: string },
@@ -128,66 +111,75 @@ export async function runAuthResetAdmin(
   const newEmail = `admin@${config.internalBaseDomain}`;
   const argv = buildResetArgv(opts, newEmail);
 
-  let resetResp: ResetResponse;
-  try {
-    try {
-      resetResp = await _exec<ResetResponse>(
-        IX_AUTH_NAMESPACE,
-        IDENTITY_DEPLOYMENT,
-        argv,
-      );
-    } catch (err) {
-      if (err instanceof KubectlExecError && err.exitCode === 4) {
-        // No admin exists yet — create one via init-admin
-        const initArgv = buildInitArgv(newEmail);
-        resetResp = await _exec<ResetResponse>(
+  await runWithLiveListing<ResetResponse>({
+    header: HEADER,
+    pre: (
+      <Text>
+        {` ${GLYPH_DIM_DOT} Resetting admin in ${blue(IX_SYSTEM_NAMESPACE)}`}
+      </Text>
+    ),
+    controller: async () => {
+      let resp: ResetResponse;
+      try {
+        resp = await _exec<ResetResponse>(
           IX_AUTH_NAMESPACE,
           IDENTITY_DEPLOYMENT,
-          initArgv,
+          argv,
         );
-      } else if (err instanceof KubectlExecError) {
-        throw new Error(diagnoseExecError(err));
-      } else {
-        throw err;
+      } catch (err) {
+        if (err instanceof KubectlExecError && err.exitCode === 4) {
+          // No admin exists yet — create one via init-admin
+          resp = await _exec<ResetResponse>(
+            IX_AUTH_NAMESPACE,
+            IDENTITY_DEPLOYMENT,
+            buildInitArgv(newEmail),
+          );
+        } else if (err instanceof KubectlExecError) {
+          throw new Error(diagnoseExecError(err));
+        } else {
+          throw err;
+        }
       }
-    }
 
-    await writeAdminBootstrapSecret({
-      password: resetResp.password,
-      expiresAt: resetResp.expires_at,
-      userId: resetResp.user_id,
-      loginUrl: `https://identity.${config.internalBaseDomain}/login`,
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await renderFailure(msg);
-    throw err;
-  }
-
-  // FR-016-B5: print to stdout once — never to a log.
-  await renderStatic(
-    <Listing
-      header={HEADER}
-      status="passed"
-      variant="flow"
-      pre={
-        <Text>
-          {` ${GLYPH_DIM_DOT} Resetting admin in ${blue(IX_SYSTEM_NAMESPACE)}`}
-        </Text>
-      }
-      tail={`Secret ${blue(`${IX_SYSTEM_NAMESPACE}/admin-bootstrap`)} written.`}
-    >
-      <Info name="User ID" description={resetResp.user_id} />
-      <Info name="Username" description={resetResp.username ?? "admin"} />
-      <Info
-        name="Email"
-        description={blue(resetResp.email ?? resetResp.username ?? "admin")}
-      />
-      <Info name="Temp password" description={resetResp.password} />
-      <Info
-        name="Expires"
-        description={formatExpiresAt(resetResp.expires_at)}
-      />
-    </Listing>,
-  );
+      await writeAdminBootstrapSecret({
+        password: resp.password,
+        expiresAt: resp.expires_at,
+        userId: resp.user_id,
+        loginUrl: `https://identity.${config.internalBaseDomain}/login`,
+      });
+      return resp;
+    },
+    // FR-016-B5: print to stdout once — never to a log.
+    frameForSuccess: (resp) => ({
+      tail: `Secret ${blue(`${IX_SYSTEM_NAMESPACE}/admin-bootstrap`)} written.`,
+      children: [
+        <Info key="user-id" name="User ID" description={resp.user_id} />,
+        <Info
+          key="username"
+          name="Username"
+          description={resp.username ?? "admin"}
+        />,
+        <Info
+          key="email"
+          name="Email"
+          description={blue(resp.email ?? resp.username ?? "admin")}
+        />,
+        <Info
+          key="password"
+          name="Temp password"
+          description={resp.password}
+        />,
+        <Info
+          key="expires"
+          name="Expires"
+          description={formatExpiresAt(resp.expires_at)}
+        />,
+      ],
+    }),
+    frameForError: (err) => ({
+      status: "failed",
+      tail: `auth reset-admin failed: ${err.message}`,
+      tailVariant: "error",
+    }),
+  });
 }

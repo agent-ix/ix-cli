@@ -29,6 +29,7 @@ import {
 import { resolveGhcrToken } from "./credentials.js";
 import { diffRegistry, type RefreshChange } from "./refresh-diff.js";
 import { ensureClusterCertCoversHosts } from "./cluster-cert.js";
+import { runWithLiveListing } from "./live-listing-runner.js";
 
 // Schema + plugin metadata (consumed by apps/ix init hook).
 export {
@@ -498,49 +499,56 @@ export async function runRefresh(
   config: import("./config.js").IxConfig,
 ): Promise<void> {
   const header = "ix local refresh";
-  try {
-    const token = await resolveGhcrToken(false);
-    const prior = readCachedDeployables(config.org);
-    const reg = await loadRegistry({
-      org: config.org,
-      githubToken: token,
-      refresh: true,
-    });
-    const changes = diffRegistry(prior, reg);
+  const STEP_TOKEN = "Resolve GHCR token";
+  const STEP_FETCH = "Fetch helm registry";
+  const STEP_DIFF = "Compute diff";
 
-    await renderStatic(
-      <Listing
-        header={header}
-        status="passed"
-        variant="flow"
-        pre={
-          <Text>
-            {` ${GLYPH_DIM_DOT} Refreshing helm charts from ${blue(config.helmChartRegistry)}`}
-          </Text>
-        }
-        tail={
-          changes.length === 0
-            ? `Registry up to date · ${reg.length} deployable(s).`
-            : `Refreshed: ${changes.length} chart(s) updated.`
-        }
-      >
-        {changes.map((change, i) => (
-          <Item key={i} name={renderRefreshChangeName(change)} />
-        ))}
-      </Listing>,
-    );
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await renderStatic(
-      <Listing
-        header={header}
-        status="failed"
-        tail={`Failed: ${msg}`}
-        tailVariant="error"
-      />,
-    );
-    throw err;
-  }
+  type RefreshResult = {
+    reg: Awaited<ReturnType<typeof loadRegistry>>;
+    changes: RefreshChange[];
+  };
+
+  await runWithLiveListing<RefreshResult>({
+    header,
+    pre: (
+      <Text>
+        {` ${GLYPH_DIM_DOT} Refreshing helm charts from ${blue(config.helmChartRegistry)}`}
+      </Text>
+    ),
+    controller: async (emit) => {
+      emit([{ name: STEP_TOKEN, description: "running" }]);
+      const token = await resolveGhcrToken(false);
+
+      emit([
+        { name: STEP_TOKEN, description: "done" },
+        { name: STEP_FETCH, description: "running" },
+      ]);
+      const prior = readCachedDeployables(config.org);
+      const reg = await loadRegistry({
+        org: config.org,
+        githubToken: token,
+        refresh: true,
+      });
+
+      emit([
+        { name: STEP_TOKEN, description: "done" },
+        { name: STEP_FETCH, description: `done · ${reg.length} deployable(s)` },
+        { name: STEP_DIFF, description: "running" },
+      ]);
+      const changes = diffRegistry(prior, reg);
+
+      return { reg, changes };
+    },
+    frameForSuccess: ({ reg, changes }) => ({
+      tail:
+        changes.length === 0
+          ? `Registry up to date · ${reg.length} deployable(s).`
+          : `Refreshed: ${changes.length} chart(s) updated.`,
+      children: changes.map((change, i) => (
+        <Item key={i} name={renderRefreshChangeName(change)} />
+      )),
+    }),
+  });
 }
 
 function renderRefreshChangeName(change: RefreshChange): React.ReactNode {

@@ -382,10 +382,12 @@ describe("FR-034: ix local refresh diff output", () => {
     );
   });
 
-  it("TC-301: runRefresh emits diff rows via flow <Item> children", () => {
+  it("TC-301: runRefresh emits diff rows as <Item> children", () => {
     const src = readSrc("index.ts");
+    // Flow-variant rendering moved into runWithLiveListing; refresh still
+    // emits one Item per change keyed off renderRefreshChangeName.
     expect(src).toMatch(
-      /diffRegistry\(prior,\s*reg\)[\s\S]*variant="flow"[\s\S]*?<Item[\s\S]*?renderRefreshChangeName/,
+      /diffRegistry\(prior,\s*reg\)[\s\S]*?<Item[\s\S]*?renderRefreshChangeName/,
     );
   });
 
