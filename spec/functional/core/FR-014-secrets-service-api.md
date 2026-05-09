@@ -2,7 +2,7 @@
 id: FR-014
 title: "SecretsService API in @agent-ix/ix-cli-core"
 artifact_type: FR
-object: api
+object: api_endpoint
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-006"
     type: "implements"

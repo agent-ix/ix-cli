@@ -2,7 +2,7 @@
 id: FR-013
 title: "Plugin Schema Registration via IxPlugin"
 artifact_type: FR
-object: api
+object: api_endpoint
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-005"
     type: "implements"
