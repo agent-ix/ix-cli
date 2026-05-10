@@ -213,6 +213,30 @@ Both flows are implemented in `packages/core/src/auth/`.
 
 ix-cli is pre-release and has no installed user base whose state needs preserving across the v0.3.0 cutover. The new ConfigService / SecretsService stores are the only system of record; there is no migration shim from earlier `~/.ix/config.yaml` or `~/.config/ix-local/credentials.json` layouts. Operators upgrading from a pre-v0.3.0 build SHALL re-create their config and re-enter their secrets via `ix config set` and `ix secrets set`.
 
+### 8.6 Runtime Config Root Override
+
+The shared CLI runtime supports runtime selection of the user-level config root
+before plugin bootstrap. This enables generic CLI distributions, IX-connected
+CLI distributions, CI runs, and tests to isolate config and file-backed secrets
+without changing the command implementation.
+
+Supported forms:
+
+```bash
+ix --config-root /tmp/ix-ci workflow status
+IX_CONFIG_ROOT=/tmp/ix-ci ix workflow status
+```
+
+`--config-root` wins over the config-root env var. Project config still layers
+above the selected user config root unless a command is run with
+`--no-project-config`.
+
+Effective precedence:
+
+```text
+flags > env > project config > selected user config root > distribution defaults > schema defaults
+```
+
 ---
 
 ## 9. Command Tree
@@ -286,6 +310,30 @@ ix-cli plugins run **in-process** with full Node.js privileges (`node:fs`, `node
 - Adversarial isolation (subprocess-per-plugin RPC) is tracked as future work in [agent-ix/ix-cli#1](https://github.com/agent-ix/ix-cli/issues/1).
 
 **Operator guidance.** Install only plugins you trust. Treat `ix` plugins with the same care as `gh` extensions or `kubectl-*` binaries on your `PATH`.
+
+### 10.2 Runtime Distributions And Plugin Sets
+
+The CLI runtime is reusable across multiple distributions:
+
+```text
+Generic CLI
+  runtime + config/secrets + selected local plugins
+
+IX-connected CLI
+  runtime + config/secrets + ix-services + selected IX plugins
+
+Main ix CLI
+  runtime + config/secrets + ix-services + official default plugin bundle
+```
+
+Distribution default plugins load first, user-enabled plugins load next, and
+project-enabled plugins load last. Later layers can disable a plugin from an
+earlier layer. Plugin entries include plugin id, package specifier, enabled
+state, and optional version constraint.
+
+Plugins can declare required and optional capabilities. Commands that require
+unavailable mandatory capabilities fail before side effects occur. Optional
+capabilities can be absent for local-only command paths.
 
 ---
 
