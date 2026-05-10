@@ -1,9 +1,14 @@
 import { Flags } from "@oclif/core";
+import { ConfigService } from "@agent-ix/ix-cli-core";
 import {
+  WORKFLOW_PLUGIN_ID,
   WorkflowCommandRunner,
+  WorkflowPluginConfigSchema,
+  WorkflowPluginEnvBindings,
   jsonEnvelope,
   renderHumanWorkflowResult,
   type AddItemInput,
+  type WorkflowPluginConfig,
   type WorkflowResultEnvelope,
 } from "@agent-ix/workflow-cli-plugin";
 
@@ -20,9 +25,24 @@ export const workflowOutputFlags = {
 export function workflowRunner(flags: {
   "state-dir"?: string;
 }): WorkflowCommandRunner {
+  const config = workflowConfig(flags);
   return new WorkflowCommandRunner({
-    config: flags["state-dir"] ? { stateDir: flags["state-dir"] } : undefined,
+    config,
   });
+}
+
+export function workflowConfig(flags: {
+  "state-dir"?: string;
+}): WorkflowPluginConfig {
+  const configured = ConfigService.forPlugin(
+    WORKFLOW_PLUGIN_ID,
+    WorkflowPluginConfigSchema,
+    { envBindings: WorkflowPluginEnvBindings },
+  ).get();
+  return {
+    ...configured,
+    stateDir: flags["state-dir"] ?? configured.stateDir,
+  };
 }
 
 export async function emitWorkflowResult(

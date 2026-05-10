@@ -4,8 +4,7 @@ import {
   AgeFileBackend,
   ConfigService,
   KeyringBackend,
-  registerPlugin,
-  registerSecretsForPlugin,
+  registerIxPlugin,
   setDefaultSecretsService,
   SecretsService,
   type SecretsBackend,
@@ -17,6 +16,7 @@ import {
   LocalSecretsSchema,
   LOCAL_PLUGIN_ID,
 } from "@agent-ix/ix-cli-local";
+import { workflowIxPlugin } from "@agent-ix/workflow-cli-plugin";
 
 import {
   CORE_ID,
@@ -45,26 +45,20 @@ const hook: Hook<"init"> = async function () {
   if (registered) return;
   registered = true;
 
-  // ── core ────────────────────────────────────────────────────────────
+  // ── plugin contract registration ───────────────────────────────────
   try {
-    const coreReg = registerPlugin({
-      pluginId: CORE_ID,
-      schema: CoreConfigSchema,
+    const coreReg = registerIxPlugin({
+      id: CORE_ID,
+      configSchema: CoreConfigSchema,
       envBindings: CoreEnvBindings,
+      secretsSchema: CoreSecretsSchema,
     });
     if (!coreReg.ok) {
       // Should never happen in production (one init hook per process).
       // Surface but don't crash.
       this.warn(
-        `core plugin registration failed: ${coreReg.kind} — ${coreReg.attempted.pluginId}`,
+        `core plugin registration failed: ${coreReg.kind} — ${coreReg.detail}`,
       );
-    }
-    for (const result of registerSecretsForPlugin(CORE_ID, CoreSecretsSchema)) {
-      if (!result.ok) {
-        this.warn(
-          `core secret registration failed: ${result.kind} — ${result.attempted.id}`,
-        );
-      }
     }
   } catch (err) {
     this.warn(
@@ -72,30 +66,34 @@ const hook: Hook<"init"> = async function () {
     );
   }
 
-  // ── local ───────────────────────────────────────────────────────────
   try {
-    const localReg = registerPlugin({
-      pluginId: LOCAL_PLUGIN_ID,
-      schema: LocalConfigSchema,
+    const localReg = registerIxPlugin({
+      id: LOCAL_PLUGIN_ID,
+      configSchema: LocalConfigSchema,
       envBindings: LocalEnvBindings,
+      secretsSchema: [...LocalSecretsSchema],
     });
     if (!localReg.ok) {
       this.warn(
-        `local plugin registration failed: ${localReg.kind} — ${localReg.attempted.pluginId}`,
+        `local plugin registration failed: ${localReg.kind} — ${localReg.detail}`,
       );
-    }
-    for (const result of registerSecretsForPlugin(LOCAL_PLUGIN_ID, [
-      ...LocalSecretsSchema,
-    ])) {
-      if (!result.ok) {
-        this.warn(
-          `local secret registration failed: ${result.kind} — ${result.attempted.id}`,
-        );
-      }
     }
   } catch (err) {
     this.warn(
       `local plugin init failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  try {
+    const workflowReg = registerIxPlugin(workflowIxPlugin);
+    if (!workflowReg.ok) {
+      this.warn(
+        `workflow plugin registration failed: ${workflowReg.kind} — ${workflowReg.detail}`,
+      );
+    }
+  } catch (err) {
+    this.warn(
+      `workflow plugin init failed: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 

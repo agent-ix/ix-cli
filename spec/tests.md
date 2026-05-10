@@ -138,6 +138,7 @@ Tests fall into four types:
 | FR-038         | AC-5: env IX_CF_TUNNEL_TOKEN takes precedence over backend                                                                                                                                                             | TC-413                 | ✅ Complete (unit)                                                 |
 | FR-038         | AC-6: backend value used when env unset                                                                                                                                                                                | TC-414                 | ✅ Complete (unit)                                                 |
 | FR-038         | AC-7: requireCloudflareToken throws when neither source has a token                                                                                                                                                    | TC-415                 | ✅ Complete (unit)                                                 |
+
 | FR-038         | AC-8: buildExposeOverlay({}) sets tunnelBaseDomains + ingress.exposeOnTunnel; LAN keys untouched                                                                                                                       | TC-405, TC-406, TC-406b | ✅ Complete (unit)                                                 |
 | FR-038         | AC-9: buildExposeOverlay idempotent on repeated baseDomain                                                                                                                                                             | TC-407                 | ✅ Complete (unit)                                                 |
 | FR-038         | AC-10: entry-key path routes ingress flip through subchart; siblings absent from overlay                                                                                                                               | TC-409                 | ✅ Complete (unit)                                                 |
@@ -163,6 +164,24 @@ Tests fall into four types:
 | FR-038         | AC-28: buildTunnelSetArgs hostname override → ingress.extraHosts[0]                                                                                                                                                    | TC-044                 | ✅ Complete (unit)                                                 |
 | FR-038         | AC-29: expose / unexpose persist intent in tunnel.exposed (round-trip)                                                                                                                                                 | TC-401                 | ✅ Complete (unit; integration via existing exposeApp tests)       |
 | FR-038         | AC-30: runTunnelUpCommand reconciles tunnel.exposed entries idempotently; missing release → skipped                                                                                                                    | —                      | Pending (live-cluster smoke)                                       |
+
+## Core Plugin Contract Addendum
+
+| Requirement | Acceptance Criteria | Test Cases | Coverage Status |
+|---|---|---|---|
+| FR-025 | FR-025-AC-1 through FR-025-AC-7 | TC-600 through TC-608 | ✅ Complete |
+
+| Test ID | Title | Type | Priority | Traces To | Status |
+|---|---|---|---|---|---|
+| TC-600 | IxPlugin public type exports command and capability fields | Type | P0 | FR-025-AC-1, FR-025-AC-6, FR-025-AC-7 | ✅ |
+| TC-601 | Invalid plugin id registration fails without side effects | Unit | P0 | FR-025-AC-2 | ✅ |
+| TC-602 | Strict config schema registers with env bindings | Unit | P0 | FR-025-AC-3 | ✅ |
+| TC-603 | Non-strict config schema is rejected | Unit | P0 | FR-025-AC-3 | ✅ |
+| TC-604 | Secret declarations register under plugin namespace | Unit | P0 | FR-025-AC-4 | ✅ |
+| TC-605 | Duplicate plugin ids preserve first registration | Unit | P0 | FR-025-AC-5 | ✅ |
+| TC-606 | Command and capability metadata is retained in normalized plugin record | Unit | P0 | FR-025-AC-6, FR-025-AC-7 | ✅ |
+| TC-607 | App init registers core, local, and workflow through IxPlugin contract | Static | P0 | FR-025-AC-1, FR-025-AC-4 | ✅ |
+| TC-608 | Workflow command adapter resolves plugin config through ConfigService | Static | P0 | FR-025-AC-3 | ✅ |
 
 ### Non-Functional Requirement Coverage
 

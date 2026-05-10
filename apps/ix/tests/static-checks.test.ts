@@ -48,3 +48,18 @@ describe("local up tunnel exposure", () => {
     expect(src).toMatch(/if\s*\(\s*flags\.expose\s*&&\s*!fromSource\s*\)/);
   });
 });
+
+describe("workflow plugin contract integration", () => {
+  it("registers the workflow plugin manifest during app init", () => {
+    const src = readFileSync(join(SRC_ROOT, "hooks/init.ts"), "utf-8");
+    expect(src).toMatch(/import\s+\{\s*workflowIxPlugin\s*\}/);
+    expect(src).toContain("registerIxPlugin(workflowIxPlugin)");
+  });
+
+  it("resolves workflow command config through ConfigService", () => {
+    const src = readFileSync(join(SRC_ROOT, "workflow.ts"), "utf-8");
+    expect(src).toContain("ConfigService.forPlugin");
+    expect(src).toContain("WORKFLOW_PLUGIN_ID");
+    expect(src).toContain("WorkflowPluginEnvBindings");
+  });
+});
