@@ -31,9 +31,16 @@ export function buildKindConfig(
       if (src.hostPathType === "DirectoryOrCreate") {
         fs.mkdirSync(src.path, { recursive: true });
       }
+      // The kind extraMount's containerPath is the path inside the kind
+      // node — not inside the eventual pod. Pods reference host volumes by
+      // their workstation path (the `hostPath` field rendered in the pod
+      // spec), so the kind node must expose that exact path. We therefore
+      // mirror the workstation path on both sides. The pod-side mount path
+      // (`m.containerPath`, e.g. `/paperclip`) is a separate concern,
+      // handled by the consumer chart's volumeMount.
       return [
         `      - hostPath: ${src.path}`,
-        `        containerPath: ${m.containerPath}`,
+        `        containerPath: ${src.path}`,
       ];
     });
 
