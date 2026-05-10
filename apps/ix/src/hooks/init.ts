@@ -1,31 +1,32 @@
-import { Hook } from "@oclif/core";
+import { Command, Flags, Hook } from "@oclif/core";
 
 import {
   AgeFileBackend,
   ConfigService,
   KeyringBackend,
+  configureDistributionRuntime,
   registerIxPlugin,
   setDefaultSecretsService,
   SecretsService,
   type SecretsBackend,
   type SecretsBackendMode,
 } from "@agent-ix/ix-cli-core";
-import {
-  LocalConfigSchema,
-  LocalEnvBindings,
-  LocalSecretsSchema,
-  LOCAL_PLUGIN_ID,
-} from "@agent-ix/ix-cli-local";
-import { workflowIxPlugin } from "@agent-ix/workflow-cli-plugin";
-
-import {
-  CORE_ID,
-  CoreConfigSchema,
-  CoreEnvBindings,
-  CoreSecretsSchema,
-} from "../core-plugin.js";
+import { CORE_ID, CoreConfigSchema, CoreEnvBindings } from "../core-plugin.js";
+import { ixDistribution } from "../distribution.js";
 
 let registered = false;
+
+const runtimeBaseFlags = {
+  "config-root": Flags.string({
+    description: "Override the user-level ix config root.",
+    helpGroup: "GLOBAL",
+  }),
+  "no-project-config": Flags.boolean({
+    description: "Disable project-local .ix config layering.",
+    default: false,
+    helpGroup: "GLOBAL",
+  }),
+};
 
 /**
  * oclif `init` hook — runs once before any command. Registers the
@@ -45,56 +46,34 @@ const hook: Hook<"init"> = async function () {
   if (registered) return;
   registered = true;
 
+  Command.baseFlags = {
+    ...Command.baseFlags,
+    ...runtimeBaseFlags,
+  };
+
+  configureDistributionRuntime({
+    distribution: ixDistribution,
+    argv: runtimeArgv(),
+    env: process.env,
+    noProjectConfig:
+      process.env.IX_RUNTIME_NO_PROJECT_CONFIG === "1" ||
+      process.argv.includes("--no-project-config"),
+  });
+
   // ── plugin contract registration ───────────────────────────────────
-  try {
-    const coreReg = registerIxPlugin({
-      id: CORE_ID,
-      configSchema: CoreConfigSchema,
-      envBindings: CoreEnvBindings,
-      secretsSchema: CoreSecretsSchema,
-    });
-    if (!coreReg.ok) {
-      // Should never happen in production (one init hook per process).
-      // Surface but don't crash.
+  for (const plugin of ixDistribution.defaultPlugins) {
+    try {
+      const result = registerIxPlugin(plugin);
+      if (!result.ok) {
+        this.warn(
+          `${plugin.id} plugin registration failed: ${result.kind} — ${result.detail}`,
+        );
+      }
+    } catch (err) {
       this.warn(
-        `core plugin registration failed: ${coreReg.kind} — ${coreReg.detail}`,
+        `${plugin.id} plugin init failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
-  } catch (err) {
-    this.warn(
-      `core plugin init failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  try {
-    const localReg = registerIxPlugin({
-      id: LOCAL_PLUGIN_ID,
-      configSchema: LocalConfigSchema,
-      envBindings: LocalEnvBindings,
-      secretsSchema: [...LocalSecretsSchema],
-    });
-    if (!localReg.ok) {
-      this.warn(
-        `local plugin registration failed: ${localReg.kind} — ${localReg.detail}`,
-      );
-    }
-  } catch (err) {
-    this.warn(
-      `local plugin init failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  try {
-    const workflowReg = registerIxPlugin(workflowIxPlugin);
-    if (!workflowReg.ok) {
-      this.warn(
-        `workflow plugin registration failed: ${workflowReg.kind} — ${workflowReg.detail}`,
-      );
-    }
-  } catch (err) {
-    this.warn(
-      `workflow plugin init failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
   }
 
   // ── SecretsService default ─────────────────────────────────────────
@@ -129,3 +108,9 @@ export function _resetInitGuardForTests(): void {
 }
 
 export default hook;
+
+function runtimeArgv(): string[] {
+  const flagRoot = process.env.IX_RUNTIME_CONFIG_ROOT_FLAG;
+  if (!flagRoot) return process.argv.slice(2);
+  return [`--config-root=${flagRoot}`, ...process.argv.slice(2)];
+}

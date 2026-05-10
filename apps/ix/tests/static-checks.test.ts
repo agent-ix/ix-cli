@@ -50,10 +50,27 @@ describe("local up tunnel exposure", () => {
 });
 
 describe("workflow plugin contract integration", () => {
-  it("registers the workflow plugin manifest during app init", () => {
+  it("declares workflow in the ix distribution default plugins", () => {
+    const src = readFileSync(join(SRC_ROOT, "distribution.ts"), "utf-8");
+    expect(src).toContain("createRuntimeDistribution");
+    expect(src).toContain("workflowIxPlugin");
+    expect(src).toContain('configRootEnvVar: "IX_CONFIG_ROOT"');
+  });
+
+  it("registers distribution default plugins during app init", () => {
     const src = readFileSync(join(SRC_ROOT, "hooks/init.ts"), "utf-8");
-    expect(src).toMatch(/import\s+\{\s*workflowIxPlugin\s*\}/);
-    expect(src).toContain("registerIxPlugin(workflowIxPlugin)");
+    expect(src).toContain("configureDistributionRuntime");
+    expect(src).toContain("Command.baseFlags");
+    expect(src).toContain("ixDistribution.defaultPlugins");
+    expect(src).toContain("registerIxPlugin(plugin)");
+  });
+
+  it("normalizes pre-command runtime flags before oclif command lookup", () => {
+    const src = readFileSync(join(APP_ROOT, "bin/ix.js"), "utf-8");
+    expect(src).toContain("IX_RUNTIME_CONFIG_ROOT_FLAG");
+    expect(src).toContain("IX_RUNTIME_NO_PROJECT_CONFIG");
+    expect(src).toContain('arg === "--config-root"');
+    expect(src).toContain('arg === "--no-project-config"');
   });
 
   it("resolves workflow command config through ConfigService", () => {
