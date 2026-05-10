@@ -44,6 +44,9 @@ importers:
       '@agent-ix/ix-ui-cli':
         specifier: local
         version: 0.4.5-20260508.081910-e82554a(@types/react@19.2.14)
+      '@agent-ix/workflow-cli-plugin':
+        specifier: link:../../../ix-agent-skills/packages/workflow-cli-plugin
+        version: link:../../../ix-agent-skills/packages/workflow-cli-plugin
       '@oclif/core':
         specifier: '>=4.10.6'
         version: 4.11.1

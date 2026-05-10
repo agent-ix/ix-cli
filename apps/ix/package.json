@@ -40,6 +40,9 @@
       },
       "tunnel": {
         "description": "Cloudflare Tunnel subcommands for exposing apps externally (up, down, status, domain, expose, unexpose)."
+      },
+      "workflow": {
+        "description": "Run Agent IX workflow tools (create, status, advance, history)."
       }
     }
   },
@@ -56,6 +59,7 @@
     "@agent-ix/ix-cli-elements": "workspace:*",
     "@agent-ix/ix-cli-local": "workspace:*",
     "@agent-ix/ix-ui-cli": "local",
+    "@agent-ix/workflow-cli-plugin": "link:../../../ix-agent-skills/packages/workflow-cli-plugin",
     "@oclif/core": ">=4.10.6",
     "picocolors": ">=1.1.1",
     "react": ">=18.3.1",
