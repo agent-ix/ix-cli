@@ -164,6 +164,22 @@ export const HOST_MOUNT_CATALOG: HostMountCatalogEntry[] = [
       },
     },
   },
+  {
+    // Vault content for the AGE knowledge base. Bind-mounted at /vault by
+    // the mcp-fs service in agent-ix/ix-age-vault. The host directory is
+    // typically a clone of github.com/kreneskyp/age-vault — agent edits
+    // land in the host repo so they can be `git add`-ed normally.
+    name: "ageVault",
+    containerPath: "/vault",
+    localEnvOverride: "IX_AGE_VAULT_DATA_DIR",
+    sources: {
+      local: {
+        type: "hostPath",
+        path: () => path.join(os.homedir(), ".ix", "age-vault", "data"),
+        hostPathType: "DirectoryOrCreate",
+      },
+    },
+  },
 ];
 
 /** Read the active profile from env. Defaults to `local`. */
