@@ -1,6 +1,6 @@
 # Task 04: Capability Resolver
 
-Status: complete
+Status: partially reused by task-06 (resolver kept, registration removed)
 
 ## Scope
 

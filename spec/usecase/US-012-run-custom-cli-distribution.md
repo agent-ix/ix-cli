@@ -6,18 +6,30 @@ priority: P1
 ---
 # US-012 Run Custom CLI Distribution
 
-As a tool author, I want to build a CLI distribution using the shared IX CLI
-runtime, so that I can reuse config, secrets, plugin loading, and terminal
-style without shipping the full main `ix` plugin bundle.
+As a tool author, I want to build a CLI binary using the shared IX CLI
+building blocks, so that I can reuse config, secrets, terminal style, and
+plugin composition without shipping the full main `ix` plugin bundle.
+
+## Approach
+
+The author creates a normal oclif binary, depends on
+`@agent-ix/ix-cli-core`, extends `BaseCommand` for any built-in commands,
+and lists the IX plugins they want in their `package.json` `oclif.plugins`
+array. The runtime is the library + oclif itself; there is no separate
+distribution object or manifest format.
 
 ## Acceptance Criteria
 
-- US-012-AC-1: Given a distribution manifest, when the CLI starts, then the
-  runtime loads the distribution's default plugins.
-- US-012-AC-2: Given a user plugin manifest, when the CLI starts, then enabled
-  user plugins are loaded after distribution defaults.
-- US-012-AC-3: Given a project plugin manifest, when the CLI runs inside that
-  project, then enabled project plugins are loaded after user plugins.
-- US-012-AC-4: Given `--config-root`, when a command runs, then user-level
-  config, plugin manifests, and file-backed secrets resolve from that root.
-
+- US-012-AC-1: An oclif CLI depending on `@agent-ix/ix-cli-core` and
+  extending `BaseCommand` inherits `--config-root` / `--no-project-config`
+  flags and the capability-resolution `prerun` hook.
+- US-012-AC-2: Plugins listed in the CLI's `oclif.plugins` array load at
+  startup via oclif's native discovery. The CLI's `init` hook walks
+  `Config.plugins`, reads each plugin's optional `ixSchema` export, and
+  registers config/secrets schemas with the shared services.
+- US-012-AC-3: Given `--config-root`, when a command runs, per-plugin
+  config and file-backed secrets resolve from that root through
+  `ConfigService.forPlugin(packageName)`.
+- US-012-AC-4: The same plugin package works across any IX CLI binary
+  that loads it via `oclif.plugins`; plugin behavior is keyed by package
+  name, not by a registration tag.

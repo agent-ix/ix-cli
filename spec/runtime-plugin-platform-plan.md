@@ -1,12 +1,28 @@
 ---
 artifact_type: implementation-plan
 name: runtime-plugin-platform
-status: complete
+status: superseded
+superseded_by: oclif-native composition (see StR-008, FR-021–FR-025 as revised 2026-05-10)
 ---
 
 # Runtime Plugin Platform Plan
 
 Date: 2026-05-10
+
+> **SUPERSEDED.** The custom plugin platform described below was implemented
+> (commits `c5ac413`, `1bbcf9c`) and then retired the same week after a
+> design review found that oclif's native plugin system already covers the
+> intended requirements. The "load plugins before config root" constraint
+> that motivated the custom layer was self-imposed (plugin discovery does
+> not need the config root; only per-plugin config reads do, and those
+> happen at command-run time when oclif has already parsed flags). The
+> per-project plugin enable/disable feature that justified the on-disk
+> manifest loader was dropped as not actually required.
+>
+> See the revised StR-008 and FR-021–FR-025 for the current shape:
+> oclif-native plugin discovery + `@agent-ix/ix-cli-core` library
+> (`BaseCommand`, `ConfigService`, `SecretsService`, `CapabilityResolver`,
+> `IxPluginSchema`).
 
 ## Scope
 

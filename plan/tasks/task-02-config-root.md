@@ -1,6 +1,6 @@
 # Task 02: Runtime Config Root Selection
 
-Status: complete
+Status: superseded (see task-06)
 
 ## Scope
 

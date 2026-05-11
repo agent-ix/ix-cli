@@ -1,6 +1,6 @@
 # Task 03: Plugin Manifest Loader
 
-Status: complete
+Status: superseded (see task-06)
 
 ## Scope
 

@@ -1,6 +1,6 @@
 # Task 01: Runtime Distribution Model
 
-Status: complete
+Status: superseded (see task-06)
 
 ## Scope
 

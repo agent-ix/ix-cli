@@ -165,23 +165,24 @@ Tests fall into four types:
 | FR-038         | AC-29: expose / unexpose persist intent in tunnel.exposed (round-trip)                                                                                                                                                 | TC-401                 | ✅ Complete (unit; integration via existing exposeApp tests)       |
 | FR-038         | AC-30: runTunnelUpCommand reconciles tunnel.exposed entries idempotently; missing release → skipped                                                                                                                    | —                      | Pending (live-cluster smoke)                                       |
 
-## Core Plugin Contract Addendum
+## ixSchema Plugin Convention (FR-025)
 
 | Requirement | Acceptance Criteria | Test Cases | Coverage Status |
 |---|---|---|---|
-| FR-025 | FR-025-AC-1 through FR-025-AC-7 | TC-600 through TC-608 | ✅ Complete |
+| FR-025 | FR-025-AC-1 through FR-025-AC-7 | TC-600 through TC-606 | ⚠️ Pending re-implementation |
 
 | Test ID | Title | Type | Priority | Traces To | Status |
 |---|---|---|---|---|---|
-| TC-600 | IxPlugin public type exports command and capability fields | Type | P0 | FR-025-AC-1, FR-025-AC-6, FR-025-AC-7 | ✅ |
-| TC-601 | Invalid plugin id registration fails without side effects | Unit | P0 | FR-025-AC-2 | ✅ |
-| TC-602 | Strict config schema registers with env bindings | Unit | P0 | FR-025-AC-3 | ✅ |
-| TC-603 | Non-strict config schema is rejected | Unit | P0 | FR-025-AC-3 | ✅ |
-| TC-604 | Secret declarations register under plugin namespace | Unit | P0 | FR-025-AC-4 | ✅ |
-| TC-605 | Duplicate plugin ids preserve first registration | Unit | P0 | FR-025-AC-5 | ✅ |
-| TC-606 | Command and capability metadata is retained in normalized plugin record | Unit | P0 | FR-025-AC-6, FR-025-AC-7 | ✅ |
-| TC-607 | App init registers core, local, and workflow through IxPlugin contract | Static | P0 | FR-025-AC-1, FR-025-AC-4 | ✅ |
-| TC-608 | Workflow command adapter resolves plugin config through ConfigService | Static | P0 | FR-025-AC-3 | ✅ |
+| TC-600 | `IxPluginSchema` exports `config`, `secrets`, `env` shape from `@agent-ix/ix-cli-core` | Type | P0 | FR-025-AC-1 | ⚠️ Pending |
+| TC-601 | `registerPluginSchema('@agent-ix/foo', schema)` registers config under package name | Unit | P0 | FR-025-AC-3, FR-025-AC-5 | ⚠️ Pending |
+| TC-602 | Strict (`z.object({...}).strict()`) config schema registers; non-strict is rejected | Unit | P0 | FR-025-AC-4 | ⚠️ Pending |
+| TC-603 | Secret declarations register under `<package-name>.<secret-name>` | Unit | P0 | FR-025-AC-5 | ⚠️ Pending |
+| TC-604 | Duplicate package-name registration preserves first; second returns non-throwing failure | Unit | P0 | FR-025-AC-3 + error code | ⚠️ Pending |
+| TC-605 | Plugin with no `ixSchema` export is loaded as a normal oclif plugin and contributes commands only | Integration | P0 | FR-025-AC-6 | ⚠️ Pending |
+| TC-606 | `apps/ix/src/hooks/init.ts` walks `Config.plugins` and registers each `ixSchema` export | Integration | P0 | FR-025-AC-3 | ⚠️ Pending |
+
+The earlier TC-607/TC-608 traces are obsolete (no `registerIxPlugin` registry).
+TC-606 above replaces both.
 
 ### Non-Functional Requirement Coverage
 
@@ -650,22 +651,22 @@ Tests fall into four types:
 | TC-436  | Unit: `ix tunnel domain` read prints current; `ix tunnel domain <value>` writes via setTunnelBaseDomain and rejects invalid                          | Unit          | P2       | FR-038-AC-25               | ✅ Complete              |
 | TC-437  | Unit: exposeApp surfaces `Run \`ix up <name>\` first` when `helm get values` fails with "release: not found"                                          | Unit          | P1       | FR-038-AC-17               | ✅ Complete              |
 | TC-438  | Unit: runTunnelDown swallows "release: not found" from helm uninstall; re-throws unrelated errors                                                    | Unit          | P1       | FR-038-AC-18               | ✅ Complete              |
-| TC-500  | Unit: generic distribution starts with config/secrets/runtime and no IX service layer                                                                  | Unit          | P1       | FR-021-AC-1, FR-021-AC-2   | ✅ Complete              |
-| TC-501  | Unit: main ix distribution declares official default plugin bundle                                                                                     | Unit          | P1       | FR-021-AC-3                | ✅ Complete              |
-| TC-502  | Unit: distribution defaults lose to user/project config, env, and flags                                                                                | Unit          | P1       | FR-021-AC-4                | ✅ Complete              |
-| TC-503  | Command: `ix --config-root <dir> config get logLevel` reads selected root                                                                              | Command       | P1       | FR-022-AC-1, FR-022-AC-4   | ✅ Complete              |
-| TC-504  | Command: `IX_CONFIG_ROOT=<dir> ix config get logLevel` reads selected root                                                                             | Command       | P1       | FR-022-AC-2, FR-022-AC-4   | ✅ Complete              |
-| TC-505  | Unit: `--config-root` wins over `IX_CONFIG_ROOT`                                                                                                       | Unit          | P1       | FR-022-AC-3                | ✅ Complete              |
-| TC-506  | Unit: project config layers above selected user config root unless `--no-project-config` is set                                                       | Unit          | P1       | FR-022-AC-5                | ✅ Complete              |
-| TC-507  | Unit: read command with missing config root uses schema defaults without creating files                                                                | Unit          | P1       | FR-022-AC-6                | ✅ Complete              |
-| TC-508  | Unit: plugin loader applies distribution → user → project order                                                                                        | Unit          | P1       | FR-023-AC-1, FR-023-AC-2, FR-023-AC-3 | ✅ Complete    |
-| TC-509  | Unit: project manifest disables plugin enabled by distribution defaults                                                                                | Unit          | P1       | FR-023-AC-4                | ✅ Complete              |
-| TC-510  | Unit: plugin manifest validates id, package, enabled state, and optional version                                                                       | Unit          | P1       | FR-023-AC-5, FR-023-AC-6   | ✅ Complete              |
-| TC-511  | Unit: optional plugin load failure is reported without blocking unrelated plugins                                                                      | Unit          | P1       | FR-023-AC-7                | ✅ Complete              |
-| TC-512  | Unit: plugin declares `github`, `ix-api`, and `review-service` capabilities                                                                            | Unit          | P1       | FR-024-AC-1                | ✅ Complete              |
-| TC-513  | Command: mandatory missing capability fails before side effects                                                                                        | Command       | P1       | FR-024-AC-2, FR-024-AC-5   | ✅ Complete              |
-| TC-514  | Unit: optional missing capability does not block local-only workflow command                                                                           | Unit          | P1       | FR-024-AC-3                | ✅ Complete              |
-| TC-515  | Unit: capability resolver uses ConfigService and SecretsService                                                                                        | Unit          | P1       | FR-024-AC-4                | ✅ Complete              |
+| TC-500  | Integration: oclif loads every plugin listed in apps/ix `oclif.plugins` via `Config.plugins`                                                            | Integration   | P1       | FR-021-AC-1, FR-021-AC-3   | ⚠️ Pending               |
+| TC-501  | Integration: a generic CLI depending on @agent-ix/ix-cli-core boots with a custom `oclif.plugins` list and no IX service plugin                          | Integration   | P1       | FR-021-AC-1, FR-021-AC-2   | ⚠️ Pending               |
+| TC-502  | Unit: per-binary defaults (binary name, branding) come from binary config + `core` plugin schema; no Distribution registry exists                       | Static        | P2       | FR-021-AC-4                | ⚠️ Pending               |
+| TC-503  | Command: `ix --config-root <dir> config get logLevel` reads selected root via BaseCommand base flag                                                     | Command       | P1       | FR-022-AC-1, FR-022-AC-4   | ⚠️ Pending               |
+| TC-504  | Command: `IX_CONFIG_ROOT=<dir> ix config get logLevel` reads selected root                                                                              | Command       | P1       | FR-022-AC-2, FR-022-AC-4   | ⚠️ Pending               |
+| TC-505  | Unit: `--config-root` wins over `IX_CONFIG_ROOT`; env wins over XDG default                                                                             | Unit          | P1       | FR-022-AC-3                | ⚠️ Pending               |
+| TC-506  | Unit: project `./.ix` config layers above selected user config root unless `--no-project-config` is set                                                | Unit          | P1       | FR-022-AC-5                | ⚠️ Pending               |
+| TC-507  | Unit: read command with missing config root uses schema defaults without creating files                                                                 | Unit          | P1       | FR-022-AC-6                | ⚠️ Pending               |
+| TC-508  | Static: `--help` lists `--config-root` and `--no-project-config` as inherited BaseCommand flags                                                        | Static        | P1       | FR-022-AC-1                | ⚠️ Pending               |
+| TC-509  | Static: bin/ix.js does NOT preprocess argv (no `--config-root` strip; no env-var indirection)                                                          | Static        | P1       | FR-022 notes               | ⚠️ Pending               |
+| TC-510  | Static: no on-disk plugin manifest is loaded by the runtime (no `plugins.yaml` reads)                                                                   | Static        | P1       | FR-023-AC-2                | ⚠️ Pending               |
+| TC-511  | _retired_ — FR-023 manifest loader superseded                                                                                                            | —             | —        | —                          | ❌ Obsolete               |
+| TC-512  | Unit: a command class declares `static capabilities = { required, optional }` and exposes the typed shape                                              | Unit          | P1       | FR-024-AC-1                | ⚠️ Pending               |
+| TC-513  | Command: BaseCommand.prerun short-circuits with `capability_missing` before side effects when a required capability is unavailable                     | Command       | P1       | FR-024-AC-2, FR-024-AC-5   | ⚠️ Pending               |
+| TC-514  | Command: optional missing capability does not block command execution; surfaced via `this.capabilities.has(...)`                                       | Command       | P1       | FR-024-AC-3                | ⚠️ Pending               |
+| TC-515  | Unit: CapabilityResolver reads through ConfigService and SecretsService per package namespace                                                           | Unit          | P1       | FR-024-AC-4                | ⚠️ Pending               |
 
 ---
 

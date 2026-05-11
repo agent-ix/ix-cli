@@ -215,10 +215,11 @@ ix-cli is pre-release and has no installed user base whose state needs preservin
 
 ### 8.6 Runtime Config Root Override
 
-The shared CLI runtime supports runtime selection of the user-level config root
-before plugin bootstrap. This enables generic CLI distributions, IX-connected
-CLI distributions, CI runs, and tests to isolate config and file-backed secrets
-without changing the command implementation.
+`--config-root` is a base flag on `BaseCommand` (defined in
+`@agent-ix/ix-cli-core`); oclif parses it normally through the standard
+flag system. `IX_CONFIG_ROOT` is its environment-variable alias. The
+selected root applies to per-plugin config reads and file-backed secrets
+when a command runs.
 
 Supported forms:
 
@@ -227,15 +228,20 @@ ix --config-root /tmp/ix-ci workflow status
 IX_CONFIG_ROOT=/tmp/ix-ci ix workflow status
 ```
 
-`--config-root` wins over the config-root env var. Project config still layers
-above the selected user config root unless a command is run with
-`--no-project-config`.
+`--config-root` wins over `IX_CONFIG_ROOT`; the env variable wins over
+the XDG default. Project config still layers above the selected user
+config root unless a command is run with `--no-project-config`.
 
 Effective precedence:
 
 ```text
-flags > env > project config > selected user config root > distribution defaults > schema defaults
+flags > env > project config (./.ix) > selected user config root > schema defaults
 ```
+
+There is no argv preprocessing in the bin script. An earlier draft
+stripped `--config-root` from `process.argv` before oclif loaded; that
+bypass has been superseded — see FR-022 notes and the follow-up review
+in `spec/reviews/runtime-plugin-addendum-review.md`.
 
 ---
 
@@ -276,29 +282,60 @@ Multi-service progress commands (e.g., `ix up <app>`) SHALL use the `PhaseTable`
 
 ## 10. Plugin Contract
 
-Third-party packages MAY extend ix-cli by satisfying the `IxPlugin` interface exported from `@agent-ix/ix-cli-core`:
+ix-cli plugins are **normal oclif plugins** — npm packages discovered by
+oclif via the binary's `oclif.plugins` config (or installed at runtime
+through `@oclif/plugin-plugins`). The IX-specific layering is two small
+conventions on top of oclif:
+
+1. **`ixSchema` named export.** Plugins that need namespaced config,
+   secrets, or env-var bindings export an `ixSchema` object from their
+   package main. The host's `init` hook (provided by
+   `@agent-ix/ix-cli-core`) walks `Config.plugins`, reads each plugin's
+   `ixSchema` if present, and registers schemas with `ConfigService` /
+   `SecretsService`.
+
+2. **`static capabilities` on command classes.** Commands that depend on
+   `github`, `ix-api`, or `review-service` declare their requirements
+   on the command class; `BaseCommand.prerun` resolves them.
 
 ```ts
-interface IxPlugin {
-  id: string                              // unique plugin id; namespaces config + secrets
-  commands: CommandTree
-  requires?: ('github' | 'ix-api')[]
-  configSchema?: ZodObject<any>           // MUST be Zod .strict() — see FR-013
-  secretsSchema?: SecretDeclaration[]
+// @agent-ix/ix-cli-core
+export interface IxPluginSchema {
+  config?: ZodObject<ZodRawShape>;   // MUST be .strict() — see FR-013
+  secrets?: SecretDeclaration[];
+  env?: Record<string, string>;
 }
 
-interface SecretDeclaration {
-  name: string                            // local name; full id is "<pluginId>.<name>"
-  description: string                     // shown by `ix secrets list` and prompts
-  required?: boolean                      // when true, login flow will prompt
-  envVar?: string                         // optional env binding (e.g. "IX_GHCR_TOKEN")
+export interface SecretDeclaration {
+  name: string;                       // full id is "<package-name>.<name>"
+  description: string;
+  required?: boolean;
+  envVar?: string;                    // optional env binding
+}
+
+export interface CommandCapabilities {
+  required?: ('github' | 'ix-api' | 'review-service')[];
+  optional?: ('github' | 'ix-api' | 'review-service')[];
 }
 ```
 
-- `requires` declares auth dependencies — `core` resolves tokens before the command runs.
-- `configSchema`, when present, namespaces and validates the plugin's persistent config under `~/.config/ix/config.d/<id>.yaml` via `ConfigService` (FR-010, FR-013). The schema MUST be `.strict()` so unknown keys are rejected at write time.
-- `secretsSchema`, when present, declares the secrets the plugin may read/write under ids `<id>.<name>` via `SecretsService` (FR-013, FR-014). Each entry is shown in `ix secrets list` with its description.
-- The id `core` is reserved for `apps/ix` itself; third-party plugins MUST NOT use it (FR-013-AC-4).
+- Plugin identity is the **npm package name**, not a registration tag.
+  All config and secret namespacing uses the package name.
+- `ixSchema.config`, when present, is registered through
+  `ConfigService.forPlugin(packageName)` and read from
+  `<config-root>/config.d/<package-name>.yaml`. The schema MUST be
+  `.strict()` (FR-013).
+- `ixSchema.secrets`, when present, registers entries through
+  `SecretsService` under `<package-name>.<secret-name>`.
+- The package name `@agent-ix/ix-cli-core` is reserved for the shared
+  library itself; the bin package may use a `core` namespace for its
+  own config without conflict because no plugin can claim that name.
+
+The earlier draft defined a custom `IxPlugin` interface and
+`registerIxPlugin()` runtime registry duplicating oclif's plugin
+discovery. That has been retired — see
+`spec/runtime-plugin-platform-plan.md` and
+`spec/reviews/runtime-plugin-addendum-review.md`.
 
 ### 10.1 Trust Model
 
@@ -311,29 +348,33 @@ ix-cli plugins run **in-process** with full Node.js privileges (`node:fs`, `node
 
 **Operator guidance.** Install only plugins you trust. Treat `ix` plugins with the same care as `gh` extensions or `kubectl-*` binaries on your `PATH`.
 
-### 10.2 Runtime Distributions And Plugin Sets
+### 10.2 CLI Binary Composition
 
-The CLI runtime is reusable across multiple distributions:
+An IX CLI binary is a normal oclif application that:
 
 ```text
-Generic CLI
-  runtime + config/secrets + selected local plugins
-
-IX-connected CLI
-  runtime + config/secrets + ix-services + selected IX plugins
-
-Main ix CLI
-  runtime + config/secrets + ix-services + official default plugin bundle
+Any IX CLI
+  oclif binary
+    + dependency: @agent-ix/ix-cli-core (BaseCommand, ConfigService,
+                  SecretsService, CapabilityResolver, IxPluginSchema)
+    + oclif.plugins: [<plugin packages this binary ships>]
 ```
 
-Distribution default plugins load first, user-enabled plugins load next, and
-project-enabled plugins load last. Later layers can disable a plugin from an
-earlier layer. Plugin entries include plugin id, package specifier, enabled
-state, and optional version constraint.
+The main `ix` binary lists the official Agent IX plugins
+(`@agent-ix/ix-cli-elements`, `@agent-ix/ix-cli-local`,
+`@agent-ix/workflow-cli-plugin`) in its `oclif.plugins`. A generic CLI
+ships a smaller list. An IX-connected CLI ships whichever IX service
+plugins it needs. There is no `Distribution` runtime object — the binary
+itself is the distribution.
 
-Plugins can declare required and optional capabilities. Commands that require
-unavailable mandatory capabilities fail before side effects occur. Optional
-capabilities can be absent for local-only command paths.
+Per-command capability requirements (FR-024) are declared as
+`static capabilities` on the command class and enforced by
+`BaseCommand.prerun`. Commands requiring unavailable mandatory
+capabilities fail with a structured error before side effects occur.
+
+There is no on-disk plugin manifest. Per-project plugin enable/disable
+is not supported — users who want a different plugin set ship or
+install a different binary.
 
 ---
 

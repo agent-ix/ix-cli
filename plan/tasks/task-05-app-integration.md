@@ -1,6 +1,6 @@
 # Task 05: Main ix App Integration
 
-Status: complete
+Status: superseded (see task-06)
 
 ## Scope
 
