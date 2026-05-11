@@ -17,15 +17,17 @@ from its package main.
 The host CLI's `init` hook (provided by `@agent-ix/ix-cli-core`) SHALL
 walk `Config.plugins` (oclif's loaded plugin list), read each plugin's
 `ixSchema` if present, and register the schemas through `ConfigService`
-and `SecretsService` using the plugin's npm package name as the
-namespace.
+and `SecretsService`. The npm package name is the oclif install/load
+identity. The config/secrets namespace is `ixSchema.id` when provided,
+otherwise a safe id derived from the package name.
 
 ## Acceptance Criteria
 
 - FR-025-AC-1: `IxPluginSchema` is a small TypeScript type exported from
-  `@agent-ix/ix-cli-core` containing optional `config` (Zod object),
-  optional `secrets` (Zod object or secret declaration list), and
-  optional `env` (string-to-string env-var binding map).
+  `@agent-ix/ix-cli-core` containing optional `id` (safe config/secrets
+  namespace), optional `config` (Zod object), optional `secrets` (secret
+  declaration list), and optional `env` (string-to-string env-var
+  binding map).
 - FR-025-AC-2: Plugin packages export `ixSchema: IxPluginSchema` from
   their package main when they need any of those bindings.
 - FR-025-AC-3: The host's `init` hook reads `Config.plugins`, dynamic
@@ -36,7 +38,7 @@ namespace.
   non-strict schemas are rejected and the plugin's config is not
   registered.
 - FR-025-AC-5: Secrets declarations are registered through the existing
-  `SecretsService` registry using `<package-name>.<secret-name>`.
+  `SecretsService` registry using `<plugin-id>.<secret-name>`.
 - FR-025-AC-6: A plugin with no `ixSchema` export is a valid oclif plugin
   — it contributes commands and nothing else.
 - FR-025-AC-7: Capability declarations live on individual command
@@ -47,6 +49,7 @@ namespace.
 ```ts
 // in @agent-ix/ix-cli-core
 export interface IxPluginSchema {
+  id?: string;                       // safe config/secrets namespace
   config?: ZodObject<ZodRawShape>;   // strict
   secrets?: SecretDeclaration[];
   env?: Record<string, string>;
@@ -57,6 +60,7 @@ import type { IxPluginSchema } from "@agent-ix/ix-cli-core";
 import { z } from "zod";
 
 export const ixSchema: IxPluginSchema = {
+  id: "workflow",
   config: z.object({ stateDir: z.string().default(".workflow") }).strict(),
   secrets: [{ name: "github-token", required: false }],
   env: { stateDir: "IX_WORKFLOW_STATE_DIR" },
@@ -70,14 +74,16 @@ The earlier draft of FR-025 defined an `IxPlugin` interface and
 discovery (`id`, `commands` registration) and required a parallel
 manifest-loader to resolve which `IxPlugin` objects were active.
 
-That registry has been deleted. Plugin identity is the npm package
-name. Plugin command discovery is oclif's. The only IX-specific shape
-is the `ixSchema` named export — a much smaller convention than a fat
-registration contract.
+That registry has been deleted. Plugin install/load identity is the npm
+package name and plugin command discovery is oclif's. The only
+IX-specific shape is the `ixSchema` named export — a much smaller
+convention than a fat registration contract. `ixSchema.id` is only the
+config/secrets namespace, not a command discovery mechanism.
 
 ## Errors
 
 - `invalid-package-name` — schema registered with a malformed package name
+- `invalid-plugin-id` — `ixSchema.id` is not a safe config/secrets namespace
 - `non-strict-schema` — config schema is not strict
 - `duplicate-registration` — same package name registered twice (the
   first registration is preserved and the second returns a non-throwing

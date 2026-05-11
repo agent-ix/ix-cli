@@ -1,7 +1,8 @@
-import { Command, Flags } from "@oclif/core";
+import { Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runClusterDown } from "@agent-ix/ix-cli-local";
 
-export default class LocalClusterDown extends Command {
+export default class LocalClusterDown extends BaseCommand {
   static description =
     "Destroy the local kind cluster. Two-stage confirmation guards against accidents.";
 

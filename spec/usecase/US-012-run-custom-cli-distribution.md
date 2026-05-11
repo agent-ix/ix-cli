@@ -29,7 +29,9 @@ distribution object or manifest format.
   registers config/secrets schemas with the shared services.
 - US-012-AC-3: Given `--config-root`, when a command runs, per-plugin
   config and file-backed secrets resolve from that root through
-  `ConfigService.forPlugin(packageName)`.
+  `ConfigService.forPlugin(pluginId)`, where `pluginId` is `ixSchema.id`
+  or a safe id derived from the package name.
 - US-012-AC-4: The same plugin package works across any IX CLI binary
   that loads it via `oclif.plugins`; plugin behavior is keyed by package
-  name, not by a registration tag.
+  install/load identity plus its declared `ixSchema` namespace, not by a
+  custom runtime registry.

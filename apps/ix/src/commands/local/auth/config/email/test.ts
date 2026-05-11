@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runAuthConfigEmailTest } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthConfigEmailTest extends Command {
+export default class LocalAuthConfigEmailTest extends BaseCommand {
   static description = "Send a test email.";
 
   static args = {

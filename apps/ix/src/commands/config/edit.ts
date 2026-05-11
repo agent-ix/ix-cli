@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runConfigEdit } from "@agent-ix/ix-cli-core";
 
-export default class ConfigEdit extends Command {
+export default class ConfigEdit extends BaseCommand {
   static description =
     "Open a plugin's config file in $VISUAL/$EDITOR (default vi). On save, the file is validated against the plugin schema.";
   static examples = ["ix config edit", "ix config edit local"];

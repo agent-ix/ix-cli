@@ -224,7 +224,7 @@ when a command runs.
 Supported forms:
 
 ```bash
-ix --config-root /tmp/ix-ci workflow status
+ix workflow status --config-root /tmp/ix-ci
 IX_CONFIG_ROOT=/tmp/ix-ci ix workflow status
 ```
 
@@ -238,10 +238,11 @@ Effective precedence:
 flags > env > project config (./.ix) > selected user config root > schema defaults
 ```
 
-There is no argv preprocessing in the bin script. An earlier draft
-stripped `--config-root` from `process.argv` before oclif loaded; that
-bypass has been superseded — see FR-022 notes and the follow-up review
-in `spec/reviews/runtime-plugin-addendum-review.md`.
+There is no argv preprocessing in the bin script, so the root-position
+form `ix --config-root /tmp/ix-ci ...` is not supported. An earlier
+draft stripped `--config-root` from `process.argv` before oclif loaded;
+that bypass has been superseded — see FR-022 notes and the follow-up
+review in `spec/reviews/runtime-plugin-addendum-review.md`.
 
 ---
 
@@ -301,13 +302,14 @@ conventions on top of oclif:
 ```ts
 // @agent-ix/ix-cli-core
 export interface IxPluginSchema {
+  id?: string;                       // optional config/secrets namespace
   config?: ZodObject<ZodRawShape>;   // MUST be .strict() — see FR-013
   secrets?: SecretDeclaration[];
   env?: Record<string, string>;
 }
 
 export interface SecretDeclaration {
-  name: string;                       // full id is "<package-name>.<name>"
+  name: string;                       // full id is "<plugin-id>.<name>"
   description: string;
   required?: boolean;
   envVar?: string;                    // optional env binding
@@ -319,14 +321,16 @@ export interface CommandCapabilities {
 }
 ```
 
-- Plugin identity is the **npm package name**, not a registration tag.
-  All config and secret namespacing uses the package name.
+- Plugin install/load identity is the **npm package name**, not a custom
+  registry tag.
+- Config and secret namespacing uses `ixSchema.id` when provided,
+  otherwise a safe id derived from the package name.
 - `ixSchema.config`, when present, is registered through
-  `ConfigService.forPlugin(packageName)` and read from
-  `<config-root>/config.d/<package-name>.yaml`. The schema MUST be
-  `.strict()` (FR-013).
+  `ConfigService.forPlugin(pluginId)` and read from
+  `<config-root>/config.d/<plugin-id>.yaml`. The schema MUST be `.strict()`
+  (FR-013).
 - `ixSchema.secrets`, when present, registers entries through
-  `SecretsService` under `<package-name>.<secret-name>`.
+  `SecretsService` under `<plugin-id>.<secret-name>`.
 - The package name `@agent-ix/ix-cli-core` is reserved for the shared
   library itself; the bin package may use a `core` namespace for its
   own config without conflict because no plugin can claim that name.

@@ -1,7 +1,8 @@
-import { Command, Flags } from "@oclif/core";
+import { Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runAuthConfigEmailEnable } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthConfigEmailEnable extends Command {
+export default class LocalAuthConfigEmailEnable extends BaseCommand {
   static description =
     "Enable SMTP email (password read from stdin via --smtp-password-stdin).";
 

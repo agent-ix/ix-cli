@@ -1,7 +1,8 @@
-import { Args, Command, Flags } from "@oclif/core";
+import { Args, Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runTunnelExposeCommand, runUp } from "@agent-ix/ix-cli-local";
 
-export default class LocalUp extends Command {
+export default class LocalUp extends BaseCommand {
   static description = "Start services (image mode or source mode).";
 
   static args = {

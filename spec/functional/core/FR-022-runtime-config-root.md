@@ -40,8 +40,12 @@ flags > env > project config (./.ix) > selected user config root > schema defaul
 ## Notes
 
 `--config-root` is a normal oclif base flag, parsed by oclif's flag
-system through `BaseCommand.baseFlags`. There is no argv preprocessing
-in the bin script and no synthesized runtime argv.
+system through `BaseCommand.baseFlags`. It is accepted in the normal
+oclif command flag position (for example
+`ix config get --config-root /tmp/ix-ci logLevel`). There is no argv
+preprocessing in the bin script and no synthesized runtime argv; the
+root-position form `ix --config-root /tmp/ix-ci ...` is intentionally
+unsupported unless oclif adds native support for that placement.
 
 An earlier draft stripped `--config-root` from `process.argv` before
 oclif loaded, on the theory that the config root had to be resolved

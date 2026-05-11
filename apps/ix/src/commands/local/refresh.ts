@@ -1,7 +1,7 @@
-import { Command } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runRefresh } from "@agent-ix/ix-cli-local";
 
-export default class LocalRefresh extends Command {
+export default class LocalRefresh extends BaseCommand {
   static description = "Force-refresh the local deployable registry cache.";
 
   async run(): Promise<void> {

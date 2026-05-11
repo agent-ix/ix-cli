@@ -1,7 +1,8 @@
-import { Args, Command, Flags } from "@oclif/core";
+import { Args, Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runAuthInvite } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthInvite extends Command {
+export default class LocalAuthInvite extends BaseCommand {
   static description = "Invite a new user by email.";
 
   static args = {

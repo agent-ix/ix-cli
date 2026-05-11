@@ -1,7 +1,8 @@
-import { Command, Flags } from "@oclif/core";
+import { Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runClusterRefreshCert } from "@agent-ix/ix-cli-local";
 
-export default class LocalClusterRefreshCert extends Command {
+export default class LocalClusterRefreshCert extends BaseCommand {
   static description =
     "Re-issue the cluster wildcard + ingress TLS certs to cover the currently-configured domain.hosts. Use after changing `domain.hosts`.";
 

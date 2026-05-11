@@ -1,7 +1,8 @@
-import { Args, Command, Flags } from "@oclif/core";
+import { Args, Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runInit } from "@agent-ix/ix-cli-elements";
 
-export default class ElementsInit extends Command {
+export default class ElementsInit extends BaseCommand {
   static description = "Scaffold a new project from an element type.";
 
   static args = {

@@ -22,10 +22,10 @@ commands whose required capabilities are unavailable.
 - FR-024-AC-2: `BaseCommand.prerun` invokes `CapabilityResolver` against
   the declared `required` set. If any required capability is unavailable,
   the command exits with a structured error before side effects occur.
-- FR-024-AC-3: Optional capabilities are surfaced through the command
-  context (e.g., `this.capabilities.has('github')`) so commands can
-  branch behavior; missing optional capabilities never block command
-  execution.
+- FR-024-AC-3: Optional capabilities that resolve successfully are
+  surfaced through the command context (e.g.,
+  `this.hasCapability('github')`) so commands can branch behavior;
+  missing optional capabilities never block command execution.
 - FR-024-AC-4: `CapabilityResolver` reads through `ConfigService` and
   `SecretsService` to determine availability — capability checks share
   the same per-package namespacing as config and secrets.

@@ -1,10 +1,11 @@
-import { Args, Command, Flags } from "@oclif/core";
+import { Args, Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import {
   loadConfig,
   runAuthConfigPasswordResetSet,
 } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthConfigPasswordResetSet extends Command {
+export default class LocalAuthConfigPasswordResetSet extends BaseCommand {
   static description = "Set password reset mode: cli_only | email | disabled.";
 
   static args = {

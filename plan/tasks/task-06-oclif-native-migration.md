@@ -42,8 +42,9 @@ that lib is the right home — see decision in 06.B-1 below). Owns:
 - `static baseFlags = { 'config-root': Flags.string({...}),`
   ` 'no-project-config': Flags.boolean({ default: false }) }`
 - `static capabilities?: CommandCapabilities`
-- `async init()` — derives runtime context from `this.flags['config-root']`
-  + `IX_CONFIG_ROOT` env + XDG default; assigns the resolved root to
+- `async init()` — derives runtime context from the inherited
+  `--config-root` base flag in normal oclif command-flag position,
+  `IX_CONFIG_ROOT` env, and XDG default; assigns the resolved root to
   `getRuntimeContext()`.
 - `async prerun()` — reads `static capabilities` on subclass; invokes
   `CapabilityResolver`; short-circuits with structured error if any
@@ -96,7 +97,7 @@ New module `packages/core/src/plugins/schema.ts`:
 - `IxPluginSchema` interface (`config`, `secrets`, `env`)
 - `registerPluginSchema(packageName, schema)` — validates strict schema
   and adds to a process-level registry consulted by
-  `ConfigService.forPlugin(packageName)`.
+  `ConfigService.forPlugin(schema.id ?? derivedPackageId)`.
 
 ### 06.E Honor `--config-root` in `elements/`
 

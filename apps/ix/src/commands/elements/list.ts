@@ -1,7 +1,8 @@
-import { Command, Flags } from "@oclif/core";
+import { Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runElementsList } from "@agent-ix/ix-cli-elements";
 
-export default class ElementsList extends Command {
+export default class ElementsList extends BaseCommand {
   static description =
     "List available element types across all configured taps.";
 

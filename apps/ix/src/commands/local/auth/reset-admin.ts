@@ -1,7 +1,8 @@
-import { Command, Flags } from "@oclif/core";
+import { Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runAuthResetAdmin } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthResetAdmin extends Command {
+export default class LocalAuthResetAdmin extends BaseCommand {
   static description = "Re-seed the admin temp credential.";
 
   static flags = {

@@ -1,7 +1,8 @@
-import { Command, Flags } from "@oclif/core";
+import { Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runList } from "@agent-ix/ix-cli-local";
 
-export default class LocalList extends Command {
+export default class LocalList extends BaseCommand {
   static description =
     "List deployable apps and services from the OCI registry.";
 

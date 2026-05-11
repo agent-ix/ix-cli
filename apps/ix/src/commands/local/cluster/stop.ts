@@ -1,7 +1,7 @@
-import { Command } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runClusterStop } from "@agent-ix/ix-cli-local";
 
-export default class LocalClusterStop extends Command {
+export default class LocalClusterStop extends BaseCommand {
   static description =
     "Pause the local kind cluster (docker stop on node containers). Preserves PVC data.";
 

@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runTunnelDomainCommand } from "@agent-ix/ix-cli-local";
 
-export default class TunnelDomain extends Command {
+export default class TunnelDomain extends BaseCommand {
   static description =
     "Read or set the wildcard hostname the tunnel terminates (default: agent-ix.dev). With no argument, prints the current value.";
 

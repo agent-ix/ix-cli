@@ -1,4 +1,5 @@
-import { Command, Flags } from "@oclif/core";
+import { Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import {
   loadConfig,
   loadClusterConfig,
@@ -7,7 +8,7 @@ import {
   runUp,
 } from "@agent-ix/ix-cli-local";
 
-export default class LocalInit extends Command {
+export default class LocalInit extends BaseCommand {
   static description =
     "Bootstrap the cluster, deploy ix-core services, and initialize the admin account.";
 

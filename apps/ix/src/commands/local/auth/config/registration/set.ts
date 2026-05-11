@@ -1,10 +1,11 @@
-import { Args, Command, Flags } from "@oclif/core";
+import { Args, Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import {
   loadConfig,
   runAuthConfigRegistrationSet,
 } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthConfigRegistrationSet extends Command {
+export default class LocalAuthConfigRegistrationSet extends BaseCommand {
   static description =
     "Set registration mode: closed | invite_only | admin_approved | self_service.";
 

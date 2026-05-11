@@ -1,7 +1,7 @@
-import { Command } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runSecretsList } from "@agent-ix/ix-cli-core";
 
-export default class SecretsList extends Command {
+export default class SecretsList extends BaseCommand {
   static description =
     "List declared plugin secrets with backend and current resolution source. Never renders values.";
 

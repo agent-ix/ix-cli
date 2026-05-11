@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runSecretsWhich } from "@agent-ix/ix-cli-core";
 
-export default class SecretsWhich extends Command {
+export default class SecretsWhich extends BaseCommand {
   static description =
     "Report which source ix is currently resolving a secret from (env / keyring / age-file / unset).";
   static examples = ["ix secrets which local.ghcr-token"];

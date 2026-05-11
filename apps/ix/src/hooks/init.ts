@@ -72,12 +72,13 @@ const hook: Hook<"init"> = async function ({ config }) {
 
   // ── ixSchema convention (FR-025 revised) ───────────────────────────
   // Walk every oclif-loaded plugin and register its optional ixSchema
-  // export with the shared schema registry. The plugin identity is its
-  // npm package name.
+  // export with the shared schema registry. The install/load identity is
+  // the npm package name; ixSchema.id, when present, is the config and
+  // secrets namespace.
   for (const plugin of config.plugins.values()) {
     if (plugin.name === "@agent-ix/ix") continue; // self
     try {
-      const mod = (await plugin.load?.()) ?? {};
+      const mod = await loadPluginMain(plugin);
       const ixSchema = (mod as { ixSchema?: IxPluginSchema }).ixSchema;
       if (!ixSchema) continue;
       const result = registerPluginSchema(plugin.name, ixSchema);
@@ -120,6 +121,33 @@ const hook: Hook<"init"> = async function ({ config }) {
  * invocation re-registers. Not exported from the package. */
 export function _resetInitGuardForTests(): void {
   registered = false;
+}
+
+async function loadPluginMain(plugin: {
+  load?: () => Promise<unknown>;
+  name: string;
+}): Promise<unknown> {
+  const loaded = (await plugin.load?.()) ?? {};
+  if (hasIxSchema(loaded)) return loaded;
+
+  try {
+    const imported = (await import(plugin.name)) as unknown;
+    if (hasIxSchema(imported)) return imported;
+  } catch {
+    // Some oclif plugins do not expose importable package mains. Those
+    // remain valid plugins; they simply have no IX config/secrets schema.
+  }
+
+  return loaded;
+}
+
+function hasIxSchema(value: unknown): value is { ixSchema: IxPluginSchema } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "ixSchema" in value &&
+    Boolean((value as { ixSchema?: IxPluginSchema }).ixSchema)
+  );
 }
 
 export default hook;

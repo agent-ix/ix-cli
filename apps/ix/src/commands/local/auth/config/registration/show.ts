@@ -1,10 +1,10 @@
-import { Command } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import {
   loadConfig,
   runAuthConfigRegistrationShow,
 } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthConfigRegistrationShow extends Command {
+export default class LocalAuthConfigRegistrationShow extends BaseCommand {
   static description = "Show current registration mode.";
 
   async run(): Promise<void> {

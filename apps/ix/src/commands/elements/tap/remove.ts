@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runTapRemove } from "@agent-ix/ix-cli-elements";
 
-export default class ElementsTapRemove extends Command {
+export default class ElementsTapRemove extends BaseCommand {
   static description = "Remove a configured element tap.";
 
   static args = {

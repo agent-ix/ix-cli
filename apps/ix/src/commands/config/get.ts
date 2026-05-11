@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runConfigGet } from "@agent-ix/ix-cli-core";
 
-export default class ConfigGet extends Command {
+export default class ConfigGet extends BaseCommand {
   static description =
     "Read a config value. <plugin> defaults to 'core' when omitted.";
   static examples = [

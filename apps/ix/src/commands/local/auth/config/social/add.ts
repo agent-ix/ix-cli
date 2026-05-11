@@ -1,7 +1,8 @@
-import { Args, Command, Flags } from "@oclif/core";
+import { Args, Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runAuthConfigSocialAdd } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthConfigSocialAdd extends Command {
+export default class LocalAuthConfigSocialAdd extends BaseCommand {
   static description = "Add or update a social/OAuth provider.";
 
   static args = {

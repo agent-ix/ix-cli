@@ -1,7 +1,8 @@
-import { Args, Command, Flags } from "@oclif/core";
+import { Args, Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runAuthResetUser } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthResetUser extends Command {
+export default class LocalAuthResetUser extends BaseCommand {
   static description = "Admin-initiated password reset for any user.";
 
   static args = {

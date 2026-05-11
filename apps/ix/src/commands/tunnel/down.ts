@@ -1,7 +1,7 @@
-import { Command } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runTunnelDownCommand } from "@agent-ix/ix-cli-local";
 
-export default class TunnelDown extends Command {
+export default class TunnelDown extends BaseCommand {
   static description =
     "Uninstall the shared cloudflared tunnel. Idempotent. Apps remain reachable on internal hosts.";
 

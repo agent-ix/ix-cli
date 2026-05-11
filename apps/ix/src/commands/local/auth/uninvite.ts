@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runAuthUninvite } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthUninvite extends Command {
+export default class LocalAuthUninvite extends BaseCommand {
   static description =
     "Revoke any outstanding invite tokens for a pending user.";
 

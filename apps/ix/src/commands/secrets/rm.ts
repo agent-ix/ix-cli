@@ -1,7 +1,8 @@
-import { Args, Command, Flags } from "@oclif/core";
+import { Args, Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runSecretsRm } from "@agent-ix/ix-cli-core";
 
-export default class SecretsRm extends Command {
+export default class SecretsRm extends BaseCommand {
   static description = "Remove a secret from the active backend.";
   static examples = [
     "ix secrets rm local.ghcr-token",

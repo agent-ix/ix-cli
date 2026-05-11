@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runSecretsSet } from "@agent-ix/ix-cli-core";
 
-export default class SecretsSet extends Command {
+export default class SecretsSet extends BaseCommand {
   static description = "Set a secret via masked-input prompt.";
   static examples = ["ix secrets set local.ghcr-token"];
 

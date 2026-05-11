@@ -1,4 +1,5 @@
-import { Command, Flags } from "@oclif/core";
+import { Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { spawn } from "node:child_process";
 import {
   GLYPH_DIM_DOT,
@@ -36,7 +37,7 @@ function spawnInherited(cmd: string, args: string[]): Promise<void> {
   });
 }
 
-export default class Update extends Command {
+export default class Update extends BaseCommand {
   static description = "Check for and install ix CLI updates.";
 
   static flags = {

@@ -41,7 +41,8 @@
 
 - Existing config/secrets isolation specs still apply: plugin config remains
   namespaced under config roots and plugin secrets remain namespaced by
-  npm package name (the new identity, replacing the old plugin id).
+  `ixSchema.id` when provided, otherwise by a safe id derived from the
+  npm package name.
 - Plugin loading uses oclif's discovery; trust model is oclif's.
 - Main `ix` keeps using `@agent-ix/ix-ui-cli` primitives for command-facing
   errors and rendering.

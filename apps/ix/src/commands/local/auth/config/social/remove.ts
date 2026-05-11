@@ -1,7 +1,8 @@
-import { Args, Command, Flags } from "@oclif/core";
+import { Args, Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runAuthConfigSocialRemove } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthConfigSocialRemove extends Command {
+export default class LocalAuthConfigSocialRemove extends BaseCommand {
   static description = "Remove a social provider.";
 
   static args = {

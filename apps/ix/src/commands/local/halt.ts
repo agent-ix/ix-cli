@@ -1,7 +1,8 @@
-import { Args, Command, Flags } from "@oclif/core";
+import { Args, Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runDown } from "@agent-ix/ix-cli-local";
 
-export default class LocalHalt extends Command {
+export default class LocalHalt extends BaseCommand {
   static description = "Stop services.";
 
   static args = {

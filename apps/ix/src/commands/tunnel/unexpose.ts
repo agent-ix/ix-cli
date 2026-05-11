@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runTunnelUnexposeCommand } from "@agent-ix/ix-cli-local";
 
-export default class TunnelUnexpose extends Command {
+export default class TunnelUnexpose extends BaseCommand {
   static description =
     "Remove an app from tunnel exposure. Clears tunnel.exposed[<app>] and updates the helm release so the public host is no longer served. LAN hosts (e.g. *.dev.ix, *.luna.ix) keep working.";
 

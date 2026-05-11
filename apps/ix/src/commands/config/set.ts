@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runConfigSet } from "@agent-ix/ix-cli-core";
 
-export default class ConfigSet extends Command {
+export default class ConfigSet extends BaseCommand {
   static description =
     "Set a config value. Scalars are coerced via the schema; non-scalar (array/object) values MUST be valid JSON.";
   static examples = [

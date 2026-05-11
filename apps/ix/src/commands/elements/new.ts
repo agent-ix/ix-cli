@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runElementsNew } from "@agent-ix/ix-cli-elements";
 
-export default class ElementsNew extends Command {
+export default class ElementsNew extends BaseCommand {
   static description =
     "Author a new element type (scaffolds spec + cookiecutter repo).";
 

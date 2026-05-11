@@ -1,7 +1,7 @@
-import { Command } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runTunnelStatusCommand } from "@agent-ix/ix-cli-local";
 
-export default class TunnelStatus extends Command {
+export default class TunnelStatus extends BaseCommand {
   static description =
     "Report cloudflared install state and currently exposed app hosts under the tunnel base domain.";
 

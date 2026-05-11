@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runAuthConfigSocialShow } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthConfigSocialShow extends Command {
+export default class LocalAuthConfigSocialShow extends BaseCommand {
   static description =
     "Show a social provider config (client_secret never printed).";
 

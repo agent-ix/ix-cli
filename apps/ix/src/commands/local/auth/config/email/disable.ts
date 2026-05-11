@@ -1,7 +1,8 @@
-import { Command, Flags } from "@oclif/core";
+import { Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { loadConfig, runAuthConfigEmailDisable } from "@agent-ix/ix-cli-local";
 
-export default class LocalAuthConfigEmailDisable extends Command {
+export default class LocalAuthConfigEmailDisable extends BaseCommand {
   static description = "Disable email.";
 
   static flags = {

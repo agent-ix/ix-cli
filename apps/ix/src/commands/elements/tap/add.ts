@@ -1,7 +1,8 @@
-import { Args, Command } from "@oclif/core";
+import { Args } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runTapAdd } from "@agent-ix/ix-cli-elements";
 
-export default class ElementsTapAdd extends Command {
+export default class ElementsTapAdd extends BaseCommand {
   static description = "Add an element tap (GitHub org or single repo).";
 
   static args = {

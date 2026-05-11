@@ -1,7 +1,8 @@
-import { Args, Command, Flags } from "@oclif/core";
+import { Args, Flags } from "@oclif/core";
+import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { runTunnelExposeCommand } from "@agent-ix/ix-cli-local";
 
-export default class TunnelExpose extends Command {
+export default class TunnelExpose extends BaseCommand {
   static description =
     "Expose a running app on the tunnel base domain (e.g. <app>.agent-ix.dev). Records intent in tunnel.exposed so exposure survives `ix down` + `ix up`. Idempotent.";
 
