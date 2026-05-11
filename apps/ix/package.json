@@ -14,7 +14,9 @@
     "bin": "ix",
     "dirname": "ix",
     "commands": "./dist/commands",
-    "plugins": [],
+    "plugins": [
+      "@agent-ix/workflow-cli-plugin"
+    ],
     "hooks": {
       "init": "./dist/hooks/init"
     },
@@ -40,9 +42,6 @@
       },
       "tunnel": {
         "description": "Cloudflare Tunnel subcommands for exposing apps externally (up, down, status, domain, expose, unexpose)."
-      },
-      "workflow": {
-        "description": "Run Agent IX workflow tools (create, status, advance, history)."
       }
     }
   },

@@ -49,7 +49,7 @@ importers:
         version: link:../../../ix-agent-skills/packages/workflow-cli-plugin
       '@oclif/core':
         specifier: '>=4.10.6'
-        version: 4.11.1
+        version: 4.11.2
       picocolors:
         specifier: '>=1.1.1'
         version: 1.1.1
@@ -99,7 +99,7 @@ importers:
     devDependencies:
       '@oclif/core':
         specifier: '>=4.10.6'
-        version: 4.11.1
+        version: 4.11.2
       '@types/node':
         specifier: '>=25.6.0'
         version: 25.6.2
@@ -205,10 +205,10 @@ importers:
 packages:
 
   '@agent-ix/ix-ui-cli@0.4.5-20260508.081910-e82554a':
-    resolution: {integrity: sha512-qH8wgz8nENOdYNjLPfmbxITymfUDzpwUi/D3je3qvT+BV8FIiBItzfsb4ReG4WLbuaoGfOkBT1INhbfgaBuTRw==, tarball: https://npm.ix/@agent-ix/ix-ui-cli/-/e9f00a56edfa65581fa1ffe30be1018f0f95e018}
+    resolution: {integrity: sha512-qH8wgz8nENOdYNjLPfmbxITymfUDzpwUi/D3je3qvT+BV8FIiBItzfsb4ReG4WLbuaoGfOkBT1INhbfgaBuTRw==, tarball: http://npm.ix/@agent-ix/ix-ui-cli/-/e9f00a56edfa65581fa1ffe30be1018f0f95e018}
 
   '@agent-ix/ix-ui-semantic@0.4.5-20260508.081910-e82554a':
-    resolution: {integrity: sha512-o+mHopwul5jKbzzjHg+q0e/U7s6RiG4BwtrwnL1ok+OAjmQpw39O3v9z2zOsURfkIQykW128zV4+uhG9YCTU+Q==, tarball: https://npm.ix/@agent-ix/ix-ui-semantic/-/581f8c2a10d9968321d2ade8ed2b9c7a54d1dc9f}
+    resolution: {integrity: sha512-o+mHopwul5jKbzzjHg+q0e/U7s6RiG4BwtrwnL1ok+OAjmQpw39O3v9z2zOsURfkIQykW128zV4+uhG9YCTU+Q==, tarball: http://npm.ix/@agent-ix/ix-ui-semantic/-/581f8c2a10d9968321d2ade8ed2b9c7a54d1dc9f}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     resolution: {integrity: sha512-p+CMKJ93HFmLkjXKlXiVGlMQEuRb6H0MokBSwUsX+S6BRX8eV5naFZpQJFfJHjRZY0Hmnqy1/r6UWl3x+19zYA==}
@@ -407,8 +407,8 @@ packages:
     resolution: {integrity: sha512-leww0zzIirrvwaYMPI9fj6aRIlA/c6Y0/lifQQ1YOOyHEr0MNH3yYpjXeiVG+tWdPps4XxGclFWX2INPO3Yo5w==}
     engines: {node: '>= 20.19.0'}
 
-  '@oclif/core@4.11.1':
-    resolution: {integrity: sha512-+N5yqeoOKPnT0p+ZJiNutMILsZukZrEpsVup24XERla594EkGSWS9tiCqRfvzr1xfvf/AhM9pb0yPaf8L3Y9Uw==}
+  '@oclif/core@4.11.2':
+    resolution: {integrity: sha512-LWDalCgy+hYyAkLa9sMIXMXk6ws5RzQhVnkmfXtVIIyEEYigbXQ/9/x+s76p53MiXxNc6SJB7lfwkPF+SdzfMQ==}
     engines: {node: '>=18.0.0'}
 
   '@oxc-project/types@0.128.0':
@@ -1372,6 +1372,11 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  semver@7.8.0:
+    resolution: {integrity: sha512-AcM7dV/5ul4EekoQ29Agm5vri8JNqRyj39o0qpX6vDF2GZrtutZl5RwgD1XnZjiTAfncsJhMI48QQH3sN87YNA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
     engines: {node: '>=8'}
@@ -1925,7 +1930,7 @@ snapshots:
       '@noble/curves': 2.0.1
       '@noble/hashes': 2.0.1
 
-  '@oclif/core@4.11.1':
+  '@oclif/core@4.11.2':
     dependencies:
       ansi-escapes: 4.3.2
       ansis: 3.17.0
@@ -1938,7 +1943,7 @@ snapshots:
       is-wsl: 2.2.0
       lilconfig: 3.1.3
       minimatch: 10.2.5
-      semver: 7.7.4
+      semver: 7.8.0
       string-width: 4.2.3
       supports-color: 8.1.1
       tinyglobby: 0.2.16
@@ -2848,6 +2853,8 @@ snapshots:
   scheduler@0.27.0: {}
 
   semver@7.7.4: {}
+
+  semver@7.8.0: {}
 
   shebang-command@2.0.0:
     dependencies:

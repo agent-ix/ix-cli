@@ -1,12 +1,18 @@
 /**
- * TC-424: App packaging static checks.
+ * TC-500..TC-510 (revised): App packaging static checks.
  *
- * These protect the oclif command surface: a command file under src/commands
- * is not shippable unless apps/ix/vite.config.ts emits a matching dist entry.
+ * Protects the oclif-native plugin architecture introduced in task-06:
+ * - Every src/commands file has a matching Vite build entry.
+ * - bin/ix.js does NOT preprocess argv (FR-022 revised).
+ * - The init hook walks Config.plugins for ixSchema (FR-025 revised),
+ *   not a custom IxPlugin registry.
+ * - apps/ix/package.json lists @agent-ix/workflow-cli-plugin in
+ *   oclif.plugins instead of registering it through the legacy
+ *   distribution module.
  */
 
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const APP_ROOT = new URL("..", import.meta.url).pathname;
@@ -49,34 +55,42 @@ describe("local up tunnel exposure", () => {
   });
 });
 
-describe("workflow plugin contract integration", () => {
-  it("declares workflow in the ix distribution default plugins", () => {
-    const src = readFileSync(join(SRC_ROOT, "distribution.ts"), "utf-8");
-    expect(src).toContain("createRuntimeDistribution");
-    expect(src).toContain("workflowIxPlugin");
-    expect(src).toContain('configRootEnvVar: "IX_CONFIG_ROOT"');
+describe("oclif-native plugin architecture (FR-021/022/025 revised)", () => {
+  it("workflow commands live in the workflow-cli-plugin, not apps/ix", () => {
+    expect(existsSync(join(SRC_ROOT, "commands/workflow"))).toBe(false);
+    expect(existsSync(join(SRC_ROOT, "workflow.ts"))).toBe(false);
   });
 
-  it("registers distribution default plugins during app init", () => {
-    const src = readFileSync(join(SRC_ROOT, "hooks/init.ts"), "utf-8");
-    expect(src).toContain("configureDistributionRuntime");
-    expect(src).toContain("Command.baseFlags");
-    expect(src).toContain("ixDistribution.defaultPlugins");
-    expect(src).toContain("registerIxPlugin(plugin)");
+  it("apps/ix/package.json lists workflow-cli-plugin in oclif.plugins", () => {
+    const pkg = JSON.parse(
+      readFileSync(join(APP_ROOT, "package.json"), "utf-8"),
+    );
+    expect(pkg.oclif.plugins).toContain("@agent-ix/workflow-cli-plugin");
   });
 
-  it("normalizes pre-command runtime flags before oclif command lookup", () => {
+  it("bin/ix.js does NOT preprocess argv for --config-root", () => {
     const src = readFileSync(join(APP_ROOT, "bin/ix.js"), "utf-8");
-    expect(src).toContain("IX_RUNTIME_CONFIG_ROOT_FLAG");
-    expect(src).toContain("IX_RUNTIME_NO_PROJECT_CONFIG");
-    expect(src).toContain('arg === "--config-root"');
-    expect(src).toContain('arg === "--no-project-config"');
+    expect(src).not.toContain("IX_RUNTIME_CONFIG_ROOT_FLAG");
+    expect(src).not.toContain("IX_RUNTIME_NO_PROJECT_CONFIG");
+    expect(src).not.toContain('arg === "--config-root"');
+    // The bin script is the minimal oclif boot.
+    expect(src).toContain("import { execute } from");
+    expect(src).toContain("@oclif/core");
   });
 
-  it("resolves workflow command config through ConfigService", () => {
-    const src = readFileSync(join(SRC_ROOT, "workflow.ts"), "utf-8");
-    expect(src).toContain("ConfigService.forPlugin");
-    expect(src).toContain("WORKFLOW_PLUGIN_ID");
-    expect(src).toContain("WorkflowPluginEnvBindings");
+  it("init hook walks Config.plugins for ixSchema, not a custom registry", () => {
+    const src = readFileSync(join(SRC_ROOT, "hooks/init.ts"), "utf-8");
+    expect(src).toContain("registerPluginSchema");
+    expect(src).toContain("config.plugins");
+    expect(src).toContain("ixSchema");
+    // Legacy custom-plugin layer is gone.
+    expect(src).not.toContain("configureDistributionRuntime");
+    expect(src).not.toContain("registerIxPlugin(plugin)");
+    expect(src).not.toContain("ixDistribution.defaultPlugins");
+    expect(src).not.toContain("Command.baseFlags = ");
+  });
+
+  it("the legacy distribution.ts has been removed", () => {
+    expect(existsSync(join(SRC_ROOT, "distribution.ts"))).toBe(false);
   });
 });
