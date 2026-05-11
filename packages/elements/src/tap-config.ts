@@ -1,14 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import os from "node:os";
+
+import { configRoot } from "@agent-ix/ix-cli-core";
 import { parse, stringify } from "yaml";
 
-const CONFIG_PATH = path.join(
-  os.homedir(),
-  ".config",
-  "ix",
-  "elements-taps.yaml",
-);
+function configPath(): string {
+  return path.join(configRoot(), "elements-taps.yaml");
+}
 
 export const ROOT_TAP = "github.com/agent-ix";
 
@@ -27,10 +25,10 @@ export interface TapConfig {
 }
 
 export function loadTapConfig(): TapConfig {
-  if (!fs.existsSync(CONFIG_PATH)) {
+  if (!fs.existsSync(configPath())) {
     return { taps: [ROOT_TAP] };
   }
-  const raw = fs.readFileSync(CONFIG_PATH, "utf8");
+  const raw = fs.readFileSync(configPath(), "utf8");
   const parsed = parse(raw) as Partial<TapConfig>;
   const taps = parsed.taps ?? [ROOT_TAP];
   if (!taps.includes(ROOT_TAP)) {
@@ -40,9 +38,9 @@ export function loadTapConfig(): TapConfig {
 }
 
 export function saveTapConfig(config: TapConfig): void {
-  const dir = path.dirname(CONFIG_PATH);
+  const dir = path.dirname(configPath());
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, stringify(config), "utf8");
+  fs.writeFileSync(configPath(), stringify(config), "utf8");
 }
 
 export function addTap(url: string): boolean {

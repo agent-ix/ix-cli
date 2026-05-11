@@ -97,6 +97,9 @@ importers:
         specifier: '>=4.0.0'
         version: 4.4.3
     devDependencies:
+      '@oclif/core':
+        specifier: '>=4.10.6'
+        version: 4.11.1
       '@types/node':
         specifier: '>=25.6.0'
         version: 25.6.2

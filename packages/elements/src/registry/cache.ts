@@ -1,10 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
-import os from "node:os";
+
+import { cacheRoot } from "@agent-ix/ix-cli-core";
+
 import type { ElementEntry } from "./resolver.js";
 
-const CACHE_DIR = path.join(os.homedir(), ".cache", "ix", "elements");
 const TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function cacheDir(): string {
+  return path.join(cacheRoot(), "elements");
+}
 
 interface CacheFile {
   cachedAt: number;
@@ -16,7 +21,7 @@ function tapSlug(tap: string): string {
 }
 
 function cachePath(tap: string): string {
-  return path.join(CACHE_DIR, `${tapSlug(tap)}.json`);
+  return path.join(cacheDir(), `${tapSlug(tap)}.json`);
 }
 
 export function readCache(tap: string): ElementEntry[] | null {
@@ -35,7 +40,8 @@ export function readCache(tap: string): ElementEntry[] | null {
 }
 
 export function writeCache(tap: string, elements: ElementEntry[]): void {
-  fs.mkdirSync(CACHE_DIR, { recursive: true });
+  const dir = cacheDir();
+  fs.mkdirSync(dir, { recursive: true });
   const data: CacheFile = { cachedAt: Date.now(), elements };
   fs.writeFileSync(cachePath(tap), JSON.stringify(data, null, 2), "utf8");
 }
@@ -46,9 +52,10 @@ export function invalidateCache(tap?: string): void {
     if (fs.existsSync(p)) fs.rmSync(p);
     return;
   }
-  if (fs.existsSync(CACHE_DIR)) {
-    for (const f of fs.readdirSync(CACHE_DIR)) {
-      fs.rmSync(path.join(CACHE_DIR, f), { recursive: true, force: true });
+  const dir = cacheDir();
+  if (fs.existsSync(dir)) {
+    for (const f of fs.readdirSync(dir)) {
+      fs.rmSync(path.join(dir, f), { recursive: true, force: true });
     }
   }
 }
