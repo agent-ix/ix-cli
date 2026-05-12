@@ -15,7 +15,8 @@
     "dirname": "ix",
     "commands": "./dist/commands",
     "plugins": [
-      "@agent-ix/workflow-cli-plugin"
+      "@agent-ix/workflow-cli-plugin",
+      "@agent-ix/workflow-definitions"
     ],
     "hooks": {
       "init": "./dist/hooks/init"
@@ -59,6 +60,8 @@
     "@agent-ix/ix-cli-local": "workspace:*",
     "@agent-ix/ix-ui-cli": ">=0.4.5",
     "@agent-ix/workflow-cli-plugin": ">=0.1.0-0",
+    "@agent-ix/workflow-core": ">=0.1.0-0",
+    "@agent-ix/workflow-definitions": ">=0.1.0-0",
     "@oclif/core": ">=4.10.6",
     "picocolors": ">=1.1.1",
     "react": ">=18.3.1",

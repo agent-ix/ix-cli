@@ -47,6 +47,12 @@ importers:
       '@agent-ix/workflow-cli-plugin':
         specifier: '>=0.1.0-0'
         version: 0.1.0(@agent-ix/ix-cli-core@packages+core)(@agent-ix/ix-ui-cli@0.4.5(@types/react@19.2.14))(@oclif/core@4.11.2)
+      '@agent-ix/workflow-core':
+        specifier: '>=0.1.0-0'
+        version: 0.1.0
+      '@agent-ix/workflow-definitions':
+        specifier: '>=0.1.0-0'
+        version: 0.1.0
       '@oclif/core':
         specifier: '>=4.10.6'
         version: 4.11.2
@@ -218,10 +224,10 @@ packages:
       '@oclif/core': '>=4.10.6'
 
   '@agent-ix/workflow-core@0.1.0':
-    resolution: {integrity: sha512-oH29feSaV4qyH3yonIJMuExoj7dzoiQx0WUHWNxCxOtcYFxgK9s8OA0GizEDJWiLgvQrhLTwxgPUH2VVz7xiBQ==, tarball: https://npm.pkg.github.com/download/@agent-ix/workflow-core/0.1.0/bd3629f58737ea1f20b37c942f5201f2c147aa4b}
+    resolution: {integrity: sha512-oH29feSaV4qyH3yonIJMuExoj7dzoiQx0WUHWNxCxOtcYFxgK9s8OA0GizEDJWiLgvQrhLTwxgPUH2VVz7xiBQ==, tarball: http://npm.ix/@agent-ix/workflow-core/-/bd3629f58737ea1f20b37c942f5201f2c147aa4b}
 
   '@agent-ix/workflow-definitions@0.1.0':
-    resolution: {integrity: sha512-fkvCr3SbWhwhhw3h1JHSwyK2m0nCC0eF0U3OyolHHUwLOunsyU7MLHAzQA4TQ3q5S/5jYQB7+Z+OfD381IbCaA==, tarball: https://npm.pkg.github.com/download/@agent-ix/workflow-definitions/0.1.0/75782ab188bf4190d728f8d5f5b5a76013111f18}
+    resolution: {integrity: sha512-fkvCr3SbWhwhhw3h1JHSwyK2m0nCC0eF0U3OyolHHUwLOunsyU7MLHAzQA4TQ3q5S/5jYQB7+Z+OfD381IbCaA==, tarball: http://npm.ix/@agent-ix/workflow-definitions/-/75782ab188bf4190d728f8d5f5b5a76013111f18}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     resolution: {integrity: sha512-p+CMKJ93HFmLkjXKlXiVGlMQEuRb6H0MokBSwUsX+S6BRX8eV5naFZpQJFfJHjRZY0Hmnqy1/r6UWl3x+19zYA==}

@@ -11,6 +11,8 @@ import {
   type SecretsBackend,
   type SecretsBackendMode,
 } from "@agent-ix/ix-cli-core";
+import { registerWorkflowPlugin } from "@agent-ix/workflow-cli-plugin";
+import type { WorkflowPlugin } from "@agent-ix/workflow-core";
 import {
   LocalConfigSchema,
   LocalEnvBindings,
@@ -80,12 +82,27 @@ const hook: Hook<"init"> = async function ({ config }) {
     try {
       const mod = await loadPluginMain(plugin);
       const ixSchema = (mod as { ixSchema?: IxPluginSchema }).ixSchema;
-      if (!ixSchema) continue;
-      const result = registerPluginSchema(plugin.name, ixSchema);
-      if (!result.ok) {
-        this.warn(
-          `${plugin.name} schema registration failed: ${result.kind} — ${result.detail}`,
-        );
+      if (ixSchema) {
+        const result = registerPluginSchema(plugin.name, ixSchema);
+        if (!result.ok) {
+          this.warn(
+            `${plugin.name} schema registration failed: ${result.kind} — ${result.detail}`,
+          );
+        }
+      }
+
+      // FR-010: also collect `workflowPlugin` exports into the
+      // workflow-cli-plugin process-scope registry.
+      const workflowPlugin = (mod as { workflowPlugin?: WorkflowPlugin })
+        .workflowPlugin;
+      if (workflowPlugin) {
+        try {
+          registerWorkflowPlugin(plugin.name, workflowPlugin);
+        } catch (err) {
+          this.warn(
+            `${plugin.name} workflowPlugin registration failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
       }
     } catch (err) {
       this.warn(
@@ -128,26 +145,29 @@ async function loadPluginMain(plugin: {
   name: string;
 }): Promise<unknown> {
   const loaded = (await plugin.load?.()) ?? {};
-  if (hasIxSchema(loaded)) return loaded;
+  if (hasIxExports(loaded)) return loaded;
 
   try {
     const imported = (await import(plugin.name)) as unknown;
-    if (hasIxSchema(imported)) return imported;
+    if (hasIxExports(imported)) return imported;
   } catch {
     // Some oclif plugins do not expose importable package mains. Those
-    // remain valid plugins; they simply have no IX config/secrets schema.
+    // remain valid plugins; they simply have no IX config/secrets schema
+    // or workflow contributions.
   }
 
   return loaded;
 }
 
-function hasIxSchema(value: unknown): value is { ixSchema: IxPluginSchema } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "ixSchema" in value &&
-    Boolean((value as { ixSchema?: IxPluginSchema }).ixSchema)
-  );
+function hasIxExports(
+  value: unknown,
+): value is { ixSchema?: IxPluginSchema; workflowPlugin?: WorkflowPlugin } {
+  if (typeof value !== "object" || value === null) return false;
+  const obj = value as {
+    ixSchema?: IxPluginSchema;
+    workflowPlugin?: WorkflowPlugin;
+  };
+  return Boolean(obj.ixSchema) || Boolean(obj.workflowPlugin);
 }
 
 export default hook;
