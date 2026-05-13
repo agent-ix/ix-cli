@@ -8,7 +8,8 @@
   },
   "files": [
     "bin/",
-    "dist/"
+    "dist/",
+    "oclif.manifest.json"
   ],
   "oclif": {
     "bin": "ix",
@@ -47,12 +48,12 @@
     }
   },
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && oclif manifest",
     "lint": "eslint \"src/**/*.ts\" --no-error-on-unmatched-pattern \"tests/**/*.ts\" && pnpm run format:check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run --passWithNoTests",
-    "clean": "rm -rf dist coverage"
+    "clean": "rm -rf dist coverage oclif.manifest.json"
   },
   "dependencies": {
     "@agent-ix/ix-cli-core": "workspace:*",
@@ -69,6 +70,7 @@
   },
   "devDependencies": {
     "@types/react": ">=18.3.12",
+    "oclif": "^4.23.0",
     "vite": ">=6.3.4",
     "vite-plugin-dts": ">=4.5.3",
     "vitest": ">=3.1.2"

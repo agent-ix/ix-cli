@@ -6,5 +6,6 @@ dist/
 node_modules
 .pnpm-store
 coverage/
+oclif.manifest.json
 .npmrc
 .claude/
