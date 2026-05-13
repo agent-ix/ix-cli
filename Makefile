@@ -95,7 +95,6 @@ publish: build
 	  echo "$$pkg: $$ORIG -> $$VERSION"; \
 	  (cd $$(dirname $$pkg) && npm pkg set version=$$VERSION); \
 	done; \
-	(cd apps/ix && npx oclif manifest); \
 	pnpm -r --filter './packages/*' --filter './apps/*' publish --no-git-checks --registry http://npm.ix/ --tag local; \
 	for pkg in packages/*/package.json apps/*/package.json; do \
 	  (cd $$(dirname $$pkg) && git checkout -- package.json); \

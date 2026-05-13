@@ -48,7 +48,9 @@
     }
   },
   "scripts": {
-    "build": "vite build && oclif manifest",
+    "build": "vite build",
+    "prepack": "oclif manifest",
+    "postpack": "rm -f oclif.manifest.json",
     "lint": "eslint \"src/**/*.ts\" --no-error-on-unmatched-pattern \"tests/**/*.ts\" && pnpm run format:check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
