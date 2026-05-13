@@ -76,38 +76,61 @@ const hook: Hook<"init"> = async function ({ config }) {
   // Walk every oclif-loaded plugin and register its optional ixSchema
   // export with the shared schema registry. The install/load identity is
   // the npm package name; ixSchema.id, when present, is the config and
-  // secrets namespace.
-  for (const plugin of config.plugins.values()) {
-    if (plugin.name === "@agent-ix/ix") continue; // self
-    try {
-      const mod = await loadPluginMain(plugin);
-      const ixSchema = (mod as { ixSchema?: IxPluginSchema }).ixSchema;
-      if (ixSchema) {
-        const result = registerPluginSchema(plugin.name, ixSchema);
-        if (!result.ok) {
-          this.warn(
-            `${plugin.name} schema registration failed: ${result.kind} — ${result.detail}`,
-          );
-        }
+  // secrets namespace. Loads happen in parallel; registrations run after
+  // all loads resolve so order across plugins is deterministic by
+  // iteration order (registry has first-wins semantics).
+  const targets = [...config.plugins.values()].filter(
+    (p) => p.name !== "@agent-ix/ix",
+  );
+  const loaded = await Promise.all(
+    targets.map(async (plugin) => {
+      try {
+        return { plugin, mod: await loadPluginMain(plugin), err: null as null };
+      } catch (err) {
+        return { plugin, mod: null, err: err as Error };
       }
+    }),
+  );
 
-      // FR-010: also collect `workflowPlugin` exports into the
-      // workflow-cli-plugin process-scope registry.
-      const workflowPlugin = (mod as { workflowPlugin?: WorkflowPlugin })
-        .workflowPlugin;
-      if (workflowPlugin) {
-        try {
-          registerWorkflowPlugin(plugin.name, workflowPlugin);
-        } catch (err) {
-          this.warn(
-            `${plugin.name} workflowPlugin registration failed: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        }
-      }
-    } catch (err) {
+  for (const { plugin, mod, err } of loaded) {
+    if (err) {
       this.warn(
         `${plugin.name} plugin init failed: ${err instanceof Error ? err.message : String(err)}`,
       );
+      continue;
+    }
+    const ixSchema = (mod as { ixSchema?: IxPluginSchema }).ixSchema;
+    if (ixSchema) {
+      const result = registerPluginSchema(plugin.name, ixSchema);
+      if (!result.ok) {
+        this.warn(
+          `${plugin.name} schema registration failed: ${result.kind} — ${result.detail}`,
+        );
+      }
+    }
+
+    // FR-010: also collect `workflowPlugin` exports into the
+    // workflow-cli-plugin process-scope registry. FR-010-AC-3 makes
+    // `ixSchema` mandatory for any workflow contributor — a plugin
+    // that ships `workflowPlugin` without `ixSchema` is rejected
+    // (warn-and-skip, consistent with the rest of init).
+    const workflowPlugin = (mod as { workflowPlugin?: WorkflowPlugin })
+      .workflowPlugin;
+    if (workflowPlugin) {
+      if (!ixSchema) {
+        this.warn(
+          `${plugin.name} exports workflowPlugin but is missing ixSchema; ` +
+            `FR-010-AC-3 requires both. Skipping workflow registration.`,
+        );
+      } else {
+        try {
+          registerWorkflowPlugin(plugin.name, workflowPlugin);
+        } catch (regErr) {
+          this.warn(
+            `${plugin.name} workflowPlugin registration failed: ${regErr instanceof Error ? regErr.message : String(regErr)}`,
+          );
+        }
+      }
     }
   }
 
