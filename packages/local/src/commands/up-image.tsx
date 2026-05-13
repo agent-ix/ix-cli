@@ -40,7 +40,6 @@ export async function runImageModeUp(
   opts: UpImageOptions = {},
 ): Promise<void> {
   const header = `ix local up · ${deployable.name}`;
-  const plan = await planImageModeUp(deployable, config, expandApp, opts);
   const preflight = (
     <>
       <Text>
@@ -54,61 +53,31 @@ export async function runImageModeUp(
     </>
   );
 
-  if (plan.mode === "service") {
-    const result = await renderPhaseTableRun<Phase, ImageInstallPipelineResult>(
-      {
-        header,
-        phases: PHASES,
-        phaseLabels: PHASE_LABELS,
-        preflight,
-        initialServices: initialImageRows([plan.install]),
-        controller: (emit) =>
-          runSingleServicePipeline(
-            {
-              install: plan.install,
-              deployable,
-              config,
-              tagOverride,
-              opts,
-            },
-            emit,
-          ),
-        frameForSuccess: ({ failures, ingressUrls }) =>
-          failures.length > 0
-            ? {
-                status: "passed",
-                tail: `Deployed ${deployable.name} with failures: ${failures.join("; ")}`,
-                tailVariant: "warn",
-              }
-            : {
-                status: "passed",
-                tailIngressUrls: ingressUrls,
-                tailIngressHosts: config.hosts,
-              },
-        frameForError: (err) => ({
-          status: "failed",
-          tail: `Failed to deploy ${deployable.name}: ${
-            err instanceof ImageInstallPipelineError
-              ? (err.finalDisplayError ?? err.message)
-              : err.message
-          }`,
-          tailVariant: "error",
-        }),
-      },
-    );
-    if (result.failures.length > 0 && !opts.continueOnError) {
-      throw new Error(`${deployable.name}: ${result.failures.join("; ")}`);
-    }
-    return;
-  }
-
+  // Render the header + preflight text immediately so the user sees the
+  // frame instead of a blank terminal while planImageModeUp's helm/kubectl
+  // shellouts run. The install rows are populated by the controller once
+  // planning resolves; the controller then drives the install pipeline.
+  // `runMode` is set inside the controller before it resolves, so the
+  // frame callbacks read the correct branch.
+  let runMode: "service" | "app" =
+    deployable.role === "app" ? "app" : "service";
   const result = await renderPhaseTableRun<Phase, ImageInstallPipelineResult>({
     header,
     phases: PHASES,
     phaseLabels: PHASE_LABELS,
     preflight,
-    initialServices: initialImageRows(plan.installs),
-    controller: (emit) => {
+    initialServices: [],
+    controller: async (emit) => {
+      const plan = await planImageModeUp(deployable, config, expandApp, opts);
+      runMode = plan.mode;
+      if (plan.mode === "service") {
+        emit(initialImageRows([plan.install]));
+        return runSingleServicePipeline(
+          { install: plan.install, deployable, config, tagOverride, opts },
+          emit,
+        );
+      }
+      emit(initialImageRows(plan.installs));
       const appRows = new AppInstallRows(appRowServices(plan.installs), emit);
       return runAppInstallPipeline({
         deployable,
@@ -119,8 +88,21 @@ export async function runImageModeUp(
         appRows,
       });
     },
-    frameForSuccess: ({ failures, ingressUrls }) =>
-      failures.length > 0
+    frameForSuccess: ({ failures, ingressUrls }) => {
+      if (runMode === "service") {
+        return failures.length > 0
+          ? {
+              status: "passed",
+              tail: `Deployed ${deployable.name} with failures: ${failures.join("; ")}`,
+              tailVariant: "warn",
+            }
+          : {
+              status: "passed",
+              tailIngressUrls: ingressUrls,
+              tailIngressHosts: config.hosts,
+            };
+      }
+      return failures.length > 0
         ? {
             status: "failed",
             tail: `${failures.length} service${failures.length === 1 ? "" : "s"} failed`,
@@ -130,17 +112,30 @@ export async function runImageModeUp(
             status: "passed",
             tailIngressUrls: ingressUrls,
             tailIngressHosts: config.hosts,
-          },
-    frameForError: (err) => ({
-      status: "failed",
-      tail:
+          };
+    },
+    frameForError: (err) => {
+      const msg =
         err instanceof ImageInstallPipelineError
           ? (err.finalDisplayError ?? err.message)
-          : err.message,
-      tailVariant: "error",
-    }),
+          : err.message;
+      return {
+        status: "failed",
+        tail:
+          runMode === "service"
+            ? `Failed to deploy ${deployable.name}: ${msg}`
+            : msg,
+        tailVariant: "error",
+      };
+    },
   });
 
+  if (runMode === "service") {
+    if (result.failures.length > 0 && !opts.continueOnError) {
+      throw new Error(`${deployable.name}: ${result.failures.join("; ")}`);
+    }
+    return;
+  }
   if (result.failures.length > 0) {
     throw new Error(
       `App '${deployable.name}' failed: ${result.failures.join("; ")}`,
