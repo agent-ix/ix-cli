@@ -6,8 +6,11 @@ export default defineConfig({
   plugins: [dts({ rollupTypes: true, include: ["src"] })],
   build: {
     lib: {
-      entry: "src/index.tsx",
-      fileName: () => "index.js",
+      entry: {
+        index: "src/index.tsx",
+        plugin: "src/schema.ts",
+      },
+      fileName: (_format, entryName) => `${entryName}.js`,
       formats: ["es"],
     },
     target: "node18",

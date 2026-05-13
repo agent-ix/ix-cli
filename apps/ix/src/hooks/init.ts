@@ -18,7 +18,7 @@ import {
   LocalEnvBindings,
   LocalSecretsSchema,
   LOCAL_PLUGIN_ID,
-} from "@agent-ix/ix-cli-local";
+} from "@agent-ix/ix-cli-local/plugin";
 import { Hook } from "@oclif/core";
 
 import {
