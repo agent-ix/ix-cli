@@ -8,6 +8,7 @@ import type { ServiceRow } from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "./config.js";
 import {
   IX_APPS_NAMESPACE,
+  buildAuthServiceSetArgs,
   buildGlobalSetArgs,
   buildTunnelSetArgs,
   loadTunnelConfig,
@@ -334,6 +335,9 @@ function buildLocalHelmArgs(
   // intent is keyed by release name (which equals the entry-service
   // name for an exposed app), so toggle at top level (entryKey=null).
   args.push(...buildTunnelSetArgs(loadTunnelConfig(), install.name, null));
+  if (install.name === "auth-service") {
+    args.push(...buildAuthServiceSetArgs(null));
+  }
   args.push(...buildHelmSetArgs(resolveCatalog()));
   return args;
 }

@@ -35,6 +35,10 @@ export interface ClusterConfig {
   skipApps: string[];
 }
 
+export interface AuthAudienceConfig {
+  clientAudienceAllowlist: Record<string, string[]>;
+}
+
 /**
  * Load the `cluster:` section of `~/.config/ix/config.d/local.yaml` via
  * the shared `ConfigService`. Schema validation is enforced by
@@ -46,6 +50,36 @@ export function loadClusterConfig(): ClusterConfig {
     envBindings: LocalEnvBindings,
   });
   return cfg.get().cluster;
+}
+
+export function loadAuthAudienceConfig(): AuthAudienceConfig {
+  const cfg = ConfigService.forPlugin(LOCAL_PLUGIN_ID, LocalConfigSchema, {
+    envBindings: LocalEnvBindings,
+  });
+  return cfg.get().auth;
+}
+
+function escapeHelmSetStringValue(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/,/g, "\\,")
+    .replace(/\{/g, "\\{")
+    .replace(/\}/g, "\\}")
+    .replace(/\[/g, "\\[")
+    .replace(/\]/g, "\\]");
+}
+
+export function buildAuthServiceSetArgs(entryKey: string | null): string[] {
+  const allowlist = loadAuthAudienceConfig().clientAudienceAllowlist;
+  const prefix = entryKey ? `${entryKey}.ix-service.` : "ix-service.";
+  return [
+    "--set-string",
+    `${prefix}config.enabled=true`,
+    "--set-string",
+    `${prefix}config.data.AUTH_CLIENT_AUDIENCE_ALLOWLIST=${escapeHelmSetStringValue(
+      JSON.stringify(allowlist),
+    )}`,
+  ];
 }
 
 /** FR-038 — Cloudflare Tunnel opt-in exposure config */

@@ -50,6 +50,16 @@ export const LocalConfigSchema = z
       })
       .strict()
       .default({ defaultTags: ["ix-core"], extraApps: [], skipApps: [] }),
+    auth: z
+      .object({
+        clientAudienceAllowlist: z
+          .record(z.string(), z.array(z.string()))
+          .default({ "filament-ui": ["filament"] }),
+      })
+      .strict()
+      .default({
+        clientAudienceAllowlist: { "filament-ui": ["filament"] },
+      }),
     concurrency: z
       .object({
         dockerPull: z.coerce.number().int().min(1).default(3),

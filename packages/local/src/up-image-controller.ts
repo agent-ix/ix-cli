@@ -7,6 +7,7 @@ import { parse as parseYaml } from "yaml";
 import type { ServiceRow } from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "./config.js";
 import {
+  buildAuthServiceSetArgs,
   buildGlobalSetArgs,
   buildTunnelSetArgs,
   loadTunnelConfig,
@@ -179,6 +180,9 @@ function buildHelmInstallArgs(
   // release isn't in tunnel.exposed, so this is a no-op for the common
   // case.
   args.push(...buildTunnelSetArgs(loadTunnelConfig(), install.name, null));
+  if (install.name === "auth-service") {
+    args.push(...buildAuthServiceSetArgs(null));
+  }
   if (imageTagOverride) {
     args.push("--set-string", `ix-service.image.tag=${imageTagOverride}`);
   }
@@ -217,6 +221,12 @@ function buildUmbrellaInstallArgs(
   // the entry subchart only — non-entry subcharts stay LAN-scoped per
   // FR-037-AC-7.
   args.push(...buildTunnelSetArgs(loadTunnelConfig(), releaseName, entryKey));
+  const authService = childInstalls.find(
+    (child) => child.name === "auth-service",
+  );
+  if (authService) {
+    args.push(...buildAuthServiceSetArgs(authService.name));
+  }
   if (imageTagOverride) {
     args.push("--set-string", `global.imageTag=${imageTagOverride}`);
   }
