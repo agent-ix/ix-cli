@@ -16,6 +16,7 @@ import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const APP_ROOT = new URL("..", import.meta.url).pathname;
+const REPO_ROOT = join(APP_ROOT, "../..");
 const SRC_ROOT = join(APP_ROOT, "src");
 
 function walk(dir: string): string[] {
@@ -24,6 +25,19 @@ function walk(dir: string): string[] {
     if (statSync(full).isDirectory()) return walk(full);
     return [full];
   });
+}
+
+function grepRepoSrc(pattern: RegExp): string[] {
+  const roots = [join(REPO_ROOT, "apps"), join(REPO_ROOT, "packages")];
+  const hits: string[] = [];
+  for (const root of roots) {
+    for (const file of walk(root)) {
+      if (!/\/src\/.*\.(ts|tsx)$/.test(file)) continue;
+      const src = readFileSync(file, "utf-8");
+      if (pattern.test(src)) hits.push(relative(REPO_ROOT, file));
+    }
+  }
+  return hits;
 }
 
 describe("oclif command packaging", () => {
@@ -52,6 +66,20 @@ describe("local up tunnel exposure", () => {
       /const\s+fromSource\s*=\s*flags\["from-source"\]\s*\|\|\s*flags\.src/,
     );
     expect(src).toMatch(/if\s*\(\s*flags\.expose\s*&&\s*!fromSource\s*\)/);
+  });
+});
+
+describe("shared CLI output style", () => {
+  it("commands use shared flow rows instead of inline glyph spacing", () => {
+    expect(grepRepoSrc(/\bGLYPH_DIM_DOT\b/)).toHaveLength(0);
+    expect(
+      grepRepoSrc(/process\.stdout\.write\(\s*["'`]\\n["'`]\s*\)/),
+    ).toHaveLength(0);
+  });
+
+  it("commands do not hard-code stale spinner or connector glyphs", () => {
+    expect(grepRepoSrc(/⊝/)).toHaveLength(0);
+    expect(grepRepoSrc(/└──┐|└──•|└──/)).toHaveLength(0);
   });
 });
 

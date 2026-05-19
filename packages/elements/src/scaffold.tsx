@@ -2,13 +2,7 @@ import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
 import { execa } from "execa";
-import {
-  GLYPH_DIM_DOT,
-  Listing,
-  Text,
-  blue,
-  renderStatic,
-} from "@agent-ix/ix-ui-cli";
+import { FlowLine, Listing, blue, renderStatic } from "@agent-ix/ix-ui-cli";
 import { resolveElementByType } from "./registry/resolver.js";
 
 export interface ScaffoldOptions {
@@ -60,9 +54,7 @@ export async function runElementsInit(
         status="passed"
         variant="flow"
         pre={
-          <Text>
-            {` ${GLYPH_DIM_DOT} Scaffolding ${blue(type)} project ${blue(toSlug(projectName))}`}
-          </Text>
+          <FlowLine>{`Scaffolding ${blue(type)} project ${blue(toSlug(projectName))}`}</FlowLine>
         }
         tail={`Scaffolded ${blue(toSlug(projectName))} at ${blue(projectDir)}.`}
       />,

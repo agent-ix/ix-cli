@@ -2,10 +2,9 @@ import { Flags } from "@oclif/core";
 import { BaseCommand } from "@agent-ix/ix-cli-core";
 import { spawn } from "node:child_process";
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Listing,
   Note,
-  Text,
   blue,
   colors,
   renderStatic,
@@ -93,11 +92,7 @@ export default class Update extends BaseCommand {
           header="ix update"
           status="passed"
           variant="flow"
-          pre={
-            <Text>
-              {` ${GLYPH_DIM_DOT} ${blue(current)} from ${blue(registry)}`}
-            </Text>
-          }
+          pre={<FlowLine>{`${blue(current)} from ${blue(registry)}`}</FlowLine>}
           tail={`Already up to date · ${blue(latest)}`}
         />,
       );
@@ -110,11 +105,7 @@ export default class Update extends BaseCommand {
           header="ix update"
           status="passed"
           variant="flow"
-          pre={
-            <Text>
-              {` ${GLYPH_DIM_DOT} ${blue(current)} from ${blue(registry)}`}
-            </Text>
-          }
+          pre={<FlowLine>{`${blue(current)} from ${blue(registry)}`}</FlowLine>}
           tail={`Update available · ${blue(latest)}`}
           tailVariant="warn"
         />,
@@ -155,9 +146,7 @@ export default class Update extends BaseCommand {
         status="passed"
         variant="flow"
         pre={
-          <Text>
-            {` ${GLYPH_DIM_DOT} ${colors.dim(current)} → ${blue(latest)} via ${blue(registry)}`}
-          </Text>
+          <FlowLine>{`${colors.dim(current)} → ${blue(latest)} via ${blue(registry)}`}</FlowLine>
         }
         tail={`Updated to ${blue(latest)}.`}
       />,

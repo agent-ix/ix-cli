@@ -20,10 +20,9 @@ import {
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Info,
   Listing,
-  Text,
   blue,
   renderStatic,
 } from "@agent-ix/ix-ui-cli";
@@ -118,9 +117,7 @@ export async function runAuthResetUser(
       status="passed"
       variant="flow"
       pre={
-        <Text>
-          {` ${GLYPH_DIM_DOT} Resetting password for ${blue(resetResp.email)}`}
-        </Text>
+        <FlowLine>{`Resetting password for ${blue(resetResp.email)}`}</FlowLine>
       }
       tail="Password reset."
     >

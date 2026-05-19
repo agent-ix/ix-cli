@@ -1,10 +1,4 @@
-import {
-  GLYPH_DIM_DOT,
-  Listing,
-  Text,
-  blue,
-  renderStatic,
-} from "@agent-ix/ix-ui-cli";
+import { FlowLine, Listing, blue, renderStatic } from "@agent-ix/ix-ui-cli";
 import { removeTap } from "../../tap-config.js";
 import { invalidateCache } from "../../registry/cache.js";
 
@@ -17,7 +11,7 @@ export async function runTapRemove(url: string): Promise<void> {
         header="ix elements tap remove"
         status="passed"
         variant="flow"
-        pre={<Text>{` ${GLYPH_DIM_DOT} Removing tap ${blue(url)}`}</Text>}
+        pre={<FlowLine>{`Removing tap ${blue(url)}`}</FlowLine>}
         tail={`Removed tap ${blue(url)}.`}
       />,
     );

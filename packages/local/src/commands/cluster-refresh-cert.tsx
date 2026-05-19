@@ -5,10 +5,9 @@
  */
 
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Item,
   Listing,
-  Text,
   blue,
   renderStatic,
 } from "@agent-ix/ix-ui-cli";
@@ -73,9 +72,7 @@ export async function runClusterRefreshCert(
       status="passed"
       variant="flow"
       pre={
-        <Text>
-          {` ${GLYPH_DIM_DOT} ${refreshed ? "Re-issuing" : "Verifying"} ${blue(INGRESS_TLS_SECRET)} for ${blue(config.hosts.join(", "))}`}
-        </Text>
+        <FlowLine>{`${refreshed ? "Re-issuing" : "Verifying"} ${blue(INGRESS_TLS_SECRET)} for ${blue(config.hosts.join(", "))}`}</FlowLine>
       }
       tail={tail}
     >

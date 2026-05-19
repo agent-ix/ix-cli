@@ -5,10 +5,9 @@
 
 import { execa } from "execa";
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Item,
   Listing,
-  Text,
   blue,
   renderStatic,
 } from "@agent-ix/ix-ui-cli";
@@ -95,9 +94,7 @@ export async function runClusterStop(
       status="passed"
       variant="flow"
       pre={
-        <Text>
-          {` ${GLYPH_DIM_DOT} Stopping ${blue(String(rows.length))} node(s)`}
-        </Text>
+        <FlowLine>{`Stopping ${blue(String(rows.length))} node(s)`}</FlowLine>
       }
       tail={`Stopped ${rows.length} node(s) · data preserved.`}
     >

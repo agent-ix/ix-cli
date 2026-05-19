@@ -6,7 +6,7 @@ import {
   Note,
   Text,
   blue,
-  GLYPH_DIM_DOT,
+  FlowLine,
   render,
   renderStatic,
   useEffect,
@@ -186,9 +186,7 @@ export async function executeLocals(services: string[], action: "up" | "down") {
         status="passed"
         variant="flow"
         pre={
-          <Text>
-            {` ${GLYPH_DIM_DOT} ${action === "up" ? "Bringing up" : "Tearing down"} ${blue(targetLabel)}`}
-          </Text>
+          <FlowLine>{`${action === "up" ? "Bringing up" : "Tearing down"} ${blue(targetLabel)}`}</FlowLine>
         }
         tail={`${action === "up" ? "Started" : "Stopped"} ${targetLabel}.`}
       />,
@@ -511,9 +509,7 @@ export async function runRefresh(
   await runWithLiveListing<RefreshResult>({
     header,
     pre: (
-      <Text>
-        {` ${GLYPH_DIM_DOT} Refreshing helm charts from ${blue(config.helmChartRegistry)}`}
-      </Text>
+      <FlowLine>{`Refreshing helm charts from ${blue(config.helmChartRegistry)}`}</FlowLine>
     ),
     controller: async (emit) => {
       emit([{ name: STEP_TOKEN, description: "running" }]);

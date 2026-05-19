@@ -5,7 +5,7 @@
  * FR-022 — App Startup Display
  */
 
-import { Text, blue, colors, GLYPH_DIM_DOT } from "@agent-ix/ix-ui-cli";
+import { FlowLine, blue, colors } from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "../config.js";
 import type { Deployable } from "../discovery.js";
 import { PHASES, PHASE_LABELS, type Phase } from "../phases.js";
@@ -42,14 +42,12 @@ export async function runImageModeUp(
   const header = `ix local up · ${deployable.name}`;
   const preflight = (
     <>
-      <Text>
-        {` ${GLYPH_DIM_DOT} ${colors.dim("Loading Helm charts from")} ${blue(config.helmChartRegistry)}`}
-      </Text>
-      <Text>
-        {` ${GLYPH_DIM_DOT} ${colors.dim(
-          deployable.role === "app" ? "Starting App:" : "Starting Service:",
-        )} ${blue(deployable.name)}`}
-      </Text>
+      <FlowLine>{`${colors.dim("Loading Helm charts from")} ${blue(
+        config.helmChartRegistry,
+      )}`}</FlowLine>
+      <FlowLine>{`${colors.dim(
+        deployable.role === "app" ? "Starting App:" : "Starting Service:",
+      )} ${blue(deployable.name)}`}</FlowLine>
     </>
   );
 

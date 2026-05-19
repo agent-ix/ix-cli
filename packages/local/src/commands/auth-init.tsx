@@ -24,10 +24,9 @@ import {
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Info,
   Listing,
-  Text,
   blue,
   renderStatic,
 } from "@agent-ix/ix-ui-cli";
@@ -199,9 +198,7 @@ export async function runAuthInit(
       status="passed"
       variant="flow"
       pre={
-        <Text>
-          {` ${GLYPH_DIM_DOT} Bootstrapping admin in ${blue(IX_SYSTEM_NAMESPACE)}`}
-        </Text>
+        <FlowLine>{`Bootstrapping admin in ${blue(IX_SYSTEM_NAMESPACE)}`}</FlowLine>
       }
       tail="Admin account created."
     >

@@ -6,11 +6,10 @@
 
 import { execa } from "execa";
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Item,
   Listing,
   Note,
-  Text,
   blue,
   renderStatic,
 } from "@agent-ix/ix-ui-cli";
@@ -118,9 +117,7 @@ export async function runClusterStart(
       status="passed"
       variant="flow"
       pre={
-        <Text>
-          {` ${GLYPH_DIM_DOT} Starting ${blue(String(rows.length))} kind node(s)`}
-        </Text>
+        <FlowLine>{`Starting ${blue(String(rows.length))} kind node(s)`}</FlowLine>
       }
       tailVariant={apiReady ? undefined : "warn"}
       tail={

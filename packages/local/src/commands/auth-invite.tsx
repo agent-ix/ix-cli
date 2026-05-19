@@ -20,11 +20,10 @@ import {
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Info,
   Listing,
   Note,
-  Text,
   blue,
   renderStatic,
 } from "@agent-ix/ix-ui-cli";
@@ -166,9 +165,7 @@ export async function runAuthInvite(
       status="passed"
       variant="flow"
       pre={
-        <Text>
-          {` ${GLYPH_DIM_DOT} Creating invite for ${blue(inviteResp.email)}`}
-        </Text>
+        <FlowLine>{`Creating invite for ${blue(inviteResp.email)}`}</FlowLine>
       }
       tail="Invite created."
     >

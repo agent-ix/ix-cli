@@ -65,6 +65,7 @@ export function makeListingMock(extra: Record<string, unknown> = {}) {
   const Item = "Item" as unknown as React.FC;
   const Group = "Group" as unknown as React.FC;
   const Text = "Text" as unknown as React.FC;
+  const FlowLine = "FlowLine" as unknown as React.FC;
   const Box = "Box" as unknown as React.FC;
   const PhaseTable = "PhaseTable" as unknown as React.FC;
   const ConfirmPrompt = "ConfirmPrompt" as unknown as React.FC;
@@ -107,6 +108,7 @@ export function makeListingMock(extra: Record<string, unknown> = {}) {
     Item,
     Group,
     Text,
+    FlowLine,
     Box,
     PhaseTable,
     ConfirmPrompt,
@@ -114,6 +116,12 @@ export function makeListingMock(extra: Record<string, unknown> = {}) {
     renderStatic,
     render,
     useRenderResult: () => ({ exit: () => {}, setResult: () => {} }),
+    blue: (s: string) => s,
+    colors: {
+      dim: (s: string) => s,
+      cyan: (s: string) => s,
+      bold: (s: string) => s,
+    },
     __calls: calls,
     __reset: () => {
       calls.length = 0;

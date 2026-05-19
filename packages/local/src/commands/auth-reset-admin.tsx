@@ -19,7 +19,7 @@ import {
   IX_SYSTEM_NAMESPACE,
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
-import { GLYPH_DIM_DOT, Info, Text, blue } from "@agent-ix/ix-ui-cli";
+import { FlowLine, Info, blue } from "@agent-ix/ix-ui-cli";
 import { runWithLiveListing } from "../live-listing-runner.js";
 
 function buildInitArgv(email: string): string[] {
@@ -90,7 +90,7 @@ function diagnoseExecError(err: KubectlExecError): string {
   if (err.exitCode === 5) {
     try {
       const env = JSON.parse(stderr) as AmbiguousAdminEnvelope;
-      const list = (env.candidates ?? []).map((c) => `  • ${c}`).join("\n");
+      const list = (env.candidates ?? []).map((c) => `• ${c}`).join("\n");
       return `Multiple active admins. Use \`ix local auth reset-admin --user <email>\` to disambiguate:\n${list}`;
     } catch {
       return `Multiple active admins; pass --user <email>. Identity output: ${stderr}`;
@@ -114,9 +114,7 @@ export async function runAuthResetAdmin(
   await runWithLiveListing<ResetResponse>({
     header: HEADER,
     pre: (
-      <Text>
-        {` ${GLYPH_DIM_DOT} Resetting admin in ${blue(IX_SYSTEM_NAMESPACE)}`}
-      </Text>
+      <FlowLine>{`Resetting admin in ${blue(IX_SYSTEM_NAMESPACE)}`}</FlowLine>
     ),
     controller: async () => {
       let resp: ResetResponse;

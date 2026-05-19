@@ -20,11 +20,10 @@
 
 import type React from "react";
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Listing,
   Note,
   PasswordPrompt,
-  Text,
   TextPrompt,
   blue,
   render,
@@ -108,9 +107,7 @@ async function defaultPromptToken(
       status="passed"
       variant="flow"
       pre={
-        <Text>
-          {` ${GLYPH_DIM_DOT} Storing Cloudflare tunnel token via ${blue(activeBackend)}`}
-        </Text>
+        <FlowLine>{`Storing Cloudflare tunnel token via ${blue(activeBackend)}`}</FlowLine>
       }
       tail={`Token will be stored via 'ix secrets' (active backend = ${blue(activeBackend)}).`}
     >

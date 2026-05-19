@@ -87,11 +87,8 @@ export async function runClusterUp(
     return;
   }
 
-  process.stdout.write("\n");
-
   // Each runImageModeUp call frames its own display (PhaseTable or Listr).
   for (let i = 0; i < deploySet.length; i++) {
-    if (i > 0) process.stdout.write("\n");
     await runImageModeUp(deploySet[i], config, null, undefined, {});
   }
 }

@@ -1,4 +1,4 @@
-import { Text, blue, colors, GLYPH_DIM_DOT } from "@agent-ix/ix-ui-cli";
+import { FlowLine, blue, colors } from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "../config.js";
 import { renderPhaseTableRun } from "../phase-table-runner.js";
 import {
@@ -40,14 +40,12 @@ export async function runSourceModeUp(
       phaseLabels: SOURCE_PHASE_LABELS,
       preflight: (
         <>
-          <Text>
-            {` ${GLYPH_DIM_DOT} ${colors.dim("Loading Helm charts from")} ${blue(config.helmChartRegistry)}`}
-          </Text>
-          <Text>
-            {` ${GLYPH_DIM_DOT} ${colors.dim(
-              plan.installs.length > 1 ? "Starting App:" : "Starting Service:",
-            )} ${blue(services.join(", "))}`}
-          </Text>
+          <FlowLine>{`${colors.dim("Loading Helm charts from")} ${blue(
+            config.helmChartRegistry,
+          )}`}</FlowLine>
+          <FlowLine>{`${colors.dim(
+            plan.installs.length > 1 ? "Starting App:" : "Starting Service:",
+          )} ${blue(services.join(", "))}`}</FlowLine>
         </>
       ),
       initialServices: initialSourceRows(plan.installs),

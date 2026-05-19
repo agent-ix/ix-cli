@@ -15,11 +15,10 @@
 
 import type React from "react";
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Listing,
   Note,
   PasswordPrompt,
-  Text,
   blue,
   render,
   renderStatic,
@@ -62,9 +61,7 @@ async function promptForToken(activeBackend: string): Promise<string | null> {
       status="passed"
       variant="flow"
       pre={
-        <Text>
-          {` ${GLYPH_DIM_DOT} Storing GHCR token via ${blue(activeBackend)}`}
-        </Text>
+        <FlowLine>{`Storing GHCR token via ${blue(activeBackend)}`}</FlowLine>
       }
       tail={`The token will be stored via 'ix secrets' (active backend = ${blue(activeBackend)}).`}
     >

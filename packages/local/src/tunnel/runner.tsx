@@ -7,11 +7,10 @@
  */
 
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Item,
   Listing,
   Note,
-  Text,
   blue,
   renderStatic,
 } from "@agent-ix/ix-ui-cli";
@@ -53,9 +52,7 @@ export async function runTunnelUpCommand(): Promise<void> {
         status="passed"
         variant="flow"
         pre={
-          <Text>
-            {` ${GLYPH_DIM_DOT} Installing cloudflared in ${blue(TUNNEL_NAMESPACE)}`}
-          </Text>
+          <FlowLine>{`Installing cloudflared in ${blue(TUNNEL_NAMESPACE)}`}</FlowLine>
         }
         tail={
           result.installed
@@ -143,9 +140,7 @@ async function reconcileExposedReleases(): Promise<void> {
       variant={anyFailed ? undefined : "flow"}
       pre={
         anyFailed ? undefined : (
-          <Text>
-            {` ${GLYPH_DIM_DOT} Reconciling ${blue(String(rows.length))} exposed release(s)`}
-          </Text>
+          <FlowLine>{`Reconciling ${blue(String(rows.length))} exposed release(s)`}</FlowLine>
         )
       }
       tailVariant={anyFailed ? "error" : undefined}
@@ -171,9 +166,7 @@ export async function runTunnelDownCommand(): Promise<void> {
         status="passed"
         variant="flow"
         pre={
-          <Text>
-            {` ${GLYPH_DIM_DOT} Removing cloudflared from ${blue(TUNNEL_NAMESPACE)}`}
-          </Text>
+          <FlowLine>{`Removing cloudflared from ${blue(TUNNEL_NAMESPACE)}`}</FlowLine>
         }
         tail="Tunnel torn down (idempotent)."
       />,
@@ -254,9 +247,7 @@ async function renderExposeResult(
       status="passed"
       variant="flow"
       pre={
-        <Text>
-          {` ${GLYPH_DIM_DOT} Exposing ${blue(result.release)} at ${blue(tailHost)}`}
-        </Text>
+        <FlowLine>{`Exposing ${blue(result.release)} at ${blue(tailHost)}`}</FlowLine>
       }
       tail={`Tunnel-routed at ${blue(`https://${tailHost}`)}`}
     >
@@ -332,9 +323,7 @@ export async function runTunnelDomainCommand(
         header={HEADER_DOMAIN}
         status="passed"
         variant="flow"
-        pre={
-          <Text>{` ${GLYPH_DIM_DOT} ${blue(before)} → ${blue(after)}`}</Text>
-        }
+        pre={<FlowLine>{`${blue(before)} → ${blue(after)}`}</FlowLine>}
         tail={
           before === after
             ? `Unchanged · base domain is ${blue(after)}.`
@@ -378,9 +367,7 @@ export async function runTunnelUnexposeCommand(appName: string): Promise<void> {
         header={HEADER_UNEXPOSE}
         status="passed"
         variant="flow"
-        pre={
-          <Text>{` ${GLYPH_DIM_DOT} Unexposing ${blue(result.release)}`}</Text>
-        }
+        pre={<FlowLine>{`Unexposing ${blue(result.release)}`}</FlowLine>}
         tail={`Removed *.${tunnelCfg.baseDomain} hosts from ${blue(result.release)}.`}
       >
         <Item name="release" description={result.release} />

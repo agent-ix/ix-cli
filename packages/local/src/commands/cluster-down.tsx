@@ -7,9 +7,8 @@ import type React from "react";
 import { execa } from "execa";
 import {
   ConfirmPrompt,
-  GLYPH_DIM_DOT,
+  FlowLine,
   Listing,
-  Text,
   TextPrompt,
   blue,
   render,
@@ -179,9 +178,7 @@ export async function runClusterDown(
       header={HEADER}
       status="passed"
       variant="flow"
-      pre={
-        <Text>{` ${GLYPH_DIM_DOT} Deleting cluster ${blue(clusterName)}`}</Text>
-      }
+      pre={<FlowLine>{`Deleting cluster ${blue(clusterName)}`}</FlowLine>}
       tail={`Cluster ${blue(clusterName)} deleted.`}
     />,
   );

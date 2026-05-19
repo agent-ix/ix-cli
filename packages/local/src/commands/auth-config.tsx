@@ -10,11 +10,10 @@ import type { IxConfig } from "../config.js";
 import { IX_AUTH_NAMESPACE } from "./auth-identity.js";
 import { buildSecretManifest as buildContractSecretManifest } from "../local-secrets.js";
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Item,
   Listing,
   Note,
-  Text,
   blue,
   renderStatic,
 } from "@agent-ix/ix-ui-cli";
@@ -232,9 +231,7 @@ export async function runAuthConfigEmailEnable(
         status="passed"
         variant="flow"
         pre={
-          <Text>
-            {` ${GLYPH_DIM_DOT} Enabling email login via ${blue(opts.smtpHost)}`}
-          </Text>
+          <FlowLine>{`Enabling email login via ${blue(opts.smtpHost)}`}</FlowLine>
         }
         tail="Email login enabled."
       />,
@@ -268,7 +265,7 @@ export async function runAuthConfigEmailDisable(
         header={header}
         status="passed"
         variant="flow"
-        pre={<Text>{` ${GLYPH_DIM_DOT} Disabling email login`}</Text>}
+        pre={<FlowLine>{`Disabling email login`}</FlowLine>}
         tail="Email login disabled."
       />,
     );
@@ -324,9 +321,7 @@ export async function runAuthConfigEmailTest(
         header={header}
         status="passed"
         variant="flow"
-        pre={
-          <Text>{` ${GLYPH_DIM_DOT} Sending test email to ${blue(to)}`}</Text>
-        }
+        pre={<FlowLine>{`Sending test email to ${blue(to)}`}</FlowLine>}
         tail={`Sent · check ${blue(to)}.`}
       />,
     );
@@ -383,9 +378,7 @@ export async function runAuthConfigPasswordResetSet(
         status="passed"
         variant="flow"
         pre={
-          <Text>
-            {` ${GLYPH_DIM_DOT} Updating password-reset mode to ${blue(mode)}`}
-          </Text>
+          <FlowLine>{`Updating password-reset mode to ${blue(mode)}`}</FlowLine>
         }
         tail={`Password reset mode set to ${blue(mode)}.`}
       />,
@@ -540,9 +533,7 @@ export async function runAuthConfigSocialAdd(
         status="passed"
         variant="flow"
         pre={
-          <Text>
-            {` ${GLYPH_DIM_DOT} Adding ${blue(id)} (${opts.type}) provider`}
-          </Text>
+          <FlowLine>{`Adding ${blue(id)} (${opts.type}) provider`}</FlowLine>
         }
         tail={`Added social provider ${blue(id)}.`}
       />,
@@ -588,7 +579,7 @@ export async function runAuthConfigSocialRemove(
         header={header}
         status="passed"
         variant="flow"
-        pre={<Text>{` ${GLYPH_DIM_DOT} Removing ${blue(id)}`}</Text>}
+        pre={<FlowLine>{`Removing ${blue(id)}`}</FlowLine>}
         tail={`Removed social provider ${blue(id)}.`}
       />,
     );
@@ -717,9 +708,7 @@ export async function runAuthConfigRegistrationSet(
         status="passed"
         variant="flow"
         pre={
-          <Text>
-            {` ${GLYPH_DIM_DOT} Updating registration mode to ${blue(mode)}`}
-          </Text>
+          <FlowLine>{`Updating registration mode to ${blue(mode)}`}</FlowLine>
         }
         tail={`Registration mode set to ${blue(mode)}.`}
       />,

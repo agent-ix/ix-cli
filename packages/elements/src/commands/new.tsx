@@ -1,10 +1,4 @@
-import {
-  GLYPH_DIM_DOT,
-  Listing,
-  Note,
-  Text,
-  renderStatic,
-} from "@agent-ix/ix-ui-cli";
+import { FlowLine, Listing, Note, renderStatic } from "@agent-ix/ix-ui-cli";
 
 export async function runElementsNew(_name: string): Promise<void> {
   // FR-013: authoring a new element type (spec + cookiecutter scaffold)
@@ -14,7 +8,7 @@ export async function runElementsNew(_name: string): Promise<void> {
       header="ix elements new"
       status="passed"
       variant="flow"
-      pre={<Text>{` ${GLYPH_DIM_DOT} Authoring a new element type`}</Text>}
+      pre={<FlowLine>{`Authoring a new element type`}</FlowLine>}
       tail="Not yet implemented — see manual steps above."
       tailVariant="warn"
     >

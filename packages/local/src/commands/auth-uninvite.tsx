@@ -12,10 +12,9 @@ import {
   IX_AUTH_NAMESPACE,
 } from "./auth-identity.js";
 import {
-  GLYPH_DIM_DOT,
+  FlowLine,
   Info,
   Listing,
-  Text,
   blue,
   renderStatic,
 } from "@agent-ix/ix-ui-cli";
@@ -90,11 +89,7 @@ export async function runAuthUninvite(
       header="ix local auth uninvite"
       status="passed"
       variant="flow"
-      pre={
-        <Text>
-          {` ${GLYPH_DIM_DOT} Revoking invites for ${blue(resp.email)}`}
-        </Text>
-      }
+      pre={<FlowLine>{`Revoking invites for ${blue(resp.email)}`}</FlowLine>}
       tail={
         resp.revoked > 0
           ? `Revoked ${resp.revoked} invite(s) for ${blue(resp.email)}.`
