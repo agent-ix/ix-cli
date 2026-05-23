@@ -49,7 +49,36 @@ treated as new.
 
 ```mermaid
 sequenceDiagram
-    participant TODO
-    TODO->>TODO: describe the workflow
+    actor User
+    participant CLI as ix local refresh
+    participant Refresh as runRefresh
+    participant Cache as registry cache (~/.cache/ix)
+    participant Loader as loadRegistry
+    participant Listing as Listing (Listing.item / .success / .error)
+
+    User->>CLI: ix local refresh
+    CLI->>Refresh: runRefresh(config)
+    Refresh->>Cache: read prior snapshot (org + Deployable[] + versions)
+    alt cache absent / malformed / org mismatch
+        Cache-->>Refresh: ∅ → treat every fresh entry as "new"
+    else cache valid
+        Cache-->>Refresh: Map<name, oldVersion>
+    end
+    Refresh->>Loader: loadRegistry({ refresh: true })
+    Loader-->>Refresh: fresh Deployable[]
+    Refresh->>Refresh: diff by chart name (changed | new | unchanged)
+    loop for each changed/new chart
+        alt changed
+            Refresh->>Listing: Listing.item("<role>:<displayName> <old> -> <new>")
+        else new
+            Refresh->>Listing: Listing.item("<role>:<displayName> (new) <new>")
+        end
+    end
+    alt rows == 0
+        Refresh->>Listing: success(...) only — no item() calls (FR-034-AC-5)
+    else rows > 0
+        Refresh->>Listing: success(...)
+    end
+    Listing-->>User: rendered output
 ```
 

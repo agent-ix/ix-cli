@@ -45,7 +45,50 @@ The bare `catch {}` at `apps/ix/src/commands/local/halt.ts:28` is replaced with 
 
 ```mermaid
 sequenceDiagram
-    participant TODO
-    TODO->>TODO: describe the workflow
+    actor User
+    participant CLI as ix local halt all
+    participant Down as runDown
+    participant Registry as loadRegistry
+    participant Expand as defaultExpandApp / findDeployable
+    participant UI as Listing + ConfirmPrompt
+    participant Helm as helm
+    participant Kubectl as kubectl
+
+    User->>CLI: ix local halt all [--yes]
+    CLI->>Down: runDown(["all"], opts)
+    alt opts contains "all" + named service
+        Down-->>User: throw mixing error
+    end
+    Down->>Registry: loadRegistry(config)
+    Registry-->>Down: Deployable[]
+    loop for each deployable (dedup via seen Set)
+        alt role === "app"
+            Down->>Expand: defaultExpandApp(deployable, config)
+            Expand-->>Down: (release, namespace) pairs
+        else
+            Down->>Expand: findDeployable(registry, name)
+            Expand-->>Down: single (release, namespace)
+        end
+    end
+    Down->>UI: Listing(header="ix local halt · all", rows = (release, namespace))
+    alt !opts.yes
+        Down->>UI: ConfirmPrompt("Halt all listed releases?", default=false)
+        UI-->>Down: false | cancelled
+        alt declined
+            Down->>UI: Listing(cancelled)
+            Down-->>User: return (no helm/kubectl invoked)
+        end
+    end
+    loop for each resolved release
+        Down->>Helm: helm uninstall <release> -n <namespace>
+        Helm-->>Down: ok
+    end
+    loop for each distinct namespace touched
+        Down->>Kubectl: kubectl delete pvc --all -n <ns>
+        Kubectl-->>Down: deleted
+    end
+    Down->>Kubectl: patch Released PVs (clear claimRef)
+    Kubectl-->>Down: patched
+    Down-->>User: Listing(passed)
 ```
 

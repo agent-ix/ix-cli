@@ -44,7 +44,47 @@ Two new commands extend the `ix local cluster` subcommand group (FR-004): `stop`
 
 ```mermaid
 sequenceDiagram
-    participant TODO
-    TODO->>TODO: describe the workflow
+    actor User
+    participant CLI as ix local cluster stop|start
+    participant Stop as runClusterStop
+    participant Start as runClusterStart
+    participant Kind as kind get nodes
+    participant Docker as docker stop|start
+    participant Kubectl as kubectl get ns
+    participant UI as Listing
+
+    User->>CLI: ix local cluster stop
+    CLI->>Stop: runClusterStop(config, opts, deps)
+    Stop->>Kind: kind get nodes --name <clusterName>
+    alt no cluster
+        Stop->>UI: Listing(failed, "run ix local init")
+        Stop-->>User: exit non-zero
+    end
+    Kind-->>Stop: node container names
+    loop for each node container
+        Stop->>Docker: docker stop <container>
+        Docker-->>Stop: stopped | already-stopped (idempotent)
+    end
+    Stop->>UI: Listing rows = (node, state)
+    UI-->>User: final state
+
+    User->>CLI: ix local cluster start
+    CLI->>Start: runClusterStart(config, opts, deps)
+    Start->>Kind: kind get nodes --name <clusterName>
+    Kind-->>Start: node container names (else fail like stop)
+    loop for each node container
+        Start->>Docker: docker start <container>
+        Docker-->>Start: started | already-running
+    end
+    loop poll (interval=2s, timeout=60s)
+        Start->>Kubectl: kubectl get ns
+        Kubectl-->>Start: ok | refused
+    end
+    alt API reachable in window
+        Start->>UI: Listing(passed, rows=(node, state))
+    else timeout
+        Start->>UI: Listing(warn, "API not reachable yet; containers running")
+    end
+    UI-->>User: final state
 ```
 

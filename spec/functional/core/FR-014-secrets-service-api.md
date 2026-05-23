@@ -67,5 +67,21 @@ type SecretId = `${string}.${string}`;   // "<plugin-id>.<secret-name>"
 
 ## Endpoint
 
-> TODO: document the endpoint as a `| Method | Path | Auth | Description |` table.
+In-process TypeScript API exposed by `@agent-ix/ix-cli-core/secrets`. There is
+no HTTP surface — `SecretsService` brokers between the resolved active backend
+(`keyring`, `age-file`, or test-only `memory`) and the registered secret
+declarations from FR-013. Every method validates `SecretId` against
+`^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$` and throws `InvalidSecretIdError` on
+mismatch (FR-014-AC-8).
+
+| Symbol | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `new SecretsService` | `(opts?: { mode?: SecretsBackendMode; backends?: Map<string, SecretsBackend>; env?: Record<string,string\|undefined> }) => SecretsService` | instance | `mode` defaults to `"auto"` (keyring → age-file probe order). Pinned `"keyring"` with a failing probe throws `KeyringUnavailableError` on first use (NFR-006-AC-5); pinned `"age-file"` falls through to backend.get. |
+| `SecretsService.get` | `(id: SecretId) => Promise<string \| null>` | secret value or `null` | Resolution order: env var declared by `SecretDeclaration.envVar` → active backend → `null`. Empty/whitespace env values are treated as unset. Never logs or rethrows the value. |
+| `SecretsService.set` | `(id: SecretId, value: string) => Promise<void>` | `void` | Writes to the active backend. Throws `SecretBackendImmutableError` if the env shadow (`envVar`) is currently set (FR-014-AC-6). |
+| `SecretsService.delete` | `(id: SecretId) => Promise<void>` | `void` | Deletes from the active backend; env-shadowed secrets remain resolvable via env. |
+| `SecretsService.which` | `(id: SecretId) => Promise<'env' \| 'keyring' \| 'age-file' \| 'unset' \| string>` | source | Reports the source that would satisfy a `get` right now. Returns `"env"` whenever the bound env var is set, regardless of backend state (FR-019-AC-3). |
+| `SecretsService.list` | `() => Promise<Array<{ id; backend; source; description }>>` | snapshot | All registered secrets with their current `which()` source. Never includes values (FR-019-AC-1). Sorted by id. |
+| `SecretsService.activeBackend` | `() => Promise<SecretsBackend>` | adapter | Forces probe-and-select if not yet performed; throws `KeyringUnavailableError` when no backend is selectable. |
+| `SecretsService.assertRegistered` (static) | `(id: string) => void` | `void` | Throws `UnknownSecretError` with the sorted list of known ids if `id` is not registered. Used at command boundaries (FR-019-AC-5). |
 

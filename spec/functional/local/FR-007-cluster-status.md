@@ -34,7 +34,33 @@ relationships:
 
 ```mermaid
 sequenceDiagram
-    participant TODO
-    TODO->>TODO: describe the workflow
+    actor User
+    participant CLI as ix local cluster status
+    participant Status as runClusterStatus
+    participant Kubectl as kubectl
+    participant NodeTable as cli-table3 (nodes)
+    participant PodTable as cli-table3 (unhealthy)
+    participant UI as Listing / outroSuccess / outroError
+
+    User->>CLI: ix local cluster status
+    CLI->>Status: runClusterStatus()
+    Status->>Kubectl: kubectl get nodes -o json
+    alt kubectl error
+        Status->>UI: Listing(failed, "Cannot reach cluster")
+        Status-->>User: throw "kubectl get nodes failed"
+    end
+    Kubectl-->>Status: nodes JSON
+    Status->>NodeTable: rows(NAME, ROLE, STATUS, AGE) coloured via picocolors
+    NodeTable-->>User: print
+    Status->>Kubectl: kubectl get pods -A -o json
+    Kubectl-->>Status: pods JSON
+    Status->>Status: filter where phase ∉ {Running, Succeeded}
+    alt all healthy
+        Status->>UI: outroSuccess("All pods healthy.")
+    else unhealthy pods present
+        Status->>PodTable: rows(NAMESPACE, NAME, PHASE, RESTARTS)
+        PodTable-->>User: print
+    end
+    Status-->>User: return (no cluster state mutated)
 ```
 

@@ -58,7 +58,27 @@ has cached layers from prior source-mode deploys.
 
 ```mermaid
 sequenceDiagram
-    participant TODO
-    TODO->>TODO: describe the workflow
+    actor User
+    participant CLI as ix local up <svc>
+    participant ImageUp as runImageModeUp
+    participant Creds as resolveGhcrToken
+    participant Ensure as ensureGhcrCredsInNamespace
+    participant Kubectl as kubectl
+    participant Helm as helm
+
+    User->>CLI: ix local up <svc>  (image mode, no --from-source)
+    CLI->>ImageUp: runImageModeUp(deployable, config, ...)
+    ImageUp->>Creds: resolveGhcrToken()  (same chain as helm registry login)
+    Creds-->>ImageUp: token
+    ImageUp->>ImageUp: collect distinct install namespaces from planned releases
+    loop for each distinct namespace
+        ImageUp->>Ensure: ensureGhcrCredsInNamespace(namespace, token, "_token")
+        Ensure->>Kubectl: kubectl apply -f -  (Secret kubernetes.io/dockerconfigjson "ghcr-creds")
+        Kubectl-->>Ensure: applied (idempotent — no churn when unchanged)
+        Ensure-->>ImageUp: ok
+    end
+    ImageUp->>Helm: helm pull / helm upgrade --install
+    Helm-->>ImageUp: release applied; kubelet pulls images using ghcr-creds
+    ImageUp-->>User: PhaseTable: pull → secrets → install → ready
 ```
 

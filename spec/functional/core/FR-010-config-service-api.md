@@ -80,5 +80,18 @@ The placement difference is the only special case in `ConfigService`; isolation,
 
 ## Endpoint
 
-> TODO: document the endpoint as a `| Method | Path | Auth | Description |` table.
+In-process TypeScript API exposed by `@agent-ix/ix-cli-core` (no HTTP surface).
+The only public entry point is the static `ConfigService.forPlugin` factory; the
+returned `PluginConfig<T>` object exposes the read/write methods. Errors are
+thrown as typed subclasses of `ConfigError` (`ConfigSchemaError`,
+`ConfigParseError`, `ConfigWriteError`, `ConfigSymlinkRefusedError`).
+
+| Symbol | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `ConfigService.forPlugin` | `<S extends ZodRawShape>(pluginId: string, schema: ZodObject<S>, opts?: ForPluginOptions) => PluginConfig<z.infer<typeof schema>>` | `PluginConfig<T>` | Returns a typed accessor bound to `pluginId`. Auto-registers the plugin in the global registry for `doctor()`. Reserved id `core` resolves to `~/.config/ix/config.yaml`; any other id resolves to `~/.config/ix/config.d/<id>.yaml`. |
+| `PluginConfig.get` | `() => T` | `T` | Reads env → file → schema defaults (FR-012). Parse/validation failures are recorded as incidents and defaults are returned; never throws (FR-011-AC-1). |
+| `PluginConfig.set` | `(partial: Partial<T>) => void` | `void` | Deep-merges `partial` into current on-disk content (arrays replace wholesale), validates against the strict schema, then atomically writes via temp+rename with mode `0o600`. Throws `ConfigSchemaError` on validation failure, `ConfigWriteError` on `EACCES`/`EROFS`/`ENOSPC`, `ConfigSymlinkRefusedError` if the target is a symlink. Serialized under the per-file advisory lock (FR-011-AC-4). |
+| `PluginConfig.replace` | `(value: T) => void` | `void` | Same atomic-write + locking as `set`, but writes `value` verbatim — absent keys are removed. Use to delete map entries. |
+| `PluginConfig.reset` | `() => void` | `void` | `unlink` the plugin's file (`ENOENT` is a no-op). Next `get()` returns schema defaults. |
+| `PluginConfig.filePath` | `() => string` | `string` | Absolute path of the plugin's config file (used by `ix config edit`). |
 

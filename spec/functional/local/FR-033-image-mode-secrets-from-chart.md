@@ -108,7 +108,41 @@ required Secret but whose published chart artifact omits the corresponding
 
 ```mermaid
 sequenceDiagram
-    participant TODO
-    TODO->>TODO: describe the workflow
+    actor User
+    participant CLI as ix local up <target>
+    participant ImageUp as runImageModeUp
+    participant Helm as helm
+    participant Tar as tar -xzf
+    participant Loader as loadSecretContract / loadSecretContractFromTgz
+    participant Kubectl as kubectl
+
+    User->>CLI: ix local up <target>
+    CLI->>ImageUp: runImageModeUp(deployable, config, ...)
+    ImageUp->>Helm: helm pull <chart-or-umbrella-oci-ref> -d <tmpDir>
+    Helm-->>ImageUp: <tmpDir>/<chart>.tgz
+    alt role === "app" (umbrella)
+        ImageUp->>Tar: extract umbrella .tgz → <tmpDir>/<umbrella>/
+        Tar-->>ImageUp: <umbrella>/charts/<sub>/ or <umbrella>/charts/<sub>-<ver>.tgz
+        loop for each bundled subchart
+            alt subchart is a directory
+                ImageUp->>Loader: loadSecretContract(<umbrella>/charts/<sub>/)
+            else subchart is a .tgz
+                ImageUp->>Loader: loadSecretContractFromTgz(<sub>.tgz, <sub>)
+                Loader->>Tar: extract <sub>.tgz to second tmpDir
+                Tar-->>Loader: <sub>/ContractDir
+                Loader->>Loader: loadSecretContract(extracted dir)
+            end
+            Loader-->>ImageUp: SecretContract | null (graceful skip if absent)
+        end
+    else single-service
+        ImageUp->>Loader: loadSecretContractFromTgz(<chart>.tgz, <chartName>)
+        Loader-->>ImageUp: SecretContract | null
+    end
+    ImageUp->>Kubectl: apply rendered Secrets per subchart (secrets phase, parallel)
+    Kubectl-->>ImageUp: ok / done
+    ImageUp->>Helm: helm upgrade --install ... (uses local <chart>.tgz path; no second OCI fetch)
+    Helm-->>ImageUp: release applied
+    ImageUp->>ImageUp: finally → rm -rf tmpDirs (FR-033-AC-8)
+    ImageUp-->>User: PhaseTable: pull → secrets → install → ready
 ```
 

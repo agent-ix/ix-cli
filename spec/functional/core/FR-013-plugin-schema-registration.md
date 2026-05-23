@@ -58,5 +58,17 @@ interface SecretDeclaration {
 
 ## Endpoint
 
-> TODO: document the endpoint as a `| Method | Path | Auth | Description |` table.
+In-process TypeScript API exposed by `@agent-ix/ix-cli-core/plugins`. Plugins
+publish a named export `ixSchema: IxPluginSchema` from their package main; the
+host's init hook walks the oclif plugin list and calls `registerPluginSchema`
+for each entry. All failure modes return a tagged `PluginSchemaRegistrationResult`
+union — the function never throws (per init-failure isolation in §Behavior).
+
+| Symbol | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `registerPluginSchema` | `(packageName: string, schema: IxPluginSchema) => PluginSchemaRegistrationResult` | `{ ok: true, kind: "registered" \| "idempotent", entry } \| { ok: false, kind: "invalid-package-name" \| "invalid-plugin-id" \| "non-strict-schema" \| "duplicate-registration", packageName, detail }` | Validates `packageName` is non-empty, derives `pluginId` from `schema.id` or a sanitized package name, enforces `^[a-z][a-z0-9-]*$` and Zod `.strict()`, wires `schema.config` into `registerPlugin` (FR-010) and `schema.secrets` into `registerSecretsForPlugin` (FR-014). First wins on duplicate id. |
+| `getRegisteredPluginSchema` | `(packageName: string) => RegisteredPluginSchema \| undefined` | entry or `undefined` | Lookup by package name. |
+| `listRegisteredPluginSchemas` | `() => RegisteredPluginSchema[]` | all entries | Used by `ix config doctor` and `ix --version --verbose` to surface registration outcomes. |
+| `IxPluginSchema` (shape) | `{ id?: string; config?: ZodObject<ZodRawShape>; secrets?: SecretDeclaration[]; env?: Record<string,string> }` | — | Convention export each plugin publishes as `ixSchema`. `config` MUST be `z.object({...}).strict()`. |
+| `SecretDeclaration` (shape) | `{ name: string; description: string; required?: boolean; envVar?: string }` | — | Registered globally as `<pluginId>.<name>`. `envVar`, when set, takes precedence over backend values in `SecretsService.get` (FR-014-AC-1). |
 

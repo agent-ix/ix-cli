@@ -143,7 +143,36 @@ updateRevision`).
 
 ```mermaid
 sequenceDiagram
-    participant TODO
-    TODO->>TODO: describe the workflow
+    actor User
+    participant CLI as ix local up <app>
+    participant ImageUp as runImageModeUp
+    participant Helm as helm
+    participant Secrets as loadSecretContractFromTgz / ensureGhcrCredsInNamespace
+    participant Kubectl as kubectl
+    participant Rollout as waitForRollout (per subchart)
+    participant Table as PhaseTable
+
+    User->>CLI: ix local up <app>
+    CLI->>ImageUp: runImageModeUp(deployable[role=app], config, ...)
+    ImageUp->>Table: render rows (one per declared subchart, phases pull→secrets→install→ready)
+    ImageUp->>Helm: helm pull <umbrella-oci-ref> (single)
+    Helm-->>ImageUp: umbrella .tgz on disk
+    Table-->>User: rows pull running → done together
+    ImageUp->>Secrets: per-subchart loadSecretContractFromTgz + ensureGhcrCredsInNamespace
+    Secrets->>Kubectl: kubectl apply -f - (ghcr-creds + secret contracts)
+    Kubectl-->>Secrets: applied
+    Table-->>User: secrets row → done (per subchart, parallel)
+    ImageUp->>Helm: helm upgrade --install <app> <umbrella-tgz> (single, no --wait)
+    Helm-->>ImageUp: release revision
+    par per subchart, gated by pools.kubectlWatch
+        ImageUp->>Rollout: waitForRollout(part-of=<subchart>)
+        Rollout->>Kubectl: kubectl rollout status / get pods
+        Kubectl-->>Rollout: ready/desired, container states
+        Rollout-->>Table: display.setPodStatus("0/N·init" | "1/1·settle" | "1/1")
+    end
+    ImageUp->>Helm: helm get manifest <app> -n <ns>
+    Helm-->>ImageUp: rendered manifest (Ingress hosts)
+    ImageUp->>Table: tailIngressUrls + tailIngressHosts (FR-031-AC-15)
+    Table-->>User: final frame
 ```
 

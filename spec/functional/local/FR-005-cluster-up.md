@@ -48,7 +48,27 @@ Deduplication is by app name. `skipApps` takes precedence over all other inclusi
 
 ```mermaid
 sequenceDiagram
-    participant TODO
-    TODO->>TODO: describe the workflow
+    actor User
+    participant CLI as ix local up
+    participant ClusterUp as runClusterUp
+    participant Init as runInitCluster
+    participant Registry as loadRegistry
+    participant Plan as computeEffectiveDeploySet
+    participant ImageUp as runImageModeUp
+
+    User->>CLI: ix local up [--include-tag ...] [--exclude-tag ...]
+    CLI->>ClusterUp: runClusterUp(config, clusterConfig, opts)
+    ClusterUp->>Init: runInitCluster(config, reconfigureCredentials)
+    Init-->>ClusterUp: kind + cert-manager + ingress ready
+    ClusterUp->>Registry: loadRegistry({ org, githubToken })
+    Registry-->>ClusterUp: Deployable[]
+    ClusterUp->>Plan: (registry, clusterConfig, overrideTags?)
+    Plan-->>ClusterUp: effective Deployable[] (tagMatched ∪ extraApps − skipApps)
+    loop for each Deployable in effective set
+        ClusterUp->>ImageUp: runImageModeUp(deployable, config, null, undefined, {})
+        ImageUp-->>ClusterUp: PhaseTable frames per subchart
+    end
+    ClusterUp-->>CLI: resolve
+    CLI-->>User: outroSuccess / outroError
 ```
 

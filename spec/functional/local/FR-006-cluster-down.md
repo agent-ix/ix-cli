@@ -42,7 +42,39 @@ relationships:
 
 ```mermaid
 sequenceDiagram
-    participant TODO
-    TODO->>TODO: describe the workflow
+    actor User
+    participant CLI as ix local cluster down
+    participant Down as runClusterDown
+    participant Confirm as ConfirmPrompt
+    participant NamePrompt as TextPrompt
+    participant Kind as kind CLI
+    participant UI as Listing
+
+    User->>CLI: ix local cluster down [--yes]
+    CLI->>Down: runClusterDown(config, { yes })
+    alt opts.yes !== true
+        Down->>Confirm: "Delete kind cluster '<name>'?" defaultValue=false
+        Confirm-->>Down: false | cancelled
+        alt declined
+            Down->>UI: Listing(status=passed, "Cancelled. Cluster not deleted.")
+            Down-->>User: return
+        end
+        Down->>NamePrompt: "Type the cluster name '<name>' to confirm"
+        NamePrompt-->>Down: "match" | "mismatch" | "cancelled"
+        alt not match
+            Down->>UI: Listing(status=failed|passed, mismatch/cancel tail)
+            Down-->>User: return
+        end
+    end
+    Down->>Kind: execa("kind", ["get", "clusters"])
+    Kind-->>Down: stdout (cluster list)
+    alt cluster absent
+        Down->>UI: Listing("Nothing to delete.")
+        Down-->>User: return
+    end
+    Down->>Kind: execa("kind", ["delete", "cluster", "--name", name], stdio=inherit)
+    Kind-->>Down: exit code
+    Down->>UI: Listing(passed) or Listing(failed) + rethrow
+    UI-->>User: final state
 ```
 

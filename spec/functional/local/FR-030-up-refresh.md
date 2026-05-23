@@ -53,7 +53,26 @@ umbrella `Chart.yaml`'s pinned subchart versions, or use `ix local refresh`
 
 ```mermaid
 sequenceDiagram
-    participant TODO
-    TODO->>TODO: describe the workflow
+    actor User
+    participant CLI as ix local up --refresh
+    participant RunUp as runUp
+    participant Source as runSourceModeUp
+    participant Heuristic as shouldDependencyUpdate(chartPath)
+    participant Helm as helm
+
+    User->>CLI: ix local up <svc> --from-source --refresh
+    CLI->>RunUp: runUp(services, { fromSource: true, refresh: true, ... })
+    RunUp->>Source: runSourceModeUp(services, config, tag, DEV_DIR, { refresh: true, ... })
+    loop for each LocalInstall planned
+        Source->>Heuristic: probe charts/<dep>/ and charts/<dep>-<ver>.tgz
+        Heuristic-->>Source: dependencyUpdate (bool)
+        Source->>Source: if opts.refresh → force dependencyUpdate = true (FR-030-AC-3)
+        Source->>Helm: helm dependency update <chartPath> (only when dependencyUpdate)
+        Helm-->>Source: subchart .tgz refreshed from OCI
+        Source->>Helm: helm upgrade --install <release> <chartPath> [--dependency-update]
+        Helm-->>Source: release applied
+    end
+    Source-->>RunUp: PhaseTable frames
+    RunUp-->>User: outroSuccess / outroError
 ```
 
