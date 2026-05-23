@@ -77,3 +77,8 @@ The placement difference is the only special case in `ConfigService`; isolation,
 - **FR-010-AC-8** *(temp file is a sibling)*: Temp files are created in the same directory as the target file (`<target>.tmp.<pid>.<rand>`). A test that mocks `os.tmpdir()` to a different volume confirms that no write path uses it for governed-file temp.
 - **FR-010-AC-9** *(orphan temp pruning)*: `ConfigService` prunes `<target>.tmp.*` siblings older than 30 seconds on the next `set()` for the same plugin id. Younger orphans are left alone (another writer may be mid-flight).
 - **FR-010-AC-10** *(`replace` semantics)*: `replace(value)` writes `value` verbatim — absent keys at any depth are removed from the on-disk content. Validates against the plugin's schema first; on schema failure throws `ConfigSchemaError` and does not modify the file. Same atomic-write + locking behavior as `set`. Used by callers that need to express deletions (e.g. removing an entry from a `Record<string, …>` map).
+
+## Endpoint
+
+> TODO: document the endpoint as a `| Method | Path | Auth | Description |` table.
+

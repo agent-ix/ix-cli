@@ -29,3 +29,12 @@ relationships:
 - **FR-007-AC-5**: Unhealthy pods are listed in a second table with NAMESPACE, NAME, PHASE, RESTARTS columns.
 - **FR-007-AC-6**: Failure of `kubectl get nodes` calls `outroError` and throws a descriptive error.
 - **FR-007-AC-7**: No cluster state is modified.
+
+## Workflow
+
+```mermaid
+sequenceDiagram
+    participant TODO
+    TODO->>TODO: describe the workflow
+```
+

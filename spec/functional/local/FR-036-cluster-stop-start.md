@@ -39,3 +39,12 @@ Two new commands extend the `ix local cluster` subcommand group (FR-004): `stop`
 - **FR-036-AC-5**: Both commands render a `<Listing>` reporting each node's resulting state.
 - **FR-036-AC-6**: Stop → start round trip preserves PVC data and Helm release state (verified by integration test re-reading a known PVC after start).
 - **FR-036-AC-7**: API-server reachability timeout on start renders a `warn` (not `failed`) listing, since the containers are running and the issue may be transient.
+
+## Workflow
+
+```mermaid
+sequenceDiagram
+    participant TODO
+    TODO->>TODO: describe the workflow
+```
+

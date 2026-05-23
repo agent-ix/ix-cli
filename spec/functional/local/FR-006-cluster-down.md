@@ -37,3 +37,12 @@ relationships:
 - **FR-006-AC-5**: Failure of `kind delete cluster` propagates the error after rendering a `failed` listing.
 - **FR-006-AC-6**: After the first confirm passes, a second prompt requires the user to retype the cluster name; mismatch aborts before any destructive call.
 - **FR-006-AC-7**: `--yes` bypasses both confirmation gates.
+
+## Workflow
+
+```mermaid
+sequenceDiagram
+    participant TODO
+    TODO->>TODO: describe the workflow
+```
+

@@ -43,3 +43,12 @@ Deduplication is by app name. `skipApps` takes precedence over all other inclusi
 - **FR-005-AC-5**: An app appearing in both tag-filter and `extraApps` is deployed exactly once.
 - **FR-005-AC-6**: The effective set is deterministic — same inputs always produce same ordered output.
 - **FR-005-AC-7**: Output uses `introCommand`/`outroSuccess`/`outroError` from `@agent-ix/ix-ui-cli` (NFR-001).
+
+## Workflow
+
+```mermaid
+sequenceDiagram
+    participant TODO
+    TODO->>TODO: describe the workflow
+```
+

@@ -64,3 +64,8 @@ type SecretId = `${string}.${string}`;   // "<plugin-id>.<secret-name>"
 - **FR-014-AC-6**: `set(...)` against a secret whose `envVar` binding is currently set in the environment throws `SecretBackendImmutableError`.
 - **FR-014-AC-7**: A test scan of compiled output and runtime logs SHALL detect zero occurrences of any secret value emitted by `SecretsService`.
 - **FR-014-AC-8**: Every public method receiving a `SecretId` validates it against `^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$`. Malformed ids (`"."`, `".x"`, `"x."`, `"A.b"`, `"a.b.c"`, `"a..b"`) throw `InvalidSecretIdError` naming the offending input (full input rendered, since it is, by definition, not a value).
+
+## Endpoint
+
+> TODO: document the endpoint as a `| Method | Path | Auth | Description |` table.
+

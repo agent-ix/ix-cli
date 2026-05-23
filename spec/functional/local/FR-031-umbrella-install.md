@@ -138,3 +138,12 @@ updateRevision`).
   `https://auth.luna.ix` under `◎ Ingress · luna.ix`.
 - **FR-031-AC-17**: If the rendered manifest contains no Ingress hosts,
   ix-cli SHALL NOT synthesize a fallback URL from `<release>.<domain>`.
+
+## Workflow
+
+```mermaid
+sequenceDiagram
+    participant TODO
+    TODO->>TODO: describe the workflow
+```
+

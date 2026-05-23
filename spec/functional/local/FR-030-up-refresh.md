@@ -48,3 +48,12 @@ umbrella `Chart.yaml`'s pinned subchart versions, or use `ix local refresh`
   `ix local up`.
 - **FR-030-AC-6**: `--refresh` does not change image-mode behavior — no edits
   to `up-image.ts` are required to satisfy this FR.
+
+## Workflow
+
+```mermaid
+sequenceDiagram
+    participant TODO
+    TODO->>TODO: describe the workflow
+```
+

@@ -40,3 +40,12 @@ The bare `catch {}` at `apps/ix/src/commands/local/halt.ts:28` is replaced with 
 - **FR-035-AC-6**: Mixing `"all"` with named services throws the existing mixing error.
 - **FR-035-AC-7**: After a successful image-mode `halt all`, no Helm releases remain in any namespace owned by ix-cli, all PVCs in those namespaces are deleted, and any `Released` PVs have had their `claimRef` cleared.
 - **FR-035-AC-8**: `apps/ix/src/commands/local/halt.ts` prints the error message before exiting non-zero on `runDown` failure (no bare `catch {}`).
+
+## Workflow
+
+```mermaid
+sequenceDiagram
+    participant TODO
+    TODO->>TODO: describe the workflow
+```
+

@@ -103,3 +103,12 @@ required Secret but whose published chart artifact omits the corresponding
   that would normally be materialized from `ix-local.secrets.yaml`, omission of
   that contract from the published chart artifact is an artifact defect, not a
   valid graceful-skip case.
+
+## Workflow
+
+```mermaid
+sequenceDiagram
+    participant TODO
+    TODO->>TODO: describe the workflow
+```
+

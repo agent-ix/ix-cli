@@ -53,3 +53,12 @@ has cached layers from prior source-mode deploys.
 - **FR-032-AC-6**: Source mode (`up-source.ts`) is unaffected — that path
   uses `make build` + `make kind-load` per subchart, which loads images
   directly into the kind node and bypasses ghcr.io entirely.
+
+## Workflow
+
+```mermaid
+sequenceDiagram
+    participant TODO
+    TODO->>TODO: describe the workflow
+```
+

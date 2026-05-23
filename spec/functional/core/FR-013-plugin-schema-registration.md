@@ -55,3 +55,8 @@ interface SecretDeclaration {
 - **FR-013-AC-5**: For every registration failure (AC-2/3/4), `ix config doctor` SHALL surface the failed plugin id, the failure reason (`non-strict-schema` / `duplicate-id` / `reserved-id-core`), and the plugin's discovery source (npm package name + version).
 - **FR-013-AC-6**: A `secretsSchema` entry with `envVar: "IX_FOO"` causes `SecretsService.get('<id>.foo')` to honor `IX_FOO` ahead of any persisted backend (per FR-014 resolution order).
 - **FR-013-AC-7** *(plugin id constraint)*: `IxPlugin.id` SHALL match the regex `^[a-z][a-z0-9-]*$` (lowercase ASCII, starts with a letter, letters/digits/hyphens only, length ≤ 64). The id is used as a filename component for `config.d/<id>.yaml` and `secrets.d/<id>.age`; this constraint prevents path-traversal characters (`/`, `..`, `\`), shell-special characters, and empty ids from ever reaching the filesystem. A registration whose `id` violates the regex is logged and skipped (per AC-2/3/4 init-failure isolation), with reason `invalid-plugin-id`.
+
+## Endpoint
+
+> TODO: document the endpoint as a `| Method | Path | Auth | Description |` table.
+

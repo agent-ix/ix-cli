@@ -44,3 +44,12 @@ treated as new.
   the command emits only the closing `success(...)` line.
 - **FR-034-AC-6**: Registry-discovery errors continue to propagate — the
   command logs `error(...)` and rethrows, unchanged from prior behavior.
+
+## Workflow
+
+```mermaid
+sequenceDiagram
+    participant TODO
+    TODO->>TODO: describe the workflow
+```
+
