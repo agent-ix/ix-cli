@@ -48,6 +48,16 @@ export default class LocalInit extends BaseCommand {
       if (!flags["skip-auth"]) {
         await runUp(["auth"]);
         await runAuthInit(config, undefined, { bootstrapIfMissing: false });
+        // FR-044 next-step hint: nudge the operator off cluster-admin onto
+        // the SA-scoped kubeconfig for ongoing operations.
+        this.log(
+          [
+            "",
+            "→ To stop using cluster-admin for ongoing operations:",
+            "    ix local auth kubeconfig issue --output ~/.kube/ix-local.yaml",
+            "    export KUBECONFIG=~/.kube/ix-local.yaml",
+          ].join("\n"),
+        );
       }
     } catch {
       this.exit(1);

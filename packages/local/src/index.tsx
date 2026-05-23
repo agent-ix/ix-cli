@@ -94,6 +94,16 @@ export { runAuthResetAdmin } from "./commands/auth-reset-admin.js";
 export { runAuthInvite } from "./commands/auth-invite.js";
 export { runAuthUninvite } from "./commands/auth-uninvite.js";
 export { runAuthResetUser } from "./commands/auth-reset-user.js";
+export { runAuthKubeconfigIssue } from "./commands/auth-kubeconfig.js";
+export { runAuthAcceptInvite } from "./commands/auth-accept-invite.js";
+export { runAuthRotatePassword } from "./commands/auth-rotate-password.js";
+export {
+  runAuthTenantList,
+  runAuthTenantAdd,
+  runAuthTenantSetDefault,
+  runAuthTenantRemove,
+} from "./commands/auth-tenant.js";
+export { runAuthCreateUser } from "./commands/auth-create-user.js";
 export {
   runAuthConfigEmailEnable,
   runAuthConfigEmailDisable,

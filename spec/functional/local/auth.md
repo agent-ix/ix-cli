@@ -49,6 +49,18 @@ If anything in this file disagrees with the auth or identity specs, the auth/ide
 | `ix local auth uninvite <email>` | auth/FR-008, identity/FR-018 §5a | `kubectl create --raw …/services/proxy/internal/users/uninvite` (kubeconfig-gated API server proxy) |
 | `ix local auth reset-user <email>` | auth/FR-009, identity/FR-020 §2.2 | `kubectl create --raw …/services/proxy/internal/users/reset` (kubeconfig-gated API server proxy) |
 | `ix local auth config …` | identity/FR-024 | `kubectl apply` on `ConfigMap/Secret` + rollout |
+| `ix local auth kubeconfig issue` | ix-cli/FR-044, identity/FR-034, identity/FR-035 | `kubectl get secret -n system ix-cli-admin-token` + `kubectl config view --raw --minify` + local atomic file write (mode 0600). No identity HTTP call. |
+| `ix local auth kubeconfig rotate` | ix-cli/FR-045, identity/FR-034 | `kubectl delete secret -n system ix-cli-admin-token` + poll for SA-token controller recreate. No identity HTTP call. |
+
+> **Note — Operator Privilege Lifecycle.** `kubeconfig issue` and
+> `kubeconfig rotate` implement Phase 3 and the revocation primitive of
+> the auth umbrella's **Operator Privilege Lifecycle** (auth/FR-008).
+> See that section and its recovery matrix for the end-to-end flow:
+> kind cluster-admin → `ix local up` → `ix local init` → `ix local auth
+> kubeconfig issue` → operator runs as scoped SA from then on. Token
+> revocation, lost-kubeconfig recovery, and lost-cluster-admin recovery
+> are all enumerated there; this file documents only the per-command
+> mechanism the CLI uses.
 
 ## Hard rule (security invariant)
 

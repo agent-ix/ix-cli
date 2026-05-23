@@ -30,6 +30,9 @@
       "local cluster": {
         "description": "Cluster lifecycle subcommands (down, stop, start, status)."
       },
+      "local auth kubeconfig": {
+        "description": "Issue operator-scoped kubeconfigs backed by the ix-cli-admin ServiceAccount."
+      },
       "elements": {
         "description": "Element discovery, scaffolding, and tap management."
       },

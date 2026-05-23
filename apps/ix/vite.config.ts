@@ -27,6 +27,22 @@ export default defineConfig({
         "commands/local/auth/uninvite": "src/commands/local/auth/uninvite.ts",
         "commands/local/auth/reset-user":
           "src/commands/local/auth/reset-user.ts",
+        "commands/local/auth/kubeconfig/issue":
+          "src/commands/local/auth/kubeconfig/issue.ts",
+        "commands/local/auth/accept-invite":
+          "src/commands/local/auth/accept-invite.ts",
+        "commands/local/auth/rotate-password":
+          "src/commands/local/auth/rotate-password.ts",
+        "commands/local/auth/create-user":
+          "src/commands/local/auth/create-user.ts",
+        "commands/local/auth/tenant/list":
+          "src/commands/local/auth/tenant/list.ts",
+        "commands/local/auth/tenant/add":
+          "src/commands/local/auth/tenant/add.ts",
+        "commands/local/auth/tenant/set-default":
+          "src/commands/local/auth/tenant/set-default.ts",
+        "commands/local/auth/tenant/remove":
+          "src/commands/local/auth/tenant/remove.ts",
         "commands/local/auth/config/email/enable":
           "src/commands/local/auth/config/email/enable.ts",
         "commands/local/auth/config/email/disable":

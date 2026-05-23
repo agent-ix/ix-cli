@@ -173,6 +173,41 @@ except urllib.error.HTTPError as e:
     print(json.dumps({"status": e.code, "body": parsed}))
 `;
 
+// Generalised script for non-default ports / methods / headers.
+const PROXY_SCRIPT_V2 = `
+import json
+import sys
+import urllib.error
+import urllib.request
+
+method = sys.argv[1]
+path = sys.argv[2]
+port = int(sys.argv[3])
+headers = json.loads(sys.argv[4])
+raw = sys.stdin.buffer.read()
+req = urllib.request.Request(
+    f"http://localhost:{port}{path}",
+    data=raw if raw else None,
+    method=method,
+    headers=headers,
+)
+try:
+    with urllib.request.urlopen(req, timeout=5) as r:
+        body = r.read().decode("utf-8")
+        try:
+            parsed = json.loads(body) if body else None
+        except Exception:
+            parsed = body
+        print(json.dumps({"status": r.status, "body": parsed}))
+except urllib.error.HTTPError as e:
+    body = e.read().decode("utf-8")
+    try:
+        parsed = json.loads(body) if body else None
+    except Exception:
+        parsed = body
+    print(json.dumps({"status": e.code, "body": parsed}))
+`;
+
 interface ProxyEnvelope<T> {
   status: number;
   body: T;
@@ -190,26 +225,64 @@ interface ProxyEnvelope<T> {
  * expect. Network/transport failures throw; HTTP errors (any non-2xx) are
  * returned as a normal envelope so callers can branch on status.
  */
+export interface KubectlRawOptions {
+  /** Target deployment in the namespace; defaults to "identity". */
+  deployment?: string;
+  /** Localhost port the in-pod service listens on; defaults to 8000. */
+  port?: number;
+  /** Additional HTTP headers to send (e.g. Authorization). */
+  headers?: Record<string, string>;
+  /**
+   * Form-encoded body. Mutually exclusive with the JSON body parameter; when
+   * set, the in-pod shim sends Content-Type: application/x-www-form-urlencoded.
+   */
+  form?: Record<string, string>;
+}
+
 export async function kubectlRaw<T>(
   namespace: string,
   path: string,
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   body?: unknown,
+  opts: KubectlRawOptions = {},
 ): Promise<KubectlRawResponse<T>> {
-  const input = body !== undefined ? JSON.stringify(body) : "";
+  const deployment = opts.deployment ?? "identity";
+  const port = opts.port ?? 8000;
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    ...(opts.headers ?? {}),
+  };
+  let input: string;
+  if (opts.form) {
+    headers["Content-Type"] = "application/x-www-form-urlencoded";
+    input = new URLSearchParams(opts.form).toString();
+  } else if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    input = JSON.stringify(body);
+  } else {
+    input = "";
+  }
+  // Build a parameterised proxy script that accepts headers + port via JSON
+  // stdin prelude. We keep the original script untouched for backward compat;
+  // the generalised script is used when extra options are set.
+  const generalised = !!opts.headers || !!opts.form || port !== 8000;
+  const script = generalised ? PROXY_SCRIPT_V2 : PROXY_SCRIPT;
   const args = [
     "exec",
     "-i",
     "-n",
     namespace,
-    "deployment/identity",
+    `deployment/${deployment}`,
     "--",
     "python",
     "-c",
-    PROXY_SCRIPT,
+    script,
     method,
     path,
   ];
+  if (generalised) {
+    args.push(String(port), JSON.stringify(headers));
+  }
   let result;
   try {
     result = await execa("kubectl", args, { input, all: false });
