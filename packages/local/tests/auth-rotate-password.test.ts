@@ -75,7 +75,7 @@ describe("runAuthRotatePassword — happy path", () => {
       unknown,
       { deployment?: string; form?: Record<string, string> },
     ];
-    expect(path1).toBe("/token");
+    expect(path1).toBe("/api/v1/token");
     expect(method1).toBe("POST");
     expect(body1).toBeUndefined();
     expect(opts1.deployment).toBe("auth-service");

@@ -163,7 +163,7 @@ export async function runAuthRotatePassword(
   try {
     const { status, body } = await _raw<TokenResponse | ErrorBody>(
       IX_AUTH_NAMESPACE,
-      "/token",
+      "/api/v1/token",
       "POST",
       undefined,
       {
