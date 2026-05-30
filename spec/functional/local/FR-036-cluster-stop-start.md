@@ -83,7 +83,7 @@ sequenceDiagram
     alt API reachable in window
         Start->>UI: Listing(passed, rows=(node, state))
     else timeout
-        Start->>UI: Listing(warn, "API not reachable yet; containers running")
+        Start->>UI: Listing(warn, "API not reachable yet, containers running")
     end
     UI-->>User: final state
 ```

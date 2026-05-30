@@ -134,7 +134,7 @@ sequenceDiagram
     end
     K8s-->>CLI: recreated Secret
     CLI->>K8s: (FR-044 path) get secret + config view
-    CLI-->>Op: wrote fresh kubeconfig; all prior scoped kubeconfigs are now invalid
+    CLI-->>Op: wrote fresh kubeconfig, all prior scoped kubeconfigs are now invalid
 ```
 
 ## Dependencies

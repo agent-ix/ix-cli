@@ -78,7 +78,7 @@ sequenceDiagram
         Ensure-->>ImageUp: ok
     end
     ImageUp->>Helm: helm pull / helm upgrade --install
-    Helm-->>ImageUp: release applied; kubelet pulls images using ghcr-creds
+    Helm-->>ImageUp: release applied, kubelet pulls images using ghcr-creds
     ImageUp-->>User: PhaseTable: pull → secrets → install → ready
 ```
 

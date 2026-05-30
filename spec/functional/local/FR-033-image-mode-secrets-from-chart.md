@@ -140,7 +140,7 @@ sequenceDiagram
     end
     ImageUp->>Kubectl: apply rendered Secrets per subchart (secrets phase, parallel)
     Kubectl-->>ImageUp: ok / done
-    ImageUp->>Helm: helm upgrade --install ... (uses local <chart>.tgz path; no second OCI fetch)
+    ImageUp->>Helm: helm upgrade --install ... (uses local <chart>.tgz path, no second OCI fetch)
     Helm-->>ImageUp: release applied
     ImageUp->>ImageUp: finally → rm -rf tmpDirs (FR-033-AC-8)
     ImageUp-->>User: PhaseTable: pull → secrets → install → ready
