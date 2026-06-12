@@ -2,7 +2,6 @@
 id: FR-016
 title: "Encrypted-File Fallback for Headless Environments"
 artifact_type: FR
-object: configuration
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-006"
     type: "implements"

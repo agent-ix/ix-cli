@@ -79,6 +79,19 @@ Cluster-targeting state (which cluster, kubeconfig context) lives in the `local`
 
 Other deferred core fields: proxy settings, default editor, default output format. These can be added as additive non-breaking schema changes in later versions.
 
+## Configuration
+
+| Name | Scope | Type | Default | Description |
+|---|---|---|---|---|
+| `logLevel` | runtime | enum (debug, info, warn, error) | `info` | Core log level; env binding `IX_LOG_LEVEL`. |
+| `secretsBackend` | runtime | enum (auto, keyring, age-file) | `auto` | Secrets backend selection; `auto` picks keyring when the FR-015 probe succeeds, age-file otherwise; env binding `IX_SECRETS_BACKEND`. |
+| `auth.serviceUrl` | runtime | string (URL) | `https://auth.ix` | IX auth-service URL; env binding `IX_AUTH_URL`. |
+| `auth.expiresAt` | runtime | string (ISO-8601 datetime), optional | (unset) | Token expiry written by `ix login`, read by token-refresh logic; the only core key with no env binding. |
+| `telemetry.enabled` | runtime | boolean | `false` | Telemetry opt-in (default off); env binding `IX_TELEMETRY`. |
+| `theme` | runtime | enum (auto, light, dark) | `auto` | UI theme; env binding `IX_THEME`. |
+| `updateCheck.enabled` | runtime | boolean | `true` | Update-check toggle; env binding `IX_UPDATE_CHECK`. |
+| `updateCheck.intervalHours` | runtime | integer (1–168) | `24` | Hours between update checks; env binding `IX_UPDATE_CHECK_INTERVAL_HOURS`. |
+
 ## Acceptance
 
 - **FR-020-AC-1**: `ConfigService.forPlugin('core', CoreConfigSchema).get()` against an empty environment and absent `~/.config/ix/config.yaml` returns the full default object: `logLevel: 'info'`, `secretsBackend: 'auto'`, `auth: { serviceUrl: 'https://auth.ix' }`, `telemetry: { enabled: false }`, `theme: 'auto'`, `updateCheck: { enabled: true, intervalHours: 24 }`.

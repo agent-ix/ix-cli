@@ -111,6 +111,18 @@ The post-`init-cluster` operator hint emits one
 `address=/.<host>/<clusterIp>` directive per entry in `config.hosts`,
 joined into a single line.
 
+## Configuration
+
+| Name | Scope | Type | Default | Description |
+|---|---|---|---|---|
+| `domain.hosts` | runtime | string[] (length >= 1) | `["dev.ix"]` | Ingress base domains; each entry must have >= 2 non-empty dot-separated labels and no whitespace. `hosts[0]` is aliased as `IxConfig.internalBaseDomain`. Edits trigger the wildcard-TLS refresh paths. |
+| `domain.enableExternal` | runtime | boolean | `false` | Enables the external host; setting it without `domain.external` fails loudly at `loadConfig()` time (FR-037-CON-3). |
+| `domain.external` | runtime | string or null | `null` | External base domain. |
+| `domain.publicBaseUrl` | runtime | string or null | `null` | Canonical public URL for user-facing emails; must start with `http://` or `https://`; single-valued by design and NOT derived from `hosts[0]`. |
+| `IX_INTERNAL_BASE_DOMAIN` | session | string (env var) | (unset) | Legacy singular override; when set and non-empty, replaces `hosts` with a one-entry list. Highest precedence. |
+| `IX_INTERNAL_BASE_DOMAINS` | session | string (env var, comma-separated) | (unset) | Plural override of `hosts`; below the legacy singular env var, above the persisted file. |
+| `ingress.exposeExtraHosts` | creation | boolean (chart value) | `false` | Per-service `ix-service` chart default; when `true`, fans out one ingress host per `(fullname, baseDomain)` pair. Deliberate security boundary (see Security). |
+
 ## Acceptance
 
 - **FR-037-AC-1**: A missing `domain` group in the persisted YAML

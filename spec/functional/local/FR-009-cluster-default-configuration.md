@@ -34,6 +34,14 @@ interface ClusterConfig {
 - Any field present but not a string array → throw `ConfigValidationError` with the field name.
 - Valid sub-fields are merged with defaults for any fields not specified.
 
+## Configuration
+
+| Name | Scope | Type | Default | Description |
+|---|---|---|---|---|
+| `cluster.defaultTags` | creation | string[] | `["ix-core"]` | Tags selecting the default service set deployed at cluster bring-up. |
+| `cluster.extraApps` | creation | string[] | `[]` | Additional apps to deploy beyond the tag-selected default set. |
+| `cluster.skipApps` | creation | string[] | `[]` | Apps to exclude from the default set. |
+
 ## Acceptance
 
 - **FR-009-AC-1**: Absent config file returns `{ defaultTags: ["ix-core"], extraApps: [], skipApps: [] }`.

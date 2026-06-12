@@ -2,7 +2,6 @@
 id: FR-012
 title: "Layered Config Resolution: Env → Plugin File → Defaults"
 artifact_type: FR
-object: configuration
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-005"
     type: "implements"

@@ -12,9 +12,9 @@ The local plugin **SHALL** own product-to-auth audience mappings used by local d
 
 ## Configuration
 
-| Path | Default | Description |
-|---|---|---|
-| `local.auth.clientAudienceAllowlist` | `{ "filament-ui": ["filament"] }` | Public client id to allowed JWT audiences |
+| Name | Scope | Type | Default | Description |
+|---|---|---|---|---|
+| `local.auth.clientAudienceAllowlist` | runtime | object (client id to string[] audiences) | `{ "filament-ui": ["filament"] }` | Public client id to allowed JWT audiences; rendered into auth-service Helm values as `AUTH_CLIENT_AUDIENCE_ALLOWLIST` during `ix up`. |
 
 ## Behavior
 
