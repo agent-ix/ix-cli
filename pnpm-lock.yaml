@@ -33,8 +33,8 @@ importers:
   apps/ix:
     dependencies:
       '@agent-ix/ix-cli-core':
-        specifier: 0.10.1-20260614.214507-9d72fe4
-        version: 0.10.1-20260614.214507-9d72fe4(@oclif/core@4.11.4)(@types/react@19.2.16)
+        specifier: 0.10.1-20260614.225105-9a6d61a
+        version: 0.10.1-20260614.225105-9a6d61a(@oclif/core@4.11.4)(@types/react@19.2.16)
       '@agent-ix/ix-cli-elements':
         specifier: workspace:*
         version: link:../../packages/elements
@@ -46,7 +46,7 @@ importers:
         version: 0.4.6(@types/react@19.2.16)
       '@agent-ix/workflow-cli-plugin':
         specifier: '>=0.1.4'
-        version: 0.1.6(@agent-ix/ix-cli-core@0.10.1-20260614.214507-9d72fe4(@oclif/core@4.11.4)(@types/react@19.2.16))(@agent-ix/ix-ui-cli@0.4.6(@types/react@19.2.16))(@oclif/core@4.11.4)(react@19.2.7)
+        version: 0.1.6(@agent-ix/ix-cli-core@0.10.1-20260614.225105-9a6d61a(@oclif/core@4.11.4)(@types/react@19.2.16))(@agent-ix/ix-ui-cli@0.4.6(@types/react@19.2.16))(@oclif/core@4.11.4)(react@19.2.7)
       '@agent-ix/workflow-core':
         specifier: '>=0.1.4'
         version: 0.1.6
@@ -172,6 +172,11 @@ packages:
 
   '@agent-ix/ix-cli-core@0.10.1-20260614.214507-9d72fe4':
     resolution: {integrity: sha512-xAXhWxXNsVHyxf3uXnaxdV5r64tSF3PXzp/zvsxS0GnV9WcmaOXeajtcZmuYvcUw23trbriEX6nOIJ+kCRA8Ig==}
+    peerDependencies:
+      '@oclif/core': '>=4.10.6'
+
+  '@agent-ix/ix-cli-core@0.10.1-20260614.225105-9a6d61a':
+    resolution: {integrity: sha512-8aVRomobaCUuHgHPlmp6G/YKECbcqHqrMqot5nAcXRoEkVH9w3AZGP/KBfP73WKEMe6/7IZBJ8r6D0MKW3Tbog==}
     peerDependencies:
       '@oclif/core': '>=4.10.6'
 
@@ -2447,6 +2452,22 @@ snapshots:
       - react-devtools-core
       - utf-8-validate
 
+  '@agent-ix/ix-cli-core@0.10.1-20260614.225105-9a6d61a(@oclif/core@4.11.4)(@types/react@19.2.16)':
+    dependencies:
+      '@agent-ix/ix-ui-cli': 0.4.6(@types/react@19.2.16)
+      '@clack/prompts': 1.5.1
+      '@napi-rs/keyring': 1.3.0
+      '@oclif/core': 4.11.4
+      age-encryption: 0.3.0
+      react: 19.2.7
+      yaml: 2.9.0
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@types/react'
+      - bufferutil
+      - react-devtools-core
+      - utf-8-validate
+
   '@agent-ix/ix-ui-cli@0.4.6(@types/react@19.2.16)':
     dependencies:
       '@agent-ix/ix-ui-semantic': 0.4.6
@@ -2465,9 +2486,9 @@ snapshots:
 
   '@agent-ix/ix-ui-semantic@0.4.6': {}
 
-  '@agent-ix/workflow-cli-plugin@0.1.6(@agent-ix/ix-cli-core@0.10.1-20260614.214507-9d72fe4(@oclif/core@4.11.4)(@types/react@19.2.16))(@agent-ix/ix-ui-cli@0.4.6(@types/react@19.2.16))(@oclif/core@4.11.4)(react@19.2.7)':
+  '@agent-ix/workflow-cli-plugin@0.1.6(@agent-ix/ix-cli-core@0.10.1-20260614.225105-9a6d61a(@oclif/core@4.11.4)(@types/react@19.2.16))(@agent-ix/ix-ui-cli@0.4.6(@types/react@19.2.16))(@oclif/core@4.11.4)(react@19.2.7)':
     dependencies:
-      '@agent-ix/ix-cli-core': 0.10.1-20260614.214507-9d72fe4(@oclif/core@4.11.4)(@types/react@19.2.16)
+      '@agent-ix/ix-cli-core': 0.10.1-20260614.225105-9a6d61a(@oclif/core@4.11.4)(@types/react@19.2.16)
       '@agent-ix/ix-ui-cli': 0.4.6(@types/react@19.2.16)
       '@agent-ix/workflow-core': 0.1.6
       '@oclif/core': 4.11.4

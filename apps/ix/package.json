@@ -61,7 +61,7 @@
     "clean": "rm -rf dist coverage oclif.manifest.json"
   },
   "dependencies": {
-    "@agent-ix/ix-cli-core": "0.10.1-20260614.214507-9d72fe4",
+    "@agent-ix/ix-cli-core": "0.10.1-20260614.225105-9a6d61a",
     "@agent-ix/ix-cli-elements": "workspace:*",
     "@agent-ix/ix-cli-local": "workspace:*",
     "@agent-ix/ix-ui-cli": ">=0.4.6",

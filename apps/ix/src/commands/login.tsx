@@ -65,9 +65,7 @@ export default class Login extends BaseCommand {
       showVerification: async (info) => {
         const lines = [
           <Note key="code">{`code   ${blue(info.userCode)}`}</Note>,
-          <Note key="url">{`open   ${blue(
-            info.verificationUriComplete ?? info.verificationUri,
-          )}`}</Note>,
+          <Note key="url">{`open   ${blue(info.approvalUri)}`}</Note>,
           <Note key="hint">
             {info.browserOpened
               ? "A browser was opened — approve the request there."
@@ -77,7 +75,7 @@ export default class Login extends BaseCommand {
         await renderStatic(
           <Listing
             header={`ix login ${displayHost(host, flags.insecure)}`}
-            status="pending"
+            status="running"
             tail="waiting for approval…"
           >
             {lines}
