@@ -63,10 +63,13 @@ export default class Whoami extends BaseCommand {
           const expires = new Date(r.meta!.expiresAt);
           const expired = r.meta!.expiresAt <= Date.now();
           const audience = r.meta!.audience ?? "(default)";
+          // Prefer the readable host saved at login; fall back to the storage
+          // slug for entries written before the host was persisted.
+          const name = r.meta!.host ?? r.slug;
           return (
             <Item
               key={r.slug}
-              name={r.slug}
+              name={name}
               description={`audience=${audience} · ${
                 expired ? "expired" : "expires"
               } ${expires.toISOString()}`}
@@ -79,13 +82,13 @@ export default class Whoami extends BaseCommand {
 }
 
 /**
- * Read metadata for a host slug. `TokenStore.peekMeta` takes a host, but the
- * stored key is already a slug; slugifying a slug is idempotent, so this is
- * safe.
+ * Read metadata for a stored host slug. The config keys are slugs, so we
+ * address the store by slug directly — `peekMeta(host)` would re-slugify
+ * (hash) the already-hashed slug and miss the entry.
  */
 function peekBySlug(
   store: ReturnType<typeof ixTokenStore>,
   slug: string,
-): ReturnType<typeof store.peekMeta> {
-  return store.peekMeta(slug);
+): ReturnType<typeof store.peekMetaBySlug> {
+  return store.peekMetaBySlug(slug);
 }

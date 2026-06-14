@@ -35,6 +35,11 @@ export const CoreConfigSchema = z
                 expiresAt: z.number(),
                 audience: z.string().optional(),
                 scope: z.string().optional(),
+                // Original normalized host (e.g. `filament.dev.ix`) for
+                // human-readable `whoami` / `logout` output. The map KEY is
+                // the hash-discriminated storage slug; this is the friendly
+                // host. Never a token value (NFR-006).
+                host: z.string().optional(),
               })
               .strict(),
           )

@@ -68,6 +68,7 @@ export class CoreConfigTokenMetaStore implements TokenMetaStore {
       expiresAt: meta.expiresAt,
       ...(meta.audience !== undefined ? { audience: meta.audience } : {}),
       ...(meta.scope !== undefined ? { scope: meta.scope } : {}),
+      ...(meta.host !== undefined ? { host: meta.host } : {}),
     };
     cfg.set({ auth: { ...current.auth, hosts } });
   }

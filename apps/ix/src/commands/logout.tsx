@@ -1,5 +1,5 @@
 import { Flags } from "@oclif/core";
-import { BaseCommand } from "@agent-ix/ix-cli-core";
+import { BaseCommand, hostSlug } from "@agent-ix/ix-cli-core";
 import {
   FlowLine,
   Listing,
@@ -30,9 +30,14 @@ export default class Logout extends BaseCommand {
     const { flags } = await this.parse(Logout);
     const store = ixTokenStore();
 
-    const targets = flags.host ? [flags.host] : loggedInHostSlugs();
+    // `--host` is a raw host (clear() slugifies it); the all-branch enumerates
+    // stored slugs (config keys), which must be cleared by slug — re-slugifying
+    // a slug would hash it again and miss the entry.
+    const targetSlugs = flags.host
+      ? [hostSlug(flags.host)]
+      : loggedInHostSlugs();
 
-    if (targets.length === 0) {
+    if (targetSlugs.length === 0) {
       await renderStatic(
         <Listing header="ix logout" status="passed" tail="nothing to do">
           <Note>You are not logged in to any service.</Note>
@@ -41,8 +46,8 @@ export default class Logout extends BaseCommand {
       return;
     }
 
-    for (const host of targets) {
-      await store.clear(host);
+    for (const slug of targetSlugs) {
+      await store.clearBySlug(slug);
     }
 
     await renderStatic(
@@ -51,7 +56,7 @@ export default class Logout extends BaseCommand {
         status="passed"
         variant="flow"
         pre={
-          <FlowLine>{`cleared ${blue(String(targets.length))} session(s)`}</FlowLine>
+          <FlowLine>{`cleared ${blue(String(targetSlugs.length))} session(s)`}</FlowLine>
         }
         tail={
           flags.host
