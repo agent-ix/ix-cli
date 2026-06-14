@@ -22,8 +22,7 @@ beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), "ix-tunnel-edge-"));
   mkdirSync(join(dir, "ix", "config.d"), { recursive: true, mode: 0o700 });
   process.env.XDG_CONFIG_HOME = dir;
-  const { _resetRegistryForTests } =
-    await import("@agent-ix/ix-cli-core");
+  const { _resetRegistryForTests } = await import("@agent-ix/ix-cli-core");
   _resetRegistryForTests();
 });
 

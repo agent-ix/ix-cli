@@ -27,8 +27,7 @@ beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), "ix-local-cfg-"));
   process.env.XDG_CONFIG_HOME = dir;
   // Reset the shared registry so each test starts clean.
-  const { _resetRegistryForTests } =
-    await import("@agent-ix/ix-cli-core");
+  const { _resetRegistryForTests } = await import("@agent-ix/ix-cli-core");
   _resetRegistryForTests();
 });
 
