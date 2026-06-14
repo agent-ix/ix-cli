@@ -23,7 +23,7 @@ beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), "ix-local-tunnel-cfg-"));
   process.env.XDG_CONFIG_HOME = dir;
   const { _resetRegistryForTests } =
-    await import("@agent-ix/ix-cli-core/src/config/registry.js");
+    await import("@agent-ix/ix-cli-core");
   _resetRegistryForTests();
 });
 

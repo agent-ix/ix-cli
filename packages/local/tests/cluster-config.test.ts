@@ -28,7 +28,7 @@ beforeEach(async () => {
   process.env.XDG_CONFIG_HOME = dir;
   // Reset the shared registry so each test starts clean.
   const { _resetRegistryForTests } =
-    await import("@agent-ix/ix-cli-core/src/config/registry.js");
+    await import("@agent-ix/ix-cli-core");
   _resetRegistryForTests();
 });
 

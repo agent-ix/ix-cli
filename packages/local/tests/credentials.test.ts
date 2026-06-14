@@ -18,7 +18,7 @@ import {
   resetDefaultSecretsService,
 } from "@agent-ix/ix-cli-core";
 
-import { _resetSecretsRegistryForTests } from "@agent-ix/ix-cli-core/src/secrets/registry.js";
+import { _resetSecretsRegistryForTests } from "@agent-ix/ix-cli-core";
 
 const ENV_VARS = [
   "IX_GHCR_TOKEN",

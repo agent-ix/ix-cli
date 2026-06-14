@@ -37,7 +37,7 @@ beforeEach(async () => {
   process.env.XDG_CONFIG_HOME = dir;
   delete process.env[ENV_VAR];
   const { _resetRegistryForTests } =
-    await import("@agent-ix/ix-cli-core/src/config/registry.js");
+    await import("@agent-ix/ix-cli-core");
   _resetRegistryForTests();
 });
 
