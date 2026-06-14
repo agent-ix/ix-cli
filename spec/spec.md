@@ -25,7 +25,9 @@ standards_alignment:
   - iso-iec-ieee-29148
   - ieee-828
 ---
+
 # Master Requirements Specification
+
 ## IX CLI — Unified Agent IX Command Line Interface
 
 ---
@@ -35,6 +37,7 @@ standards_alignment:
 This document defines the **scope, intent, and governing requirements framework** for ix-cli.
 
 It establishes:
+
 - The problem space addressed by the unified CLI
 - The boundaries of responsibility across `core`, `local`, `elements`, `spec` packages and the `ix` binary
 - The authoritative structure for requirements, verification, and change control
@@ -59,30 +62,30 @@ inline shorthands (`FR-011`, `FR-014`, etc.) in §8–§10 below have been
 repointed to their `ix://agent-ix/ix-cli-core/...` form. The ix-cli-core →
 ix-cli ID mapping is:
 
-| Framework concern | ix-cli-core ID |
-|---|---|
-| ConfigService API | `ix://agent-ix/ix-cli-core/FR-001` |
-| Per-plugin file isolation | `ix://agent-ix/ix-cli-core/FR-002` |
-| Layered config resolution | `ix://agent-ix/ix-cli-core/FR-003` |
-| Plugin schema registration | `ix://agent-ix/ix-cli-core/FR-004` |
-| SecretsService API | `ix://agent-ix/ix-cli-core/FR-005` |
-| OS keyring backend | `ix://agent-ix/ix-cli-core/FR-006` |
-| Encrypted-file fallback | `ix://agent-ix/ix-cli-core/FR-007` |
-| `config` command group | `ix://agent-ix/ix-cli-core/FR-008` |
-| `secrets` command group | `ix://agent-ix/ix-cli-core/FR-009` |
-| CLI binary composition | `ix://agent-ix/ix-cli-core/FR-010` |
-| Runtime config-root override | `ix://agent-ix/ix-cli-core/FR-011` |
-| Plugin discovery (oclif-native) | `ix://agent-ix/ix-cli-core/FR-012` |
-| Per-command capability binding | `ix://agent-ix/ix-cli-core/FR-013` |
-| ixSchema plugin convention | `ix://agent-ix/ix-cli-core/FR-014` |
-| No plaintext secrets | `ix://agent-ix/ix-cli-core/NFR-001` |
-| Sensitive-file permissions | `ix://agent-ix/ix-cli-core/NFR-002` |
-| Schema-error UX | `ix://agent-ix/ix-cli-core/NFR-003` |
-| Secrets backend pluggability | `ix://agent-ix/ix-cli-core/NFR-004` |
-| Pluggable-config stakeholder need | `ix://agent-ix/ix-cli-core/StR-001` |
+| Framework concern                        | ix-cli-core ID                      |
+| ---------------------------------------- | ----------------------------------- |
+| ConfigService API                        | `ix://agent-ix/ix-cli-core/FR-001`  |
+| Per-plugin file isolation                | `ix://agent-ix/ix-cli-core/FR-002`  |
+| Layered config resolution                | `ix://agent-ix/ix-cli-core/FR-003`  |
+| Plugin schema registration               | `ix://agent-ix/ix-cli-core/FR-004`  |
+| SecretsService API                       | `ix://agent-ix/ix-cli-core/FR-005`  |
+| OS keyring backend                       | `ix://agent-ix/ix-cli-core/FR-006`  |
+| Encrypted-file fallback                  | `ix://agent-ix/ix-cli-core/FR-007`  |
+| `config` command group                   | `ix://agent-ix/ix-cli-core/FR-008`  |
+| `secrets` command group                  | `ix://agent-ix/ix-cli-core/FR-009`  |
+| CLI binary composition                   | `ix://agent-ix/ix-cli-core/FR-010`  |
+| Runtime config-root override             | `ix://agent-ix/ix-cli-core/FR-011`  |
+| Plugin discovery (oclif-native)          | `ix://agent-ix/ix-cli-core/FR-012`  |
+| Per-command capability binding           | `ix://agent-ix/ix-cli-core/FR-013`  |
+| ixSchema plugin convention               | `ix://agent-ix/ix-cli-core/FR-014`  |
+| No plaintext secrets                     | `ix://agent-ix/ix-cli-core/NFR-001` |
+| Sensitive-file permissions               | `ix://agent-ix/ix-cli-core/NFR-002` |
+| Schema-error UX                          | `ix://agent-ix/ix-cli-core/NFR-003` |
+| Secrets backend pluggability             | `ix://agent-ix/ix-cli-core/NFR-004` |
+| Pluggable-config stakeholder need        | `ix://agent-ix/ix-cli-core/StR-001` |
 | Secrets-never-plaintext stakeholder need | `ix://agent-ix/ix-cli-core/StR-002` |
-| Reusable-CLI-runtime stakeholder need | `ix://agent-ix/ix-cli-core/StR-003` |
-| Run-custom-CLI-distribution use case | `ix://agent-ix/ix-cli-core/US-001` |
+| Reusable-CLI-runtime stakeholder need    | `ix://agent-ix/ix-cli-core/StR-003` |
+| Run-custom-CLI-distribution use case     | `ix://agent-ix/ix-cli-core/US-001`  |
 
 What **remains** ix-cli's own is **FR-020** — the concrete `core` plugin
 `configSchema` / `secretsSchema` (auth.serviceUrl, GitHub/IX tokens, telemetry,
@@ -96,6 +99,7 @@ framework's plugin contract.
 ### 2.1 In Scope
 
 This specification governs:
+
 - The IX `core` plugin schema: the concrete `configSchema` / `secretsSchema` for the reserved `core` id (GitHub/IX auth tokens, auth.serviceUrl, telemetry, theme, update-check) — see FR-020
 - IX service auth flows: GitHub OAuth device flow, IX service auth, token refresh
 - The `local` package: local cluster commands (placeholder — commands migrated from ix-local-cli)
@@ -107,6 +111,7 @@ This specification governs:
 ### 2.2 Out of Scope
 
 This specification does not govern:
+
 - **The generic CLI framework** (`ConfigService`, `SecretsService`, the `ixSchema` plugin contract, `BaseCommand` / `CapabilityResolver` runtime, and the generic `config` / `secrets` command runners) — these are specified in `agent-ix/ix-cli-core` and referenced as `ix://agent-ix/ix-cli-core/<ID>` (see §1.1)
 - ix-ui component rendering internals
 - ix-local-cli implementation (pre-migration)
@@ -124,12 +129,12 @@ ix-cli is a **pnpm workspace monorepo** that composes domain packages into a sin
 
 Package structure:
 
-| Package | Name | Responsibility |
-|---------|------|----------------|
-| (external) | `@agent-ix/ix-cli-core` | Generic CLI framework (config/secrets/plugin/runtime). Specified in `agent-ix/ix-cli-core`; consumed as a library. |
-| `packages/local` | `@agent-ix/ix-cli-local` | Local cluster commands (`ix up`, `ix down`) |
-| `packages/elements` | `@agent-ix/ix-cli-elements` | Element commands (`ix elements init`, `ix elements list`) |
-| `apps/ix` | `@agent-ix/ix` | Unified binary — IX auth flows (GitHub + IX service), the reserved `core` plugin schema (FR-020), and registration of all package command trees |
+| Package             | Name                        | Responsibility                                                                                                                                  |
+| ------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| (external)          | `@agent-ix/ix-cli-core`     | Generic CLI framework (config/secrets/plugin/runtime). Specified in `agent-ix/ix-cli-core`; consumed as a library.                              |
+| `packages/local`    | `@agent-ix/ix-cli-local`    | Local cluster commands (`ix up`, `ix down`)                                                                                                     |
+| `packages/elements` | `@agent-ix/ix-cli-elements` | Element commands (`ix elements init`, `ix elements list`)                                                                                       |
+| `apps/ix`           | `@agent-ix/ix`              | Unified binary — IX auth flows (GitHub + IX service), the reserved `core` plugin schema (FR-020), and registration of all package command trees |
 
 ### 3.2 Intended Users
 
@@ -165,29 +170,33 @@ spec/
 ## 5. Requirement Classes
 
 ### 5.1 Stakeholder Requirements (`StR-XXX`)
+
 Authoritative needs from developers, teams, and plugin authors.
 
 ### 5.2 User Stories (`US-XXX`)
+
 Usage scenarios describing developer intent when running ix commands.
 
 ### 5.3 Functional Requirements (`FR-XXX`)
+
 Testable behavioral contracts for each package, command, and auth flow.
 
 ### 5.4 Non-Functional Requirements (`NFR-XXX`)
+
 Quality constraints: security, output style consistency, credential handling.
 
 ---
 
 ## 6. Requirement Identification
 
-| Artifact | Format | Example |
-|----------|--------|---------|
-| Stakeholder Requirement | `StR-XXX` | `StR-001` |
-| User Story | `US-XXX` | `US-002` |
-| Functional Requirement | `FR-XXX` | `FR-014` |
-| Non-Functional Requirement | `NFR-XXX` | `NFR-003` |
-| Acceptance Criteria | `{FR}-AC-N` | `FR-014-AC-1` |
-| Test Case | `TC-XXX` | `TC-021` |
+| Artifact                   | Format      | Example       |
+| -------------------------- | ----------- | ------------- |
+| Stakeholder Requirement    | `StR-XXX`   | `StR-001`     |
+| User Story                 | `US-XXX`    | `US-002`      |
+| Functional Requirement     | `FR-XXX`    | `FR-014`      |
+| Non-Functional Requirement | `NFR-XXX`   | `NFR-003`     |
+| Acceptance Criteria        | `{FR}-AC-N` | `FR-014-AC-1` |
+| Test Case                  | `TC-XXX`    | `TC-021`      |
 
 Identifiers are immutable once assigned.
 
@@ -196,6 +205,7 @@ Identifiers are immutable once assigned.
 ## 7. Requirement Quality Policy
 
 All functional requirements SHALL:
+
 - Define observable behavior
 - Be unambiguous and atomic
 - Be testable through explicit criteria
@@ -248,12 +258,27 @@ Secrets (GHCR PAT, IX auth refresh token, future plugin secrets) are owned by `S
 
 ### 8.4 Auth Flows
 
-| Flow | Provider | Trigger | Token Storage |
-|---|---|---|---|
-| GitHub OAuth device flow | GitHub | `ix login --github` | SecretsService secret `core.github-token` |
-| IX service token | IX auth-service | `ix login` (default) | SecretsService secrets `core.auth-access-token`, `core.auth-refresh-token`; `core.auth-expires-at` is a config value |
+The primary auth flow is **service-first device login**: `ix login <host>`
+discovers a service via `<host>/.well-known/agentix-service.json`, runs the
+OAuth 2.0 Device Authorization Grant, and stores a **host-keyed,
+audience-scoped** token bundle. The generic device-login engine — discovery
+client, device-flow runner, host-keyed token store, and browser opener — is
+**owned by ix-cli-core** (`ix://agent-ix/ix-cli-core/FR-015`,
+`.../FR-016`, `.../FR-017`, `.../FR-018`); this binary supplies the IX
+defaults and the `login`/`whoami`/`logout` commands (FR-021, FR-022, FR-023).
 
-Both flows are implemented in `packages/core/src/auth/`.
+| Flow                              | Provider                                 | Trigger             | Token Storage                                                                                                                                                                                          |
+| --------------------------------- | ---------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Device-code service login         | Any Agent IX service BFF (discovery doc) | `ix login <host>`   | SecretsService secrets `core.auth-access-token-<host>` / `core.auth-refresh-token-<host>`; expiry/audience/scope live in `core.auth.hosts.<host>` config metadata (`ix://agent-ix/ix-cli-core/FR-017`) |
+| GitHub OAuth device flow (legacy) | GitHub                                   | `ix login --github` | SecretsService secret `core.github-token`                                                                                                                                                              |
+
+Tokens are persisted only via `SecretsService` — never plaintext on disk
+(`ix://agent-ix/ix-cli-core/NFR-001`, `.../NFR-006`). The browser approves
+through the service's **same-origin BFF** and never sees a JWT; the CLI polls
+the BFF directly. `getAccessToken({host})` refreshes before expiry and rotates
+the stored refresh token (`ix://agent-ix/ix-cli-core/FR-017`). Per-host
+isolation and TLS-only discovery are guaranteed by
+`ix://agent-ix/ix-cli-core/NFR-005`.
 
 ### 8.5 No Legacy Compatibility
 
@@ -299,9 +324,9 @@ notes and the follow-up review in
 ### 9.1 Top-Level Commands
 
 ```
-ix login              # authenticate (IX service + optional GitHub)
-ix logout             # revoke credentials
-ix whoami             # show authenticated user
+ix login <host>       # device-code login to an Agent IX service (FR-021)
+ix logout [--host]    # forget credentials for one host or all (FR-023)
+ix whoami [--host]    # show which services you are logged in to (FR-022)
 
 ix up <app>           # deploy app to local cluster (packages/local)
 ix down <app>         # tear down app from local cluster (packages/local)
@@ -321,6 +346,7 @@ ix spec review        # review spec quality (packages/spec)
 ### 9.2 UX Contract
 
 All commands SHALL:
+
 - Use `@agent-ix/ix-ui-cli` for all terminal output
 - Never call `console.log` or `process.stdout.write` directly in command handlers
 - Use `@clack/prompts` intro/outro framing (via ix-ui-cli wrappers)
@@ -357,22 +383,22 @@ conventions on top of oclif:
 ```ts
 // @agent-ix/ix-cli-core
 export interface IxPluginSchema {
-  id?: string;                       // optional config/secrets namespace
-  config?: ZodObject<ZodRawShape>;   // MUST be .strict() — see ix-cli-core/FR-004
+  id?: string; // optional config/secrets namespace
+  config?: ZodObject<ZodRawShape>; // MUST be .strict() — see ix-cli-core/FR-004
   secrets?: SecretDeclaration[];
   env?: Record<string, string>;
 }
 
 export interface SecretDeclaration {
-  name: string;                       // full id is "<plugin-id>.<name>"
+  name: string; // full id is "<plugin-id>.<name>"
   description: string;
   required?: boolean;
-  envVar?: string;                    // optional env binding
+  envVar?: string; // optional env binding
 }
 
 export interface CommandCapabilities {
-  required?: ('github' | 'ix-api' | 'review-service')[];
-  optional?: ('github' | 'ix-api' | 'review-service')[];
+  required?: ("github" | "ix-api" | "review-service")[];
+  optional?: ("github" | "ix-api" | "review-service")[];
 }
 ```
 
@@ -449,6 +475,7 @@ install a different binary.
 ## 12. Traceability
 
 Bidirectional traceability SHALL be maintained between:
+
 - Stakeholder Requirements → Functional Requirements
 - Functional Requirements → Acceptance Criteria → Test Cases
 
@@ -466,11 +493,11 @@ Bidirectional traceability SHALL be maintained between:
 
 ## 14. Open Questions
 
-| # | Question | Status |
-|---|----------|--------|
-| 1 | Adopt oclif as plugin framework or build custom command registration? | Resolved — oclif (already in use) |
-| 2 | How does `ix up` determine target cluster (local vs hosted)? Flag or config? | Open |
-| 3 | Element registry location — npm.ix package, hosted API, or git repo? | Resolved — git tap model: `github.com/<org>` taps discovered via `ix-elements/registry.yaml` index or `topic:ix-element` GitHub search; spec/spec.md frontmatter is the element manifest |
+| #   | Question                                                                     | Status                                                                                                                                                                                   |
+| --- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Adopt oclif as plugin framework or build custom command registration?        | Resolved — oclif (already in use)                                                                                                                                                        |
+| 2   | How does `ix up` determine target cluster (local vs hosted)? Flag or config? | Open                                                                                                                                                                                     |
+| 3   | Element registry location — npm.ix package, hosted API, or git repo?         | Resolved — git tap model: `github.com/<org>` taps discovered via `ix-elements/registry.yaml` index or `topic:ix-element` GitHub search; spec/spec.md frontmatter is the element manifest |
 
 ---
 

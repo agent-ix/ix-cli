@@ -33,8 +33,8 @@ importers:
   apps/ix:
     dependencies:
       '@agent-ix/ix-cli-core':
-        specifier: 0.10.1-20260614.185503-dc77901
-        version: 0.10.1-20260614.185503-dc77901(@oclif/core@4.11.4)(@types/react@19.2.16)
+        specifier: 0.10.1-20260614.193457-b56d2fd
+        version: 0.10.1-20260614.193457-b56d2fd(@oclif/core@4.11.4)(@types/react@19.2.16)
       '@agent-ix/ix-cli-elements':
         specifier: workspace:*
         version: link:../../packages/elements
@@ -46,7 +46,7 @@ importers:
         version: 0.4.6(@types/react@19.2.16)
       '@agent-ix/workflow-cli-plugin':
         specifier: '>=0.1.4'
-        version: 0.1.6(@agent-ix/ix-cli-core@0.10.1-20260614.185503-dc77901(@oclif/core@4.11.4)(@types/react@19.2.16))(@agent-ix/ix-ui-cli@0.4.6(@types/react@19.2.16))(@oclif/core@4.11.4)(react@19.2.7)
+        version: 0.1.6(@agent-ix/ix-cli-core@0.10.1-20260614.193457-b56d2fd(@oclif/core@4.11.4)(@types/react@19.2.16))(@agent-ix/ix-ui-cli@0.4.6(@types/react@19.2.16))(@oclif/core@4.11.4)(react@19.2.7)
       '@agent-ix/workflow-core':
         specifier: '>=0.1.4'
         version: 0.1.6
@@ -85,8 +85,8 @@ importers:
   packages/elements:
     dependencies:
       '@agent-ix/ix-cli-core':
-        specifier: 0.10.1-20260614.185503-dc77901
-        version: 0.10.1-20260614.185503-dc77901(@oclif/core@4.11.4)(@types/react@19.2.16)
+        specifier: 0.10.1-20260614.193457-b56d2fd
+        version: 0.10.1-20260614.193457-b56d2fd(@oclif/core@4.11.4)(@types/react@19.2.16)
       '@agent-ix/ix-ui-cli':
         specifier: '>=0.4.6'
         version: 0.4.6(@types/react@19.2.16)
@@ -122,8 +122,8 @@ importers:
   packages/local:
     dependencies:
       '@agent-ix/ix-cli-core':
-        specifier: 0.10.1-20260614.185503-dc77901
-        version: 0.10.1-20260614.185503-dc77901(@oclif/core@4.11.4)(@types/react@19.2.16)
+        specifier: 0.10.1-20260614.193457-b56d2fd
+        version: 0.10.1-20260614.193457-b56d2fd(@oclif/core@4.11.4)(@types/react@19.2.16)
       '@agent-ix/ix-ui-cli':
         specifier: '>=0.4.6'
         version: 0.4.6(@types/react@19.2.16)
@@ -170,8 +170,8 @@ importers:
 
 packages:
 
-  '@agent-ix/ix-cli-core@0.10.1-20260614.185503-dc77901':
-    resolution: {integrity: sha512-kyCxSDmvoPSVJRETl4xFYJ22AY2kjxz3Ni7yTstcw1OrJyqljtDSoMlFYwwJ/d0PweeAX0Tn1YuJYz/scOLNYw==}
+  '@agent-ix/ix-cli-core@0.10.1-20260614.193457-b56d2fd':
+    resolution: {integrity: sha512-2xJ3Q9PZlfg79tzNFbGQDk9E7zSBmkGTxk30NUn95BnWN/IxW9H8RoYan+ioIrsCg6cKYWqxmU0T7qjQ/TZgDw==}
     peerDependencies:
       '@oclif/core': '>=4.10.6'
 
@@ -2431,7 +2431,7 @@ packages:
 
 snapshots:
 
-  '@agent-ix/ix-cli-core@0.10.1-20260614.185503-dc77901(@oclif/core@4.11.4)(@types/react@19.2.16)':
+  '@agent-ix/ix-cli-core@0.10.1-20260614.193457-b56d2fd(@oclif/core@4.11.4)(@types/react@19.2.16)':
     dependencies:
       '@agent-ix/ix-ui-cli': 0.4.6(@types/react@19.2.16)
       '@clack/prompts': 1.5.1
@@ -2465,9 +2465,9 @@ snapshots:
 
   '@agent-ix/ix-ui-semantic@0.4.6': {}
 
-  '@agent-ix/workflow-cli-plugin@0.1.6(@agent-ix/ix-cli-core@0.10.1-20260614.185503-dc77901(@oclif/core@4.11.4)(@types/react@19.2.16))(@agent-ix/ix-ui-cli@0.4.6(@types/react@19.2.16))(@oclif/core@4.11.4)(react@19.2.7)':
+  '@agent-ix/workflow-cli-plugin@0.1.6(@agent-ix/ix-cli-core@0.10.1-20260614.193457-b56d2fd(@oclif/core@4.11.4)(@types/react@19.2.16))(@agent-ix/ix-ui-cli@0.4.6(@types/react@19.2.16))(@oclif/core@4.11.4)(react@19.2.7)':
     dependencies:
-      '@agent-ix/ix-cli-core': 0.10.1-20260614.185503-dc77901(@oclif/core@4.11.4)(@types/react@19.2.16)
+      '@agent-ix/ix-cli-core': 0.10.1-20260614.193457-b56d2fd(@oclif/core@4.11.4)(@types/react@19.2.16)
       '@agent-ix/ix-ui-cli': 0.4.6(@types/react@19.2.16)
       '@agent-ix/workflow-core': 0.1.6
       '@oclif/core': 4.11.4

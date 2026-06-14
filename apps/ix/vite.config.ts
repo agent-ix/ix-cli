@@ -68,6 +68,9 @@ export default defineConfig({
         "commands/local/auth/config/registration/show":
           "src/commands/local/auth/config/registration/show.ts",
         "commands/update": "src/commands/update.tsx",
+        "commands/login": "src/commands/login.tsx",
+        "commands/logout": "src/commands/logout.tsx",
+        "commands/whoami": "src/commands/whoami.tsx",
         "commands/elements/list": "src/commands/elements/list.ts",
         "commands/elements/init": "src/commands/elements/init.ts",
         "commands/elements/new": "src/commands/elements/new.ts",

@@ -35,18 +35,19 @@ Tests fall into four types:
 
 ### User Story Coverage
 
-| User Story | Acceptance Criteria                                                         | Test Cases     | Coverage Status             |
-| ---------- | --------------------------------------------------------------------------- | -------------- | --------------------------- |
-| US-001     | ix up/down/init/auth commands reachable                                     | TC-001–TC-006  | ✅ Complete (static)        |
-| US-002     | Multi-service progress rendered via PhaseTable                              | TC-007, TC-010 | ✅ Complete (static)        |
-| US-003     | Cluster up: init + deploy ix-core services                                  | TC-025–TC-031  | ✅ Complete (unit)          |
-| US-004     | Cluster down: confirmation guard, idempotent                                | TC-032–TC-038  | ✅ Complete (unit)          |
-| US-005     | Cluster status: node/pod health tables                                      | TC-039–TC-043  | ✅ Complete (unit)          |
-| US-006     | ClusterConfig parsed from config.yaml                                       | TC-022–TC-024  | ✅ Complete (unit)          |
-| US-007     | `ix local refresh` shows per-chart diff rows for changed/new charts         | TC-300–TC-308  | ✅ Complete (static + unit) |
-| US-008     | `ix local halt all` (image mode): list, confirm, uninstall every deployable | TC-291–TC-299  | 🚧 In Progress              |
-| US-009     | `ix local cluster stop`/`start`: pause and resume kind containers           | TC-310–TC-318  | 🚧 In Progress              |
-| US-011     | Operator exposes a local app on a public hostname via Cloudflare Tunnel     | TC-405–TC-438 (unit/static; live-cluster smoke ❌ Missing) | ⚠️ Partial (unit complete; integration pending) |
+| User Story | Acceptance Criteria                                                              | Test Cases                                                                                                                                         | Coverage Status                                        |
+| ---------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| US-001     | ix up/down/init/auth commands reachable                                          | TC-001–TC-006                                                                                                                                      | ✅ Complete (static)                                   |
+| US-002     | Multi-service progress rendered via PhaseTable                                   | TC-007, TC-010                                                                                                                                     | ✅ Complete (static)                                   |
+| US-003     | Cluster up: init + deploy ix-core services                                       | TC-025–TC-031                                                                                                                                      | ✅ Complete (unit)                                     |
+| US-004     | Cluster down: confirmation guard, idempotent                                     | TC-032–TC-038                                                                                                                                      | ✅ Complete (unit)                                     |
+| US-005     | Cluster status: node/pod health tables                                           | TC-039–TC-043                                                                                                                                      | ✅ Complete (unit)                                     |
+| US-006     | ClusterConfig parsed from config.yaml                                            | TC-022–TC-024                                                                                                                                      | ✅ Complete (unit)                                     |
+| US-007     | `ix local refresh` shows per-chart diff rows for changed/new charts              | TC-300–TC-308                                                                                                                                      | ✅ Complete (static + unit)                            |
+| US-008     | `ix local halt all` (image mode): list, confirm, uninstall every deployable      | TC-291–TC-299                                                                                                                                      | 🚧 In Progress                                         |
+| US-009     | `ix local cluster stop`/`start`: pause and resume kind containers                | TC-310–TC-318                                                                                                                                      | 🚧 In Progress                                         |
+| US-011     | Operator exposes a local app on a public hostname via Cloudflare Tunnel          | TC-405–TC-438 (unit/static; live-cluster smoke ❌ Missing)                                                                                         | ⚠️ Partial (unit complete; integration pending)        |
+| US-012     | Developer logs in to an Agent IX service from the CLI (`ix login/whoami/logout`) | ix-cli-core engine unit tests (`auth-discovery`/`auth-device-flow`/`auth-token-store`) + command wiring; E2E `ix login` deferred to auth milestone | ⚠️ Partial (engine unit complete; command E2E pending) |
 
 ### Functional Requirement Coverage
 
@@ -139,33 +140,33 @@ Tests fall into four types:
 | FR-038         | AC-6: backend value used when env unset                                                                                                                                                                                | TC-414                 | ✅ Complete (unit)                                                 |
 | FR-038         | AC-7: requireCloudflareToken throws when neither source has a token                                                                                                                                                    | TC-415                 | ✅ Complete (unit)                                                 |
 
-| FR-038         | AC-8: buildExposeOverlay({}) sets tunnelBaseDomains + ingress.exposeOnTunnel; LAN keys untouched                                                                                                                       | TC-405, TC-406, TC-406b | ✅ Complete (unit)                                                 |
-| FR-038         | AC-9: buildExposeOverlay idempotent on repeated baseDomain                                                                                                                                                             | TC-407                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-10: entry-key path routes ingress flip through subchart; siblings absent from overlay                                                                                                                               | TC-409                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-11: buildUnexposeOverlay strips baseDomain + matching extraHosts; flips exposeOnTunnel off; LAN keys untouched                                                                                                      | TC-410, TC-410b, TC-411, TC-412 | ✅ Complete (unit)                                         |
-| FR-038         | AC-12: helm template fails clearly when tunnelToken missing                                                                                                                                                            | TC-416                 | ✅ Complete (manual `helm template`)                               |
-| FR-038         | AC-13: cluster start with autoStart=false produces no tunnel call                                                                                                                                                      | TC-417                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-14: cluster start with autoStart=true + token resolves runs tunnel install                                                                                                                                          | TC-418                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-15: autoStart=true + no token renders warn-tail Listing, returns success                                                                                                                                            | TC-419, TC-423         | ✅ Complete (unit)                                                 |
-| FR-038         | AC-16: tunnel-install failure inside cluster-start hook is swallowed (cluster start exits 0)                                                                                                                           | TC-420                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-17: ix tunnel expose with absent release surfaces actionable error                                                                                                                                                  | TC-421, TC-437         | ✅ Complete (unit)                                                 |
-| FR-038         | AC-18: ix tunnel down idempotent on missing release                                                                                                                                                                    | TC-422, TC-438         | ✅ Complete (unit)                                                 |
-| FR-038         | AC-19: tunnel command files are registered as Vite build entries                                                                                                                                                       | TC-424                 | ✅ Complete (static)                                               |
-| FR-038         | hostname derivation `<app>.<baseDomain>` is pure                                                                                                                                                                       | TC-405                 | ✅ Complete (unit)                                                 |
-| FR-038         | hostname override appended to ingress.extraHosts                                                                                                                                                                       | TC-408                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-20: firstRunSetup non-TTY missing token throws CI-safe error                                                                                                                                                        | TC-430                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-21: firstRunSetup non-TTY token-set returns without prompting                                                                                                                                                       | TC-431                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-22: firstRunSetup TTY prompts for token + base domain, persists both                                                                                                                                                | TC-432                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-23: firstRunSetup idempotent when both already configured                                                                                                                                                           | TC-433                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-24: setTunnelBaseDomain validates and writes; rejects invalid                                                                                                                                                       | TC-434, TC-435         | ✅ Complete (unit)                                                 |
-| FR-038         | AC-25: ix tunnel domain read/write convenience                                                                                                                                                                         | TC-436                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-26: buildTunnelSetArgs returns [] for releases not in tunnel.exposed                                                                                                                                                | TC-041                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-27: buildTunnelSetArgs single-service top-level / umbrella prefixed; never both                                                                                                                                     | TC-042, TC-043         | ✅ Complete (unit)                                                 |
-| FR-038         | AC-28: buildTunnelSetArgs hostname override → ingress.extraHosts[0]                                                                                                                                                    | TC-044                 | ✅ Complete (unit)                                                 |
-| FR-038         | AC-29: expose / unexpose persist intent in tunnel.exposed (round-trip)                                                                                                                                                 | TC-401                 | ✅ Complete (unit; integration via existing exposeApp tests)       |
-| FR-038         | AC-30: runTunnelUpCommand reconciles tunnel.exposed entries idempotently; missing release → skipped                                                                                                                    | —                      | Pending (live-cluster smoke)                                       |
-| FR-039         | AC-1..AC-3: auth client audience allowlist defaults and auth-service Helm args                                                                                                                                         | TC-439                 | 🚧 Pending focused unit fixture                                    |
-| FR-039         | AC-4: ix-service Deployment includes config checksum annotation for ConfigMap-driven rollouts                                                                                                                          | TC-440                 | ✅ Static inspection                                                |
+| FR-038 | AC-8: buildExposeOverlay({}) sets tunnelBaseDomains + ingress.exposeOnTunnel; LAN keys untouched | TC-405, TC-406, TC-406b | ✅ Complete (unit) |
+| FR-038 | AC-9: buildExposeOverlay idempotent on repeated baseDomain | TC-407 | ✅ Complete (unit) |
+| FR-038 | AC-10: entry-key path routes ingress flip through subchart; siblings absent from overlay | TC-409 | ✅ Complete (unit) |
+| FR-038 | AC-11: buildUnexposeOverlay strips baseDomain + matching extraHosts; flips exposeOnTunnel off; LAN keys untouched | TC-410, TC-410b, TC-411, TC-412 | ✅ Complete (unit) |
+| FR-038 | AC-12: helm template fails clearly when tunnelToken missing | TC-416 | ✅ Complete (manual `helm template`) |
+| FR-038 | AC-13: cluster start with autoStart=false produces no tunnel call | TC-417 | ✅ Complete (unit) |
+| FR-038 | AC-14: cluster start with autoStart=true + token resolves runs tunnel install | TC-418 | ✅ Complete (unit) |
+| FR-038 | AC-15: autoStart=true + no token renders warn-tail Listing, returns success | TC-419, TC-423 | ✅ Complete (unit) |
+| FR-038 | AC-16: tunnel-install failure inside cluster-start hook is swallowed (cluster start exits 0) | TC-420 | ✅ Complete (unit) |
+| FR-038 | AC-17: ix tunnel expose with absent release surfaces actionable error | TC-421, TC-437 | ✅ Complete (unit) |
+| FR-038 | AC-18: ix tunnel down idempotent on missing release | TC-422, TC-438 | ✅ Complete (unit) |
+| FR-038 | AC-19: tunnel command files are registered as Vite build entries | TC-424 | ✅ Complete (static) |
+| FR-038 | hostname derivation `<app>.<baseDomain>` is pure | TC-405 | ✅ Complete (unit) |
+| FR-038 | hostname override appended to ingress.extraHosts | TC-408 | ✅ Complete (unit) |
+| FR-038 | AC-20: firstRunSetup non-TTY missing token throws CI-safe error | TC-430 | ✅ Complete (unit) |
+| FR-038 | AC-21: firstRunSetup non-TTY token-set returns without prompting | TC-431 | ✅ Complete (unit) |
+| FR-038 | AC-22: firstRunSetup TTY prompts for token + base domain, persists both | TC-432 | ✅ Complete (unit) |
+| FR-038 | AC-23: firstRunSetup idempotent when both already configured | TC-433 | ✅ Complete (unit) |
+| FR-038 | AC-24: setTunnelBaseDomain validates and writes; rejects invalid | TC-434, TC-435 | ✅ Complete (unit) |
+| FR-038 | AC-25: ix tunnel domain read/write convenience | TC-436 | ✅ Complete (unit) |
+| FR-038 | AC-26: buildTunnelSetArgs returns [] for releases not in tunnel.exposed | TC-041 | ✅ Complete (unit) |
+| FR-038 | AC-27: buildTunnelSetArgs single-service top-level / umbrella prefixed; never both | TC-042, TC-043 | ✅ Complete (unit) |
+| FR-038 | AC-28: buildTunnelSetArgs hostname override → ingress.extraHosts[0] | TC-044 | ✅ Complete (unit) |
+| FR-038 | AC-29: expose / unexpose persist intent in tunnel.exposed (round-trip) | TC-401 | ✅ Complete (unit; integration via existing exposeApp tests) |
+| FR-038 | AC-30: runTunnelUpCommand reconciles tunnel.exposed entries idempotently; missing release → skipped | — | Pending (live-cluster smoke) |
+| FR-039 | AC-1..AC-3: auth client audience allowlist defaults and auth-service Helm args | TC-439 | 🚧 Pending focused unit fixture |
+| FR-039 | AC-4: ix-service Deployment includes config checksum annotation for ConfigMap-driven rollouts | TC-440 | ✅ Static inspection |
 
 > **ixSchema plugin convention moved to ix-cli-core.** The `ixSchema`
 > contract and its `registerPluginSchema` tests are now specified in
@@ -174,6 +175,18 @@ Tests fall into four types:
 > `apps/ix/src/hooks/init.ts` walks `Config.plugins` and registers each
 > plugin's `ixSchema` export — an integration check covered alongside the
 > `core` plugin wiring for FR-020.
+
+> **Auth commands (FR-021 `ix login`, FR-022 `ix whoami`, FR-023 `ix logout`).**
+> These are thin IX wiring over the generic ix-cli-core auth engine. The engine
+> behavior (discovery parse, device-flow state machine, host-keyed store with
+> refresh-before-expiry/rotation, host isolation, no-plaintext) is unit-covered
+> in `ix-cli-core/spec/tests.md`
+> (`ix://agent-ix/ix-cli-core/FR-015..FR-018`, `/NFR-005`, `/NFR-006`). The
+> ix-cli-specific surface — `login.tsx`/`whoami.tsx`/`logout.tsx` rendering,
+> the IX client id, and the `core.auth.hosts` config-backed `TokenMetaStore`
+> (`apps/ix/src/auth-engine.ts`) — is verified by the engine unit suite plus the
+> deferred E2E `ix login <host>` integration (in-cluster, no port-forward) on
+> the auth milestone.
 
 ### Non-Functional Requirement Coverage
 
@@ -385,76 +398,76 @@ Tests fall into four types:
 FR-034/FR-035 being deployed; mocks use the same `kubectlExec`-style
 injection point as `auth-identity.ts`.
 
-| Requirement | Acceptance Criteria | Test Cases | Coverage Status |
-|---|---|---|---|
-| FR-044 | FR-044-AC-1 .. AC-10 | TC-700 .. TC-709 | ❌ Not implemented |
-| FR-044 | FR-044-CON-1 .. CON-6 (constraint boundaries) | TC-710 .. TC-715 | ❌ Not implemented |
-| FR-045 | FR-045-AC-1 .. AC-6 | TC-716 .. TC-721 | ❌ Not implemented |
-| FR-045 | FR-045-CON-1 .. CON-5 (constraint boundaries) | TC-722 .. TC-726 | ❌ Not implemented |
+| Requirement | Acceptance Criteria                           | Test Cases       | Coverage Status    |
+| ----------- | --------------------------------------------- | ---------------- | ------------------ |
+| FR-044      | FR-044-AC-1 .. AC-10                          | TC-700 .. TC-709 | ❌ Not implemented |
+| FR-044      | FR-044-CON-1 .. CON-6 (constraint boundaries) | TC-710 .. TC-715 | ❌ Not implemented |
+| FR-045      | FR-045-AC-1 .. AC-6                           | TC-716 .. TC-721 | ❌ Not implemented |
+| FR-045      | FR-045-CON-1 .. CON-5 (constraint boundaries) | TC-722 .. TC-726 | ❌ Not implemented |
 
 ### FR-044 — `ix local auth kubeconfig issue`
 
-| Test ID | Title | Type | Priority | Traces To | Status |
-|---|---|---|---|---|---|
-| TC-700 | Integration: after `ix local init`, `ix local auth kubeconfig issue --output /tmp/ix-local.yaml` writes a kubeconfig and exits 0 | Integration | Crit | FR-044-AC-1 | ❌ |
-| TC-701 | Integration: `kubectl --kubeconfig=<output> auth whoami` returns `system:serviceaccount:system:ix-cli-admin` | Integration | Crit | FR-044-AC-2 | ❌ |
-| TC-702 | Integration: `stat -c '%a' <output>` returns `600` immediately after command exits | Integration | Crit | FR-044-AC-3, FR-044-CON-2 | ❌ |
-| TC-703 | Unit: missing `Secret system/ix-cli-admin-token` exits non-zero with `secret_not_found`; output file is not created | Unit | Crit | FR-044-AC-4 | ❌ |
-| TC-704 | Unit: existing file at `--output` without `--force` exits non-zero (`output_exists`) and leaves file untouched; `--force` overwrites | Unit | High | FR-044-AC-5 | ❌ |
-| TC-705 | Unit: sentinel-token mock — grep of combined stdout+stderr+log capture for the decoded token returns zero matches | Unit | Crit | FR-044-AC-6, FR-044-CON-3 | ❌ |
-| TC-706 | Unit: `--context-name foo` sets both `contexts[0].name` and `current-context` to `foo` in emitted YAML | Unit | High | FR-044-AC-7 | ❌ |
-| TC-707 | Unit: emitted `clusters[0].cluster.server` and `certificate-authority-data` byte-match `kubectl config view --raw --minify` output | Unit | High | FR-044-AC-8, FR-044-CON-6 | ❌ |
-| TC-708 | Unit: `.data.token` that fails base64 decode → non-zero exit, no file written, no token-shaped string on any stream | Unit | Crit | FR-044-AC-9, FR-044-CON-4 | ❌ |
-| TC-709 | Static: grep `packages/local/src/commands/auth-kubeconfig*.ts(x)` for `fetch\|http://\|https://\|undici\|axios\|port-forward` returns zero matches | Static | Crit | FR-044-AC-10, FR-044-CON-1 | ❌ |
-| TC-710 | Static: grep `auth-kubeconfig*.ts(x)` for outbound network clients (FR-044-CON-1 boundary); only kubectl shell-out permitted | Static | Crit | FR-044-CON-1 | ❌ |
-| TC-711 | Unit: source-inspection — the `chmod 600` (or fs.chmod 0o600) call appears AFTER the rename step in the write path | Static + Unit | Crit | FR-044-CON-2 | ❌ |
-| TC-712 | Unit: token-leak fuzz — assert decoded token absent from stdout, stderr, log buffer, telemetry buffer, captured `argv`, and serialized env snapshot across success + every error path | Unit | Crit | FR-044-CON-3 | ❌ |
-| TC-713 | Unit: empty `.data.token` (`""`) → `fail closed`; placeholder string (`"REPLACE_ME"`) that decodes to non-JWT-shaped bytes → `fail closed` | Unit | Crit | FR-044-CON-4 | ❌ |
-| TC-714 | Unit: simulate process kill between temp-file write and rename → no kubeconfig at `--output`; no world-readable temp file remains | Unit | High | FR-044-CON-5 | ❌ |
-| TC-715 | Unit: emitted cluster block is a strict subset of the source cluster block — extra invented fields (proxy URL, rewritten `server`) cause assertion failure | Unit | High | FR-044-CON-6 | ❌ |
+| Test ID | Title                                                                                                                                                                                 | Type          | Priority | Traces To                  | Status |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------- | -------------------------- | ------ |
+| TC-700  | Integration: after `ix local init`, `ix local auth kubeconfig issue --output /tmp/ix-local.yaml` writes a kubeconfig and exits 0                                                      | Integration   | Crit     | FR-044-AC-1                | ❌     |
+| TC-701  | Integration: `kubectl --kubeconfig=<output> auth whoami` returns `system:serviceaccount:system:ix-cli-admin`                                                                          | Integration   | Crit     | FR-044-AC-2                | ❌     |
+| TC-702  | Integration: `stat -c '%a' <output>` returns `600` immediately after command exits                                                                                                    | Integration   | Crit     | FR-044-AC-3, FR-044-CON-2  | ❌     |
+| TC-703  | Unit: missing `Secret system/ix-cli-admin-token` exits non-zero with `secret_not_found`; output file is not created                                                                   | Unit          | Crit     | FR-044-AC-4                | ❌     |
+| TC-704  | Unit: existing file at `--output` without `--force` exits non-zero (`output_exists`) and leaves file untouched; `--force` overwrites                                                  | Unit          | High     | FR-044-AC-5                | ❌     |
+| TC-705  | Unit: sentinel-token mock — grep of combined stdout+stderr+log capture for the decoded token returns zero matches                                                                     | Unit          | Crit     | FR-044-AC-6, FR-044-CON-3  | ❌     |
+| TC-706  | Unit: `--context-name foo` sets both `contexts[0].name` and `current-context` to `foo` in emitted YAML                                                                                | Unit          | High     | FR-044-AC-7                | ❌     |
+| TC-707  | Unit: emitted `clusters[0].cluster.server` and `certificate-authority-data` byte-match `kubectl config view --raw --minify` output                                                    | Unit          | High     | FR-044-AC-8, FR-044-CON-6  | ❌     |
+| TC-708  | Unit: `.data.token` that fails base64 decode → non-zero exit, no file written, no token-shaped string on any stream                                                                   | Unit          | Crit     | FR-044-AC-9, FR-044-CON-4  | ❌     |
+| TC-709  | Static: grep `packages/local/src/commands/auth-kubeconfig*.ts(x)` for `fetch\|http://\|https://\|undici\|axios\|port-forward` returns zero matches                                    | Static        | Crit     | FR-044-AC-10, FR-044-CON-1 | ❌     |
+| TC-710  | Static: grep `auth-kubeconfig*.ts(x)` for outbound network clients (FR-044-CON-1 boundary); only kubectl shell-out permitted                                                          | Static        | Crit     | FR-044-CON-1               | ❌     |
+| TC-711  | Unit: source-inspection — the `chmod 600` (or fs.chmod 0o600) call appears AFTER the rename step in the write path                                                                    | Static + Unit | Crit     | FR-044-CON-2               | ❌     |
+| TC-712  | Unit: token-leak fuzz — assert decoded token absent from stdout, stderr, log buffer, telemetry buffer, captured `argv`, and serialized env snapshot across success + every error path | Unit          | Crit     | FR-044-CON-3               | ❌     |
+| TC-713  | Unit: empty `.data.token` (`""`) → `fail closed`; placeholder string (`"REPLACE_ME"`) that decodes to non-JWT-shaped bytes → `fail closed`                                            | Unit          | Crit     | FR-044-CON-4               | ❌     |
+| TC-714  | Unit: simulate process kill between temp-file write and rename → no kubeconfig at `--output`; no world-readable temp file remains                                                     | Unit          | High     | FR-044-CON-5               | ❌     |
+| TC-715  | Unit: emitted cluster block is a strict subset of the source cluster block — extra invented fields (proxy URL, rewritten `server`) cause assertion failure                            | Unit          | High     | FR-044-CON-6               | ❌     |
 
 ### FR-045 — `ix local auth kubeconfig rotate`
 
-| Test ID | Title | Type | Priority | Traces To | Status |
-|---|---|---|---|---|---|
-| TC-716 | Unit: TTY + no `--force`, prompt declined → exits 0, no `kubectl delete` invoked | Unit | Crit | FR-045-AC-1, FR-045-CON-2 | ❌ |
-| TC-717 | Integration: `--force` deletes the Secret; recreated within 30s by SA-token controller; new `.data.token` differs from pre-rotation value | Integration | Crit | FR-045-AC-2 | ❌ |
-| TC-718 | Integration: `--reissue --output <path> --force` emits fresh kubeconfig that authenticates as `system:serviceaccount:system:ix-cli-admin` post-rotation | Integration | Crit | FR-045-AC-3 | ❌ |
-| TC-719 | Integration: a pre-rotation FR-044 kubeconfig returns 401 / `InvalidBearerToken` on `kubectl --kubeconfig=<old> get pods -n auth` after rotation | Integration | Crit | FR-045-AC-4 | ❌ |
-| TC-720 | Unit: mocked kubectl never returns a recreated Secret → exits non-zero with `recreate_timeout`; `--output` file (if any) untouched | Unit | High | FR-045-AC-5 | ❌ |
-| TC-721 | Unit: non-TTY context without `--force` → non-zero exit, message names `--force` as bypass; no `kubectl delete` invoked | Unit | Crit | FR-045-AC-6, FR-045-CON-2 | ❌ |
-| TC-722 | Static + Unit: command requires `get` AND `delete` on `system/ix-cli-admin-token`; no other Secret verbs are issued | Static + Unit | High | FR-045-CON-1 | ❌ |
-| TC-723 | Unit: TTY without `--force` shows the canonical "invalidate ALL outstanding ix-local scoped kubeconfigs" confirmation copy; non-TTY without `--force` refuses (covered by TC-721) | Unit | High | FR-045-CON-2 | ❌ |
-| TC-724 | Unit: simulate successful delete + recreated Secret + failed `--reissue` → non-zero exit; output explicitly states rotation succeeded and prior scoped kubeconfigs are already invalid; does NOT imply retry-as-no-op | Unit | Crit | FR-045-CON-3 | ❌ |
-| TC-725 | Static: grep `auth-kubeconfig*.ts(x)` for `fetch\|http://\|https://\|undici\|axios` — zero matches (matches FR-044-CON-1) | Static | Crit | FR-045-CON-4 | ❌ |
-| TC-726 | Unit: token-leak fuzz on rotate path — recreated token absent from stdout, stderr, log buffer, telemetry, `argv`, env snapshot across success + every error path | Unit | Crit | FR-045-CON-5 | ❌ |
-| TC-727 | Unit: `--reissue` without `--output` → exit code 2, message `--reissue requires --output <path>`, no `kubectl delete` invoked | Unit | Crit | FR-045-AC-7 | ❌ |
-| TC-800 | Unit: accept-invite without `--password-stdin` or `--generate` exits non-zero | Unit | High | FR-040-AC-1 | ❌ |
-| TC-801 | Unit: accept-invite 200 path renders user_id + tenant_id and exits 0 | Unit | Crit | FR-040-AC-2 | ❌ |
-| TC-802 | Unit: each documented FR-032 error envelope maps to the documented operator message | Unit | Crit | FR-040-AC-3 | ❌ |
-| TC-803 | Unit: password sentinel absent from argv/stdout/stderr/notes after happy run | Unit | Crit | FR-040-AC-4, FR-040-CON-2 | ❌ |
-| TC-804 | Unit: `--show-generated` emits the generated value to stderr once; without it the value never leaks | Unit | Crit | FR-040-AC-5, FR-040-CON-2 | ❌ |
-| TC-805 | Static: grep `auth-accept-invite*.ts(x)` for `fetch`/ingress hosts returns zero matches | Static | Crit | FR-040-AC-6, FR-040-CON-1 | ❌ |
-| TC-810 | Unit: rotate-password happy path issues `/token` then `/users/me/password/rotate` with Bearer | Unit | Crit | FR-041-AC-1 | ❌ |
-| TC-811 | Unit: `/token` 401 surfaces "rejected the current password" | Unit | Crit | FR-041-AC-2 | ❌ |
-| TC-812 | Unit: `/token` 200 without rotate_token suggests `reset-user` | Unit | High | FR-041-AC-3 | ❌ |
-| TC-813 | Unit: rotate 400 `password_policy` echoes the detail field | Unit | High | FR-041-AC-4 | ❌ |
-| TC-814 | Unit: neither password sentinel appears in argv/stdout/stderr/notes | Unit | Crit | FR-041-AC-5, FR-041-CON-2 | ❌ |
-| TC-820 | Unit: tenant list resolves email→user_id then GETs memberships | Unit | Crit | FR-042-AC-1 | ❌ |
-| TC-821 | Unit: tenant list empty search reports "no user matched" | Unit | High | FR-042-AC-2 | ❌ |
-| TC-822 | Unit: tenant add POSTs `{tenant_id, role, is_default}` and renders the result | Unit | Crit | FR-042-AC-3 | ❌ |
-| TC-823 | Unit: tenant add 409 `membership_exists` → "already exists" | Unit | High | FR-042-AC-4 | ❌ |
-| TC-824 | Unit: tenant add 403 `cross_tenant_admin_forbidden` → admin-authorization message | Unit | High | FR-042-AC-5 | ❌ |
-| TC-825 | Unit: tenant set-default PATCHes `{is_default: true}` | Unit | Crit | FR-042-AC-6 | ❌ |
-| TC-826 | Unit: tenant set-default 400 `suspended_cannot_set_default` is surfaced | Unit | High | FR-042-AC-7 | ❌ |
-| TC-827 | Unit: tenant remove DELETEs and 409 `would_violate_default_invariant` is surfaced | Unit | High | FR-042-AC-8 | ❌ |
-| TC-830 | Unit: create-user happy path without vault → invite + accept, prints "not saved" | Unit | Crit | FR-043-AC-1 | ❌ |
-| TC-831 | Unit: create-user with vault calls saveToVault with `{vaultName, email, password}` | Unit | Crit | FR-043-AC-2 | ❌ |
-| TC-832 | Unit: create-user without agent-browser on PATH exits 0 with stderr note | Unit | High | FR-043-AC-3, FR-043-CON-3 | ❌ |
-| TC-833 | Unit: invite step failure does NOT call accept-invite | Unit | Crit | FR-043-AC-4 | ❌ |
-| TC-834 | Unit: accept-invite failure after invite emits recovery hint and re-raises | Unit | Crit | FR-043-AC-5 | ❌ |
-| TC-835 | Unit: generated password never appears in argv/stdout/stderr/notes | Unit | Crit | FR-043-AC-6, FR-043-CON-2 | ❌ |
-| TC-836 | Unit: `--no-save-vault` skips vault save even when agent-browser is present | Unit | High | FR-043-AC-7 | ❌ |
+| Test ID | Title                                                                                                                                                                                                                 | Type          | Priority | Traces To                 | Status |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------- | ------------------------- | ------ |
+| TC-716  | Unit: TTY + no `--force`, prompt declined → exits 0, no `kubectl delete` invoked                                                                                                                                      | Unit          | Crit     | FR-045-AC-1, FR-045-CON-2 | ❌     |
+| TC-717  | Integration: `--force` deletes the Secret; recreated within 30s by SA-token controller; new `.data.token` differs from pre-rotation value                                                                             | Integration   | Crit     | FR-045-AC-2               | ❌     |
+| TC-718  | Integration: `--reissue --output <path> --force` emits fresh kubeconfig that authenticates as `system:serviceaccount:system:ix-cli-admin` post-rotation                                                               | Integration   | Crit     | FR-045-AC-3               | ❌     |
+| TC-719  | Integration: a pre-rotation FR-044 kubeconfig returns 401 / `InvalidBearerToken` on `kubectl --kubeconfig=<old> get pods -n auth` after rotation                                                                      | Integration   | Crit     | FR-045-AC-4               | ❌     |
+| TC-720  | Unit: mocked kubectl never returns a recreated Secret → exits non-zero with `recreate_timeout`; `--output` file (if any) untouched                                                                                    | Unit          | High     | FR-045-AC-5               | ❌     |
+| TC-721  | Unit: non-TTY context without `--force` → non-zero exit, message names `--force` as bypass; no `kubectl delete` invoked                                                                                               | Unit          | Crit     | FR-045-AC-6, FR-045-CON-2 | ❌     |
+| TC-722  | Static + Unit: command requires `get` AND `delete` on `system/ix-cli-admin-token`; no other Secret verbs are issued                                                                                                   | Static + Unit | High     | FR-045-CON-1              | ❌     |
+| TC-723  | Unit: TTY without `--force` shows the canonical "invalidate ALL outstanding ix-local scoped kubeconfigs" confirmation copy; non-TTY without `--force` refuses (covered by TC-721)                                     | Unit          | High     | FR-045-CON-2              | ❌     |
+| TC-724  | Unit: simulate successful delete + recreated Secret + failed `--reissue` → non-zero exit; output explicitly states rotation succeeded and prior scoped kubeconfigs are already invalid; does NOT imply retry-as-no-op | Unit          | Crit     | FR-045-CON-3              | ❌     |
+| TC-725  | Static: grep `auth-kubeconfig*.ts(x)` for `fetch\|http://\|https://\|undici\|axios` — zero matches (matches FR-044-CON-1)                                                                                             | Static        | Crit     | FR-045-CON-4              | ❌     |
+| TC-726  | Unit: token-leak fuzz on rotate path — recreated token absent from stdout, stderr, log buffer, telemetry, `argv`, env snapshot across success + every error path                                                      | Unit          | Crit     | FR-045-CON-5              | ❌     |
+| TC-727  | Unit: `--reissue` without `--output` → exit code 2, message `--reissue requires --output <path>`, no `kubectl delete` invoked                                                                                         | Unit          | Crit     | FR-045-AC-7               | ❌     |
+| TC-800  | Unit: accept-invite without `--password-stdin` or `--generate` exits non-zero                                                                                                                                         | Unit          | High     | FR-040-AC-1               | ❌     |
+| TC-801  | Unit: accept-invite 200 path renders user_id + tenant_id and exits 0                                                                                                                                                  | Unit          | Crit     | FR-040-AC-2               | ❌     |
+| TC-802  | Unit: each documented FR-032 error envelope maps to the documented operator message                                                                                                                                   | Unit          | Crit     | FR-040-AC-3               | ❌     |
+| TC-803  | Unit: password sentinel absent from argv/stdout/stderr/notes after happy run                                                                                                                                          | Unit          | Crit     | FR-040-AC-4, FR-040-CON-2 | ❌     |
+| TC-804  | Unit: `--show-generated` emits the generated value to stderr once; without it the value never leaks                                                                                                                   | Unit          | Crit     | FR-040-AC-5, FR-040-CON-2 | ❌     |
+| TC-805  | Static: grep `auth-accept-invite*.ts(x)` for `fetch`/ingress hosts returns zero matches                                                                                                                               | Static        | Crit     | FR-040-AC-6, FR-040-CON-1 | ❌     |
+| TC-810  | Unit: rotate-password happy path issues `/token` then `/users/me/password/rotate` with Bearer                                                                                                                         | Unit          | Crit     | FR-041-AC-1               | ❌     |
+| TC-811  | Unit: `/token` 401 surfaces "rejected the current password"                                                                                                                                                           | Unit          | Crit     | FR-041-AC-2               | ❌     |
+| TC-812  | Unit: `/token` 200 without rotate_token suggests `reset-user`                                                                                                                                                         | Unit          | High     | FR-041-AC-3               | ❌     |
+| TC-813  | Unit: rotate 400 `password_policy` echoes the detail field                                                                                                                                                            | Unit          | High     | FR-041-AC-4               | ❌     |
+| TC-814  | Unit: neither password sentinel appears in argv/stdout/stderr/notes                                                                                                                                                   | Unit          | Crit     | FR-041-AC-5, FR-041-CON-2 | ❌     |
+| TC-820  | Unit: tenant list resolves email→user_id then GETs memberships                                                                                                                                                        | Unit          | Crit     | FR-042-AC-1               | ❌     |
+| TC-821  | Unit: tenant list empty search reports "no user matched"                                                                                                                                                              | Unit          | High     | FR-042-AC-2               | ❌     |
+| TC-822  | Unit: tenant add POSTs `{tenant_id, role, is_default}` and renders the result                                                                                                                                         | Unit          | Crit     | FR-042-AC-3               | ❌     |
+| TC-823  | Unit: tenant add 409 `membership_exists` → "already exists"                                                                                                                                                           | Unit          | High     | FR-042-AC-4               | ❌     |
+| TC-824  | Unit: tenant add 403 `cross_tenant_admin_forbidden` → admin-authorization message                                                                                                                                     | Unit          | High     | FR-042-AC-5               | ❌     |
+| TC-825  | Unit: tenant set-default PATCHes `{is_default: true}`                                                                                                                                                                 | Unit          | Crit     | FR-042-AC-6               | ❌     |
+| TC-826  | Unit: tenant set-default 400 `suspended_cannot_set_default` is surfaced                                                                                                                                               | Unit          | High     | FR-042-AC-7               | ❌     |
+| TC-827  | Unit: tenant remove DELETEs and 409 `would_violate_default_invariant` is surfaced                                                                                                                                     | Unit          | High     | FR-042-AC-8               | ❌     |
+| TC-830  | Unit: create-user happy path without vault → invite + accept, prints "not saved"                                                                                                                                      | Unit          | Crit     | FR-043-AC-1               | ❌     |
+| TC-831  | Unit: create-user with vault calls saveToVault with `{vaultName, email, password}`                                                                                                                                    | Unit          | Crit     | FR-043-AC-2               | ❌     |
+| TC-832  | Unit: create-user without agent-browser on PATH exits 0 with stderr note                                                                                                                                              | Unit          | High     | FR-043-AC-3, FR-043-CON-3 | ❌     |
+| TC-833  | Unit: invite step failure does NOT call accept-invite                                                                                                                                                                 | Unit          | Crit     | FR-043-AC-4               | ❌     |
+| TC-834  | Unit: accept-invite failure after invite emits recovery hint and re-raises                                                                                                                                            | Unit          | Crit     | FR-043-AC-5               | ❌     |
+| TC-835  | Unit: generated password never appears in argv/stdout/stderr/notes                                                                                                                                                    | Unit          | Crit     | FR-043-AC-6, FR-043-CON-2 | ❌     |
+| TC-836  | Unit: `--no-save-vault` skips vault save even when agent-browser is present                                                                                                                                           | Unit          | High     | FR-043-AC-7               | ❌     |
 
 ---
 
@@ -465,5 +478,5 @@ injection point as `auth-identity.ts`.
 - **Empty app deps**: `runImageModeUp` throws when `expandApp` returns `[]` (FR-013-AC-6). Candidate for TC-020 (unit with stubbed expander).
 - **Phase type duplication**: `PHASES` constant defined alongside `Phase` type in `phases.ts`; TC-008/TC-009 guard against accidental re-declaration in other files.
 - **Rotate during a long-running ix-cli operation**: `ix local auth kubeconfig rotate` invalidates ALL outstanding scoped kubeconfigs the instant the Secret is deleted, including a kubeconfig in active use by another ix-cli process. The FR-045-CON-2 interactive confirmation (and the non-TTY refusal without `--force`) is the spec-level mitigation; operator runbooks SHALL warn against concurrent rotation. No additional TC beyond TC-716/TC-721/TC-723 — the confirmation prompt IS the guard.
-- **`--output` points to a symlink**: FR-044 SHALL resolve the symlink (or write through it) and chmod the resolved target to `0600`. Atomic-write semantics (FR-044-CON-5) imply the temp file lives in the symlink's *parent directory*; if the symlink target lives on a different filesystem the rename(2) fails and the command MUST exit non-zero with no partial file at either location. Covered by extending TC-702 / TC-711 / TC-714 fixtures.
+- **`--output` points to a symlink**: FR-044 SHALL resolve the symlink (or write through it) and chmod the resolved target to `0600`. Atomic-write semantics (FR-044-CON-5) imply the temp file lives in the symlink's _parent directory_; if the symlink target lives on a different filesystem the rename(2) fails and the command MUST exit non-zero with no partial file at either location. Covered by extending TC-702 / TC-711 / TC-714 fixtures.
 - **Malformed source kubeconfig — no `clusters[0].cluster.server`**: FR-044 SHALL surface `cluster_unreadable` (per Errors table) and write nothing. Covered by an additional unit fixture rolled into TC-707 / TC-715 (verbatim-subset assertion fails closed on a missing `server` field).

@@ -20,9 +20,28 @@ export const CoreConfigSchema = z
         // Written by `ix login`, read by token-refresh logic. Optional
         // (unset until first login).
         expiresAt: z.iso.datetime().optional(),
+        // Per-host token metadata written by `ix login <host>` and read by
+        // the ix-cli-core TokenStore (FR-019). Keyed by the slugified host.
+        // Token VALUES never live here — only the SecretsService holds those
+        // (ix://agent-ix/ix-cli-core/NFR-006). Map keys are host slugs; the
+        // schema is permissive on the key set, strict on the value shape.
+        hosts: z
+          .record(
+            z.string(),
+            z
+              .object({
+                // Unix epoch milliseconds at which the stored access token
+                // expires.
+                expiresAt: z.number(),
+                audience: z.string().optional(),
+                scope: z.string().optional(),
+              })
+              .strict(),
+          )
+          .default({}),
       })
       .strict()
-      .default({ serviceUrl: "https://auth.ix" }),
+      .default({ serviceUrl: "https://auth.ix", hosts: {} }),
     telemetry: z
       .object({
         enabled: z.coerce.boolean().default(false),
