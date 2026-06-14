@@ -16,10 +16,10 @@ relationships:
   - target: "ix://agent-ix/ix-cli/spec/functional/local/FR-037"
     type: "requires"
     cardinality: "1:1"
-  - target: "ix://agent-ix/ix-cli/spec/functional/core/FR-013"
+  - target: "ix://agent-ix/ix-cli-core/spec/functional/FR-004"
     type: "requires"
     cardinality: "1:1"
-  - target: "ix://agent-ix/ix-cli/spec/functional/core/FR-014"
+  - target: "ix://agent-ix/ix-cli-core/spec/functional/FR-005"
     type: "requires"
     cardinality: "1:1"
 ---
@@ -67,7 +67,8 @@ matching `--set-string` flags so tunnel exposure survives `ix down`
 and re-applies any drifted overlays.
 
 Persisted at `~/.config/ix/config.d/local.yaml`. `ix config get/set
-local tunnel.<key>` operates through the standard FR-018 surface. The
+local tunnel.<key>` operates through the standard `config` command
+surface (`ix://agent-ix/ix-cli-core/FR-008`). The
 Cloudflare tunnel **token** is a separate secret declared in
 `LocalSecretsSchema` (`local.cloudflare-tunnel-token`, env binding
 `IX_CF_TUNNEL_TOKEN`) — never persisted in plain YAML.
@@ -221,7 +222,7 @@ without helm or kubectl.
 
 - **FR-038-AC-1**: A missing `tunnel` group in the persisted YAML
   yields `{ autoStart: false, baseDomain: "agent-ix.dev", tunnelId:
-null }` without error (FR-011-AC-1 pattern).
+null }` without error (`ix://agent-ix/ix-cli-core/FR-002`-AC-1 pattern).
 - **FR-038-AC-2**: A YAML `tunnel: { autoStart: true, baseDomain:
 foo.example.com, tunnelId: abc-123 }` round-trips through
   `loadTunnelConfig()` unchanged.
@@ -358,7 +359,7 @@ namespace '<ns>'. Run \`ix up <app>\` first.`
   `tunnelBaseDomains` / `exposeOnTunnel` are tunnel-only.
 - **FR-038-CON-3**: The Cloudflare tunnel token MUST NOT be
   persisted in `~/.config/ix/config.d/local.yaml`. It lives in the
-  SecretsService backend (FR-014) or in `IX_CF_TUNNEL_TOKEN`.
+  SecretsService backend (`ix://agent-ix/ix-cli-core/FR-005`) or in `IX_CF_TUNNEL_TOKEN`.
 - **FR-038-CON-4**: There is intentionally no interactive prompt for
   credentials during cluster auto-start. Failures during cluster
   bringup must be silent (auto-start) or loud-and-actionable (`ix

@@ -10,10 +10,10 @@ relationships:
   - target: "ix://agent-ix/ix-cli/spec/usecase/US-010"
     type: "implements"
     cardinality: "1:1"
-  - target: "ix://agent-ix/ix-cli/spec/functional/core/FR-013"
+  - target: "ix://agent-ix/ix-cli-core/spec/functional/FR-004"
     type: "requires"
     cardinality: "1:1"
-  - target: "ix://agent-ix/ix-cli/spec/functional/core/FR-018"
+  - target: "ix://agent-ix/ix-cli-core/spec/functional/FR-008"
     type: "requires"
     cardinality: "1:1"
 ---
@@ -22,7 +22,8 @@ relationships:
 
 ### Schema (persistent, `local` plugin)
 
-The `local` plugin's `LocalConfigSchema` (FR-013) carries a `domain`
+The `local` plugin's `LocalConfigSchema` (registered via the plugin
+schema contract `ix://agent-ix/ix-cli-core/FR-004`) carries a `domain`
 group:
 
 ```typescript
@@ -36,7 +37,8 @@ domain: {
 ```
 
 Persisted at `~/.config/ix/config.d/local.yaml`. `ix config get/set
-local domain.<key>` operates through the standard FR-018 surface.
+local domain.<key>` operates through the standard `config` command
+surface (`ix://agent-ix/ix-cli-core/FR-008`).
 
 ### IxConfig contract
 
@@ -127,7 +129,7 @@ joined into a single line.
 
 - **FR-037-AC-1**: A missing `domain` group in the persisted YAML
   yields `hosts: ["dev.ix"]` plus the documented defaults for the
-  other fields without error (FR-011-AC-1 pattern).
+  other fields without error (`ix://agent-ix/ix-cli-core/FR-002`-AC-1 pattern).
 - **FR-037-AC-2**: A YAML `domain.hosts: [dev.ix, luna.ix, agent-ix.dev]`
   round-trips through `loadConfig()` as a three-entry list with
   `internalBaseDomain == "dev.ix"`.
