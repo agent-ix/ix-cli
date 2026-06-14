@@ -54,11 +54,14 @@ export const LocalConfigSchema = z
       .object({
         clientAudienceAllowlist: z
           .record(z.string(), z.array(z.string()))
-          .default({ "filament-ui": ["filament"] }),
+          .default({ "filament-ui": ["filament"], "ix-cli": ["filament"] }),
       })
       .strict()
       .default({
-        clientAudienceAllowlist: { "filament-ui": ["filament"] },
+        clientAudienceAllowlist: {
+          "filament-ui": ["filament"],
+          "ix-cli": ["filament"],
+        },
       }),
     concurrency: z
       .object({
