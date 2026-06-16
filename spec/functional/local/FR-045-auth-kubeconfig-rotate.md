@@ -1,7 +1,7 @@
 ---
 id: FR-045
 title: "ix local auth kubeconfig rotate — Invalidate and reissue SA token"
-artifact_type: FR
+type: FR
 object: cli_command
 relationships:
   - target: "ix://agent-ix/identity/FR-034"

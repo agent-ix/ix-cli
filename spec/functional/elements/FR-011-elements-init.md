@@ -1,7 +1,7 @@
 ---
 id: FR-011
 title: "packages/elements — ix elements init"
-artifact_type: FR
+type: FR
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-001"
     type: "implements"

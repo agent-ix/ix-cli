@@ -1,7 +1,7 @@
 ---
 id: NFR-002
 title: "Destructive Cluster Operations Require Explicit Confirmation"
-artifact_type: NFR
+type: NFR
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/functional/local/FR-006"
     type: "constrains"

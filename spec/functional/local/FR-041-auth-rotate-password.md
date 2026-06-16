@@ -1,7 +1,7 @@
 ---
 id: FR-041
 title: "ix local auth rotate-password — Headless must_rotate flow"
-artifact_type: FR
+type: FR
 object: cli_command
 relationships:
   - target: "ix://agent-ix/identity/FR-019"

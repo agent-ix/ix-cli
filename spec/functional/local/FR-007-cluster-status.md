@@ -1,7 +1,7 @@
 ---
 id: FR-007
 title: "Read-Only Cluster Health Summary (Nodes + Pods)"
-artifact_type: FR
+type: FR
 object: process
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/usecase/US-005"

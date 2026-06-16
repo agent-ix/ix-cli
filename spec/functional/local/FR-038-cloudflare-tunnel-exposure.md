@@ -1,7 +1,7 @@
 ---
 id: FR-038
 title: "Cloudflare Tunnel Exposure — shared cloudflared + per-app expose/unexpose"
-artifact_type: FR
+type: FR
 object: external-access
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-007"

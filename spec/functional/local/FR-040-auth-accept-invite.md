@@ -1,7 +1,7 @@
 ---
 id: FR-040
 title: "ix local auth accept-invite — Headless invite acceptance"
-artifact_type: FR
+type: FR
 object: cli_command
 relationships:
   - target: "ix://agent-ix/identity/FR-032"

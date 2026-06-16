@@ -1,7 +1,7 @@
 ---
 id: FR-023
 title: "ix logout [--host] — forget credentials"
-artifact_type: FR
+type: FR
 object: command
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-001"

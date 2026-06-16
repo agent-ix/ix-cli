@@ -1,7 +1,7 @@
 ---
 id: StR-002
 title: "Consistent Terminal UX Across All ix Commands"
-artifact_type: StR
+type: StR
 relationships:
   - target: "ix://agent-ix/ix-ui/spec/stakeholder/StR-001"
     type: "requires"

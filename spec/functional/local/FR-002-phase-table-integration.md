@@ -1,7 +1,7 @@
 ---
 id: FR-002
 title: "Startup Display via PhaseTable — Replaces AppDisplay"
-artifact_type: FR
+type: FR
 relationships:
   - target: "ix://agent-ix/ix-local-cli/spec/functional/FR-022"
     type: "migrated_from"

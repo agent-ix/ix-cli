@@ -1,7 +1,7 @@
 ---
 id: FR-037
 title: "Multi-Host Ingress Config — domain.hosts + extraBaseDomains Fanout"
-artifact_type: FR
+type: FR
 object: configuration
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-007"

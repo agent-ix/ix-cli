@@ -1,7 +1,7 @@
 ---
 id: FR-022
 title: "ix whoami [--host] — show authenticated sessions"
-artifact_type: FR
+type: FR
 object: command
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-001"

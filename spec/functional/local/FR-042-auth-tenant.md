@@ -1,7 +1,7 @@
 ---
 id: FR-042
 title: "ix local auth tenant — Tenant membership CRUD"
-artifact_type: FR
+type: FR
 object: cli_command_suite
 relationships:
   - target: "ix://agent-ix/identity/FR-033"

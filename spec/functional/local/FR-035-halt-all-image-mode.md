@@ -1,7 +1,7 @@
 ---
 id: FR-035
 title: "halt all (Image Mode) — Enumerate, List, Confirm, Uninstall"
-artifact_type: FR
+type: FR
 object: process
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/usecase/US-008"

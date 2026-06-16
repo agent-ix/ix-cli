@@ -1,7 +1,7 @@
 ---
 id: US-001
 title: "Developer Deploys an App to the Local Cluster"
-artifact_type: US
+type: US
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-001"
     type: "implements"

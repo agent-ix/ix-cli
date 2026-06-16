@@ -1,7 +1,7 @@
 ---
 id: FR-013
 title: "packages/elements — ix elements new"
-artifact_type: FR
+type: FR
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-001"
     type: "implements"

@@ -1,7 +1,7 @@
 ---
 id: FR-006
 title: "Cluster Teardown with Confirmation Guard"
-artifact_type: FR
+type: FR
 object: process
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/usecase/US-004"

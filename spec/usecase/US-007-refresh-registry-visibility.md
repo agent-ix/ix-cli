@@ -1,7 +1,7 @@
 ---
 id: US-007
 title: "Developer Sees Which Charts Changed on Registry Refresh"
-artifact_type: US
+type: US
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-002"
     type: "implements"

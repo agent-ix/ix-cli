@@ -1,7 +1,7 @@
 ---
 id: FR-008
 title: "ix-core Tag Convention for Default Service Set"
-artifact_type: FR
+type: FR
 object: convention
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-004"

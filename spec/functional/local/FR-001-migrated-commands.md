@@ -1,7 +1,7 @@
 ---
 id: FR-001
 title: "packages/local — Migrated Command Set from ix-local-cli"
-artifact_type: FR
+type: FR
 relationships:
   - target: "ix://agent-ix/ix-local-cli/spec/functional/FR-001"
     type: "migrated_from"

@@ -1,7 +1,7 @@
 ---
 id: US-011
 title: "Operator Exposes a Local App on a Public Hostname via Cloudflare Tunnel"
-artifact_type: US
+type: US
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-007"
     type: "implements"

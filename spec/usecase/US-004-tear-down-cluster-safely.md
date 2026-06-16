@@ -1,7 +1,7 @@
 ---
 id: US-004
 title: "Developer Tears Down the Cluster Safely"
-artifact_type: US
+type: US
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-003"
     type: "implements"

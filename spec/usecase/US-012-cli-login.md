@@ -1,7 +1,7 @@
 ---
 id: US-012
 title: "Developer Logs In to an Agent IX Service From the CLI"
-artifact_type: US
+type: US
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-001"
     type: "implements"

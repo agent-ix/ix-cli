@@ -1,7 +1,7 @@
 ---
 id: StR-003
 title: "Cluster Lifecycle Managed by a Single ix Command"
-artifact_type: StR
+type: StR
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-001"
     type: "extends"

@@ -1,7 +1,7 @@
 ---
 id: NFR-001
 title: "All Terminal Output Routes Through @agent-ix/ix-ui-cli"
-artifact_type: NFR
+type: NFR
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-002"
     type: "implements"

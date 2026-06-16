@@ -1,7 +1,7 @@
 ---
 id: FR-044
 title: "ix local auth kubeconfig issue — Emit operator-scoped kubeconfig"
-artifact_type: FR
+type: FR
 object: cli_command
 relationships:
   - target: "ix://agent-ix/identity/FR-034"

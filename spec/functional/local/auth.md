@@ -1,7 +1,7 @@
 ---
 id: auth
 title: "ix local auth — Command Suite & Namespace Contract"
-artifact_type: FR
+type: FR
 object: command_suite
 relationships:
   - target: "ix://agent-ix/auth/ADR-004"

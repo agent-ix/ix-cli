@@ -1,7 +1,7 @@
 ---
 id: FR-021
 title: "ix login <host> — service-first device login"
-artifact_type: FR
+type: FR
 object: command
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-001"

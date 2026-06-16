@@ -1,5 +1,5 @@
 ---
-artifact_type: implementation-plan
+type: implementation-plan
 name: runtime-plugin-platform
 status: superseded
 superseded_by: oclif-native composition (see StR-008, FR-021–FR-025 as revised 2026-05-10)

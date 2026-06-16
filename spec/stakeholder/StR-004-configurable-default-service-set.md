@@ -1,7 +1,7 @@
 ---
 id: StR-004
 title: "Configurable Default Service Set for Cluster Bring-Up"
-artifact_type: StR
+type: StR
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-003"
     type: "extends"

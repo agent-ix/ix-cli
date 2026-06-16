@@ -1,7 +1,7 @@
 ---
 id: FR-032
 title: "ghcr-creds Auto-Provisioning per Install Namespace"
-artifact_type: FR
+type: FR
 object: process
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/functional/local/FR-008"

@@ -1,7 +1,7 @@
 ---
 id: FR-036
 title: "Cluster Stop / Start — Docker-Level Pause and Resume of Kind Nodes"
-artifact_type: FR
+type: FR
 object: process
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/usecase/US-009"

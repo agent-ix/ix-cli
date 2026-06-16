@@ -1,7 +1,7 @@
 ---
 id: US-008
 title: "Developer Halts All Running Services Without Destroying the Cluster"
-artifact_type: US
+type: US
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-003"
     type: "implements"

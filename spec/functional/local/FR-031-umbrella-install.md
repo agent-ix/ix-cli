@@ -1,7 +1,7 @@
 ---
 id: FR-031
 title: "Umbrella App Install — Single Helm Release per App, Per-Subchart Watchers"
-artifact_type: FR
+type: FR
 object: process
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/functional/local/FR-008"

@@ -1,7 +1,7 @@
 ---
 id: US-010
 title: "Operator Configures Multiple Ingress Hostnames for a Shared Cluster"
-artifact_type: US
+type: US
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-007"
     type: "implements"

@@ -1,7 +1,7 @@
 ---
 id: FR-005
 title: "Cluster Bring-Up — Init + Compute Effective Set + Deploy"
-artifact_type: FR
+type: FR
 object: process
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/usecase/US-003"

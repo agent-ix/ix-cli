@@ -1,7 +1,7 @@
 ---
 id: US-006
 title: "Operator Customizes Default Services for Cluster Bring-Up"
-artifact_type: US
+type: US
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-004"
     type: "implements"

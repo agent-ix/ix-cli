@@ -1,7 +1,7 @@
 ---
 id: FR-030
 title: "ix up --refresh — Force Helm Dependency Re-Resolution"
-artifact_type: FR
+type: FR
 object: process
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/functional/local/FR-008"

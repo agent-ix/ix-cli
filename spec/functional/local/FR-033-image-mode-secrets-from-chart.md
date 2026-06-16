@@ -1,7 +1,7 @@
 ---
 id: FR-033
 title: "Image-Mode Secrets Contract Loaded from Published Chart Package"
-artifact_type: FR
+type: FR
 object: process
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/functional/local/FR-008"

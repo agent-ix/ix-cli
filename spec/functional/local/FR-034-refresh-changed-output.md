@@ -1,7 +1,7 @@
 ---
 id: FR-034
 title: "ix local refresh — Per-Chart Diff Output"
-artifact_type: FR
+type: FR
 object: process
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/usecase/US-007"

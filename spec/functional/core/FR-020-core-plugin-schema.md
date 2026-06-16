@@ -1,7 +1,7 @@
 ---
 id: FR-020
 title: "Core Plugin Schema (configSchema and secretsSchema for id `core`)"
-artifact_type: FR
+type: FR
 object: configuration
 relationships:
   - target: "ix://agent-ix/ix-cli-core/spec/stakeholder/StR-001"

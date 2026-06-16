@@ -1,7 +1,7 @@
 ---
 id: StR-007
 title: "Multi-Host Ingress Suffixes for Shared / Remote Clusters"
-artifact_type: StR
+type: StR
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-003"
     type: "extends"

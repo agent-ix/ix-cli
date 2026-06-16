@@ -1,7 +1,7 @@
 ---
 id: FR-039
 title: "Auth Client Audience Allowlist Rendering"
-artifact_type: FR
+type: FR
 object: configuration
 ---
 # [FR-039] Auth Client Audience Allowlist Rendering

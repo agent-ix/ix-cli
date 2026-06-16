@@ -1,7 +1,7 @@
 ---
 id: US-002
 title: "Developer Monitors Concurrent Service Startup Progress"
-artifact_type: US
+type: US
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-002"
     type: "implements"

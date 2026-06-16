@@ -1,7 +1,7 @@
 ---
 id: StR-001
 title: "Unified CLI Entry Point for the Agent IX Ecosystem"
-artifact_type: StR
+type: StR
 relationships: []
 ---
 

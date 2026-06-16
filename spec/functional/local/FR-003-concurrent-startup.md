@@ -1,7 +1,7 @@
 ---
 id: FR-003
 title: "Concurrent Service Startup with Rate-Control Pools"
-artifact_type: FR
+type: FR
 relationships:
   - target: "ix://agent-ix/ix-local-cli/spec/functional/FR-021"
     type: "migrated_from"

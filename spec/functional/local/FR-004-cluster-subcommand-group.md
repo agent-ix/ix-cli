@@ -1,7 +1,7 @@
 ---
 id: FR-004
 title: "ix local cluster Subcommand Group (up / down / status)"
-artifact_type: FR
+type: FR
 object: command-group
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/usecase/US-003"

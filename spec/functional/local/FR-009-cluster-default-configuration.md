@@ -1,7 +1,7 @@
 ---
 id: FR-009
 title: "ClusterConfig — Default Service Set from ~/.ix/config.yaml"
-artifact_type: FR
+type: FR
 object: configuration
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-004"
