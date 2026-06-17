@@ -38,7 +38,7 @@ The local plugin **SHALL** own product-to-auth audience mappings used by local d
 
 The default allowlist hardcodes the CLI device `client_id` (`ix-cli`) alongside each product SPA. A cleaner design lets each **service** declare the device `client_id` the CLI should present, rather than the auth allowlist enumerating a CLI-owned constant:
 
-- Add an optional `device_client_id` field to the `AgentixServiceDiscovery` document (`/.well-known/agentix-service.json`, auth `ADR-011`, owned by `gateway-bff-contract` FR-003).
+- Add an optional `device_client_id` field to the `AgentixServiceDiscovery` document (`/.well-known/agentix-service.json`, auth `ADR-011`, owned by `gateway-bff-contract` [FR-003](./FR-003-concurrent-startup.md)).
 - `ix-cli-core`'s device-flow runner presents `discovery.device_client_id` (falling back to `DEFAULT_DEVICE_CLIENT_ID = "ix-cli"`) instead of a fixed constant, so each product BFF controls which client id reaches `auth-service`.
 - The allowlist (this FR) then maps whatever `client_id` the service mandates to its audiences; products that keep `ix-cli` need no extra allowlist entry beyond what their service advertises.
 

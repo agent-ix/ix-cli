@@ -76,5 +76,5 @@ sequenceDiagram
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/usecase/US-005
-- **implements**: ix-cli/spec/functional/local/FR-004
+- **implements**: ix-cli/spec/usecase/[US-005](../../usecase/US-005-cluster-health-status.md)
+- **implements**: ix-cli/spec/functional/local/[FR-004](./FR-004-cluster-subcommand-group.md)

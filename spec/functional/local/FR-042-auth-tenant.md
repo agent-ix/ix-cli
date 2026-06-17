@@ -20,14 +20,14 @@ relationships:
 
 ## Description
 
-Four sibling subcommands wrap identity's FR-033 `/admin/users/{user_id}/memberships`
+Four sibling subcommands wrap identity's [FR-033](./FR-033-image-mode-secrets-from-chart.md) `/admin/users/{user_id}/memberships`
 endpoints so operators can manage tenant membership from the CLI. Every
-verb first resolves email → user_id via identity FR-036
-(`POST /internal/users/lookup`), then issues the relevant FR-033 HTTP verb.
+verb first resolves email → user_id via identity [FR-036](./FR-036-cluster-stop-start.md)
+(`POST /internal/users/lookup`), then issues the relevant [FR-033](./FR-033-image-mode-secrets-from-chart.md) HTTP verb.
 
 | Subcommand | Verb | Path |
 |---|---|---|
-| (resolve) | POST | `/internal/users/lookup` (FR-036) |
+| (resolve) | POST | `/internal/users/lookup` ([FR-036](./FR-036-cluster-stop-start.md)) |
 | `list <email>` | GET | `/admin/users/{user_id}/memberships` |
 | `add <email> --tenant <id> --role <r> [--is-default]` | POST | `/admin/users/{user_id}/memberships` |
 | `set-default <email> --tenant <id>` | PATCH | `/admin/users/{user_id}/memberships/{tenant_id}` |
@@ -37,15 +37,15 @@ verb first resolves email → user_id via identity FR-036
 
 | Call | Path | Runtime gate |
 |---|---|---|
-| email → user_id resolution | `POST /internal/users/lookup` (identity FR-036) | K8s RBAC `pods/exec` on `auth/identity*` (FR-034) — in-pod-exec-gated |
-| Membership CRUD | `/admin/users/{user_id}/memberships*` (identity FR-033) | K8s RBAC `pods/exec` on `auth/identity*` (FR-034) — in-pod-exec-gated |
+| email → user_id resolution | `POST /internal/users/lookup` (identity [FR-036](./FR-036-cluster-stop-start.md)) | K8s RBAC `pods/exec` on `auth/identity*` ([FR-034](./FR-034-refresh-changed-output.md)) — in-pod-exec-gated |
+| Membership CRUD | `/admin/users/{user_id}/memberships*` (identity [FR-033](./FR-033-image-mode-secrets-from-chart.md)) | K8s RBAC `pods/exec` on `auth/identity*` ([FR-034](./FR-034-refresh-changed-output.md)) — in-pod-exec-gated |
 
 Both calls go through `kubectlRaw`, the in-pod-exec shim. The earlier design
 routed resolution through identity's JWT-gated `GET /admin/users?q=<email>`
 admin search, which would have required a separate auth mechanism (a valid
-admin JWT) the CLI does not hold. Routing both through FR-036 + FR-033
-keeps the entire command suite on a single runtime gate (FR-034 RBAC)
-consistent with FR-033-CON-6 and FR-036-CON-4.
+admin JWT) the CLI does not hold. Routing both through [FR-036](./FR-036-cluster-stop-start.md) + [FR-033](./FR-033-image-mode-secrets-from-chart.md)
+keeps the entire command suite on a single runtime gate ([FR-034](./FR-034-refresh-changed-output.md) RBAC)
+consistent with [FR-033-CON-6](./FR-033-image-mode-secrets-from-chart.md) and [FR-036-CON-4](./FR-036-cluster-stop-start.md).
 
 ## Constraints
 
@@ -60,8 +60,8 @@ consistent with FR-033-CON-6 and FR-036-CON-4.
 | ID | Criteria | Verification |
 |---|---|---|
 | FR-042-AC-1 | `list` resolves the user then GETs memberships and renders one Item per row. | Unit test |
-| FR-042-AC-2 | `list` reports "no user matched" when the FR-036 lookup returns 404 `user_not_found`. | Unit test |
-| FR-042-AC-9 | The resolver issues `POST /internal/users/lookup` (FR-036), not `GET /admin/users?q=`. Input containing `@` is sent as `{email}`; otherwise as `{username}`. | Unit test |
+| FR-042-AC-2 | `list` reports "no user matched" when the [FR-036](./FR-036-cluster-stop-start.md) lookup returns 404 `user_not_found`. | Unit test |
+| FR-042-AC-9 | The resolver issues `POST /internal/users/lookup` ([FR-036](./FR-036-cluster-stop-start.md)), not `GET /admin/users?q=`. Input containing `@` is sent as `{email}`; otherwise as `{username}`. | Unit test |
 | FR-042-AC-3 | `add` POSTs `{tenant_id, role, is_default}` and renders the response. | Unit test |
 | FR-042-AC-4 | `add` 409 `membership_exists` surfaces "already exists". | Unit test |
 | FR-042-AC-5 | `add` 403 `cross_tenant_admin_forbidden` surfaces an admin-authorization message. | Unit test |
@@ -71,7 +71,7 @@ consistent with FR-033-CON-6 and FR-036-CON-4.
 
 ## Dependencies
 
-- Upstream: identity/FR-033.
+- Upstream: identity/[FR-033](./FR-033-image-mode-secrets-from-chart.md).
 - Downstream: `apps/ix/src/commands/local/auth/tenant/{list,add,set-default,remove}.ts`,
   `packages/local/src/commands/auth-tenant.tsx`,
   `packages/local/tests/auth-tenant.test.ts`.

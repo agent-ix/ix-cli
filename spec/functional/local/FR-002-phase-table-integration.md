@@ -54,14 +54,14 @@ const display = new PhaseTable<Phase>(serviceNames, {
 });
 ```
 
-`tailIngressHosts` MUST be the configured `IxConfig.hosts` (FR-037) in
+`tailIngressHosts` MUST be the configured `IxConfig.hosts` ([FR-037](./FR-037-multi-host-ingress-config.md)) in
 priority order. PhaseTable performs the per-host suffix grouping in the
-final ingress section (FR-004-AC-9); `packages/local` does NOT pre-group
+final ingress section ([FR-004-AC-9](./FR-004-cluster-subcommand-group.md)); `packages/local` does NOT pre-group
 URLs.
 
 ## Behavior
 
-All display behaviors specified in ix-local-cli FR-022 are satisfied by delegating to `PhaseTable`. No display logic is duplicated in `packages/local`.
+All display behaviors specified in ix-local-cli [FR-022](../core/FR-022-ix-whoami.md) are satisfied by delegating to `PhaseTable`. No display logic is duplicated in `packages/local`.
 
 The `PhaseTable` component handles:
 
@@ -98,7 +98,7 @@ registry appears only in preflight, followed by the deploy target kind:
 
 The ingress URLs shown in the final section SHALL come from the rendered Helm
 manifest for the installed release. `packages/local` SHALL NOT synthesize URLs
-from the release name plus `config.hosts` — under multi-host configs (FR-037)
+from the release name plus `config.hosts` — under multi-host configs ([FR-037](./FR-037-multi-host-ingress-config.md))
 a single release renders one ingress host per entry in `domain.hosts`, and the
 display section MUST reflect what was actually rendered, not what could be
 inferred from the suffix list.
@@ -113,25 +113,25 @@ inferred from the suffix list.
 | ID | Criteria | Verification |
 |----|----------|--------------|
 | FR-002-AC-1 | `ix up <app>` renders a phase-column table using `PhaseTable<Phase>` imported from `@agent-ix/ix-ui-cli`. | Test |
-| FR-002-AC-2 | All acceptance criteria from ix-local-cli FR-022 are satisfied via the `PhaseTable` component. | Test |
+| FR-002-AC-2 | All acceptance criteria from ix-local-cli [FR-022](../core/FR-022-ix-whoami.md) are satisfied via the `PhaseTable` component. | Test |
 | FR-002-AC-3 | `grep -r "AppDisplay" packages/local/src/` returns zero matches. | Test |
 | FR-002-AC-4 | The `Phase` type and `PHASES` constant are defined in `src/phases.ts` and not duplicated elsewhere in the package. | Test |
 | FR-002-AC-5 | The header for `ix up <target>` is `ix local up · <target>` and SHALL NOT include the Helm registry. | Test |
-| FR-002-AC-6 | The success frame passes all rendered ingress URLs to `PhaseTable` via `tailIngressUrls` (flat list, in chart-rendered order) AND the configured hosts via `tailIngressHosts = config.hosts`. PhaseTable groups URLs into per-host `◎ Ingress · <host>` blocks via longest-host-suffix match (FR-004-AC-9). If no Ingress exists, no ingress section is rendered. | Test |
+| FR-002-AC-6 | The success frame passes all rendered ingress URLs to `PhaseTable` via `tailIngressUrls` (flat list, in chart-rendered order) AND the configured hosts via `tailIngressHosts = config.hosts`. PhaseTable groups URLs into per-host `◎ Ingress · <host>` blocks via longest-host-suffix match ([FR-004-AC-9](./FR-004-cluster-subcommand-group.md)). If no Ingress exists, no ingress section is rendered. | Test |
 
 
 - **FR-002-AC-1**: `ix up <app>` renders a phase-column table using `PhaseTable<Phase>` imported from `@agent-ix/ix-ui-cli`.
-- **FR-002-AC-2**: All acceptance criteria from ix-local-cli FR-022 are satisfied via the `PhaseTable` component.
+- **FR-002-AC-2**: All acceptance criteria from ix-local-cli [FR-022](../core/FR-022-ix-whoami.md) are satisfied via the `PhaseTable` component.
 - **FR-002-AC-3**: `grep -r "AppDisplay" packages/local/src/` returns zero matches.
 - **FR-002-AC-4**: The `Phase` type and `PHASES` constant are defined in `src/phases.ts` and not duplicated elsewhere in the package.
 - **FR-002-AC-5**: The header for `ix up <target>` is `ix local up · <target>` and SHALL NOT include the Helm registry.
-- **FR-002-AC-6**: The success frame passes all rendered ingress URLs to `PhaseTable` via `tailIngressUrls` (flat list, in chart-rendered order) AND the configured hosts via `tailIngressHosts = config.hosts`. PhaseTable groups URLs into per-host `◎ Ingress · <host>` blocks via longest-host-suffix match (FR-004-AC-9). If no Ingress exists, no ingress section is rendered.
+- **FR-002-AC-6**: The success frame passes all rendered ingress URLs to `PhaseTable` via `tailIngressUrls` (flat list, in chart-rendered order) AND the configured hosts via `tailIngressHosts = config.hosts`. PhaseTable groups URLs into per-host `◎ Ingress · <host>` blocks via longest-host-suffix match ([FR-004-AC-9](./FR-004-cluster-subcommand-group.md)). If no Ingress exists, no ingress section is rendered.
 
 ## Dependencies
 
-- **migrated_from**: ix-local-cli/spec/functional/FR-022
-- **requires**: ix-ui/spec/functional/cli/FR-001
+- **migrated_from**: ix-local-cli/spec/functional/[FR-022](../core/FR-022-ix-whoami.md)
+- **requires**: ix-ui/spec/functional/cli/[FR-001](./FR-001-migrated-commands.md)
 - **requires**: ix-ui/spec/functional/cli/FR-002
-- **requires**: ix-ui/spec/functional/cli/FR-003
-- **implements**: ix-cli/spec/usecase/US-002
-- **requires**: ix-cli/spec/functional/local/FR-037
+- **requires**: ix-ui/spec/functional/cli/[FR-003](./FR-003-concurrent-startup.md)
+- **implements**: ix-cli/spec/usecase/[US-002](../../usecase/US-002-monitor-concurrent-service-startup.md)
+- **requires**: ix-cli/spec/functional/local/[FR-037](./FR-037-multi-host-ingress-config.md)

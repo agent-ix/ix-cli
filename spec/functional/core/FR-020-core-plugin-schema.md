@@ -20,7 +20,7 @@ relationships:
 
 ## Description
 
-The reserved `core` plugin (owned by `apps/ix`, registered via the same `ixSchema` plugin contract as any other plugin — see `ix://agent-ix/ix-cli-core/FR-004`, `ix://agent-ix/ix-cli-core/FR-014`) SHALL declare the following `configSchema` and `secretsSchema`. These schemas form the v1 contract for `~/.config/ix/config.yaml` (the reserved-`core` file-layout carve-out defined in `ix://agent-ix/ix-cli-core/FR-001`) and for the `core.*` secrets namespace. This requirement is IX-specific: it fixes the concrete keys IX's `ix` binary persists; the generic config/secrets machinery is specified in ix-cli-core.
+The reserved `core` plugin (owned by `apps/ix`, registered via the same `ixSchema` plugin contract as any other plugin — see [FR-004](../local/FR-004-cluster-subcommand-group.md), `ix://agent-ix/ix-cli-core/FR-014`) SHALL declare the following `configSchema` and `secretsSchema`. These schemas form the v1 contract for `~/.config/ix/config.yaml` (the reserved-`core` file-layout carve-out defined in [FR-001](../local/FR-001-migrated-commands.md)) and for the `core.*` secrets namespace. This requirement is IX-specific: it fixes the concrete keys IX's `ix` binary persists; the generic config/secrets machinery is specified in ix-cli-core.
 
 ### configSchema (Zod, `.strict()`)
 
@@ -47,7 +47,7 @@ const CoreConfigSchema = z.object({
 }).strict();
 ```
 
-**Env-var bindings.** Every leaf key SHALL declare an `IX_*` env var binding for the layered resolution defined in `ix://agent-ix/ix-cli-core/FR-003`:
+**Env-var bindings.** Every leaf key SHALL declare an `IX_*` env var binding for the layered resolution defined in [FR-003](../local/FR-003-concurrent-startup.md):
 
 | Key | Env var |
 |---|---|
@@ -97,24 +97,24 @@ Other deferred core fields: proxy settings, default editor, default output forma
 | ID | Criteria | Verification |
 |----|----------|--------------|
 | FR-020-AC-1 | `ConfigService.forPlugin('core', CoreConfigSchema).get()` against an empty environment and absent `~/.config/ix/config.yaml` returns the full default object: `logLevel: 'info'`, `secretsBackend: 'auto'`, `auth: { serviceUrl: 'https://auth.ix' }`, `telemetry: { enabled: false }`, `theme: 'auto'`, `updateCheck: { enabled: true, intervalHours: 24 }`. | Test |
-| FR-020-AC-2 | Setting any leaf key via the corresponding env var (per the table above) takes precedence over the file value (verified by the `ix://agent-ix/ix-cli-core/FR-003`-AC-1 mechanism). | Test |
-| FR-020-AC-3 | `secretsBackend = 'auto'` selects keyring when the `ix://agent-ix/ix-cli-core/FR-006` capability probe succeeds, age-file when it fails (per `ix://agent-ix/ix-cli-core/FR-005` active-backend selection). | Test |
+| FR-020-AC-2 | Setting any leaf key via the corresponding env var (per the table above) takes precedence over the file value (verified by the [FR-003](../local/FR-003-concurrent-startup.md)-AC-1 mechanism). | Test |
+| FR-020-AC-3 | `secretsBackend = 'auto'` selects keyring when the [FR-006](../local/FR-006-cluster-down.md) capability probe succeeds, age-file when it fails (per [FR-005](../local/FR-005-cluster-up.md) active-backend selection). | Test |
 | FR-020-AC-4 | `secretsBackend = 'keyring'` pinned with a failing probe causes every `SecretsService` operation to throw `KeyringUnavailableError` (per `ix://agent-ix/ix-cli-core/NFR-004`-AC-5). | Test |
 | FR-020-AC-5 | An attempt to set an unknown key in `~/.config/ix/config.yaml` (e.g. `cluster.context`) is rejected by the `.strict()` schema with a four-tuple error per `ix://agent-ix/ix-cli-core/NFR-003`, naming `core` as the plugin and pointing the user to `ix config doctor`. (`cluster.*` belongs to `local`, not `core`.) | Test |
-| FR-020-AC-6 | Each `SecretId` enumerated above is registered with `SecretsService` at startup and appears in `ix secrets list` with its declared description and (where present) `envVar` honored ahead of the active backend per `ix://agent-ix/ix-cli-core/FR-005`. | Test |
+| FR-020-AC-6 | Each `SecretId` enumerated above is registered with `SecretsService` at startup and appears in `ix secrets list` with its declared description and (where present) `envVar` honored ahead of the active backend per [FR-005](../local/FR-005-cluster-up.md). | Test |
 | FR-020-AC-7 | `auth.expiresAt` is the only key in the `core` schema not bound to an env var; setting `IX_AUTH_EXPIRES_AT` (if mistakenly used) has no effect on resolution and emits no error (it is simply not part of the schema's env-binding map). | Test |
 
 - **FR-020-AC-1**: `ConfigService.forPlugin('core', CoreConfigSchema).get()` against an empty environment and absent `~/.config/ix/config.yaml` returns the full default object: `logLevel: 'info'`, `secretsBackend: 'auto'`, `auth: { serviceUrl: 'https://auth.ix' }`, `telemetry: { enabled: false }`, `theme: 'auto'`, `updateCheck: { enabled: true, intervalHours: 24 }`.
-- **FR-020-AC-2**: Setting any leaf key via the corresponding env var (per the table above) takes precedence over the file value (verified by the `ix://agent-ix/ix-cli-core/FR-003`-AC-1 mechanism).
-- **FR-020-AC-3**: `secretsBackend = 'auto'` selects keyring when the `ix://agent-ix/ix-cli-core/FR-006` capability probe succeeds, age-file when it fails (per `ix://agent-ix/ix-cli-core/FR-005` active-backend selection).
+- **FR-020-AC-2**: Setting any leaf key via the corresponding env var (per the table above) takes precedence over the file value (verified by the [FR-003](../local/FR-003-concurrent-startup.md)-AC-1 mechanism).
+- **FR-020-AC-3**: `secretsBackend = 'auto'` selects keyring when the [FR-006](../local/FR-006-cluster-down.md) capability probe succeeds, age-file when it fails (per [FR-005](../local/FR-005-cluster-up.md) active-backend selection).
 - **FR-020-AC-4**: `secretsBackend = 'keyring'` pinned with a failing probe causes every `SecretsService` operation to throw `KeyringUnavailableError` (per `ix://agent-ix/ix-cli-core/NFR-004`-AC-5).
 - **FR-020-AC-5**: An attempt to set an unknown key in `~/.config/ix/config.yaml` (e.g. `cluster.context`) is rejected by the `.strict()` schema with a four-tuple error per `ix://agent-ix/ix-cli-core/NFR-003`, naming `core` as the plugin and pointing the user to `ix config doctor`. (`cluster.*` belongs to `local`, not `core`.)
-- **FR-020-AC-6**: Each `SecretId` enumerated above is registered with `SecretsService` at startup and appears in `ix secrets list` with its declared description and (where present) `envVar` honored ahead of the active backend per `ix://agent-ix/ix-cli-core/FR-005`.
+- **FR-020-AC-6**: Each `SecretId` enumerated above is registered with `SecretsService` at startup and appears in `ix secrets list` with its declared description and (where present) `envVar` honored ahead of the active backend per [FR-005](../local/FR-005-cluster-up.md).
 - **FR-020-AC-7**: `auth.expiresAt` is the only key in the `core` schema not bound to an env var; setting `IX_AUTH_EXPIRES_AT` (if mistakenly used) has no effect on resolution and emits no error (it is simply not part of the schema's env-binding map).
 
 ## Dependencies
 
-- **implements**: ix-cli-core/spec/stakeholder/StR-001
-- **implements**: ix-cli-core/spec/stakeholder/StR-002
-- **requires**: ix-cli-core/spec/functional/FR-004
-- **requires**: ix-cli-core/spec/functional/FR-003
+- **implements**: ix-cli-core/spec/stakeholder/[StR-001](../../stakeholder/StR-001-unified-cli-entry-point.md)
+- **implements**: ix-cli-core/spec/stakeholder/[StR-002](../../stakeholder/StR-002-consistent-terminal-ux.md)
+- **requires**: ix-cli-core/spec/functional/[FR-004](../local/FR-004-cluster-subcommand-group.md)
+- **requires**: ix-cli-core/spec/functional/[FR-003](../local/FR-003-concurrent-startup.md)

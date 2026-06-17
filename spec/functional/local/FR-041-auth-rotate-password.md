@@ -72,7 +72,7 @@ ix local auth rotate-password <email> --current-password-stdin (--new-password-s
 ## Dependencies
 
 - Upstream: identity/FR-019 (rotate endpoint), auth-service/FR-024 (rotate
-  scope), auth/FR-008.
+  scope), auth/[FR-008](./FR-008-ix-core-tag-convention.md).
 - Downstream: `apps/ix/src/commands/local/auth/rotate-password.ts`,
   `packages/local/src/commands/auth-rotate-password.tsx`,
   `packages/local/tests/auth-rotate-password.test.ts`.

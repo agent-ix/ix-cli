@@ -29,7 +29,7 @@ detailed below.
 ### Schema (persistent, `local` plugin)
 
 The `local` plugin's `LocalConfigSchema` (registered via the plugin
-schema contract `ix://agent-ix/ix-cli-core/FR-004`) carries a `domain`
+schema contract [FR-004](./FR-004-cluster-subcommand-group.md)) carries a `domain`
 group:
 
 ```typescript
@@ -44,7 +44,7 @@ domain: {
 
 Persisted at `~/.config/ix/config.d/local.yaml`. `ix config get/set
 local domain.<key>` operates through the standard `config` command
-surface (`ix://agent-ix/ix-cli-core/FR-008`).
+surface ([FR-008](./FR-008-ix-core-tag-convention.md)).
 
 ### IxConfig contract
 
@@ -135,7 +135,7 @@ joined into a single line.
 
 | ID | Criteria | Verification |
 |----|----------|--------------|
-| FR-037-AC-1 | A missing `domain` group in the persisted YAML yields `hosts: ["dev.ix"]` plus the documented defaults for the other fields without error (`ix://agent-ix/ix-cli-core/FR-002`-AC-1 pattern). | Test |
+| FR-037-AC-1 | A missing `domain` group in the persisted YAML yields `hosts: ["dev.ix"]` plus the documented defaults for the other fields without error ([FR-002](./FR-002-phase-table-integration.md)-AC-1 pattern). | Test |
 | FR-037-AC-2 | A YAML `domain.hosts: [dev.ix, luna.ix, agent-ix.dev]` round-trips through `loadConfig()` as a three-entry list with `internalBaseDomain == "dev.ix"`. | Test |
 | FR-037-AC-3 | `IX_INTERNAL_BASE_DOMAINS="luna.ix, agent-ix.dev"` with no singular env var present overrides the persisted list. | Test |
 | FR-037-AC-4 | `IX_INTERNAL_BASE_DOMAIN=ci.ix` set alongside the plural env var overrides both file and plural env to `hosts: ["ci.ix"]`. | Test |
@@ -150,7 +150,7 @@ joined into a single line.
 
 - **FR-037-AC-1**: A missing `domain` group in the persisted YAML
   yields `hosts: ["dev.ix"]` plus the documented defaults for the
-  other fields without error (`ix://agent-ix/ix-cli-core/FR-002`-AC-1 pattern).
+  other fields without error ([FR-002](./FR-002-phase-table-integration.md)-AC-1 pattern).
 - **FR-037-AC-2**: A YAML `domain.hosts: [dev.ix, luna.ix, agent-ix.dev]`
   round-trips through `loadConfig()` as a three-entry list with
   `internalBaseDomain == "dev.ix"`.
@@ -227,7 +227,7 @@ backing pod becomes directly reachable on every external suffix.
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/stakeholder/StR-007
-- **implements**: ix-cli/spec/usecase/US-010
-- **requires**: ix-cli-core/spec/functional/FR-004
-- **requires**: ix-cli-core/spec/functional/FR-008
+- **implements**: ix-cli/spec/stakeholder/[StR-007](../../stakeholder/StR-007-multi-host-ingress-suffixes.md)
+- **implements**: ix-cli/spec/usecase/[US-010](../../usecase/US-010-multi-host-ingress.md)
+- **requires**: ix-cli-core/spec/functional/[FR-004](./FR-004-cluster-subcommand-group.md)
+- **requires**: ix-cli-core/spec/functional/[FR-008](./FR-008-ix-core-tag-convention.md)

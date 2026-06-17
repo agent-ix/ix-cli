@@ -44,25 +44,25 @@ the `auth` and `identity` repos.
 The behavior of `ix local init`, `ix local auth reset-admin`, `ix local auth invite`, `ix local auth reset-user`, and `ix local auth config` is **specified in the `auth` and `identity` repos**, not here. This document is the implementation contract for `packages/local` only — it defines:
 
 - **Namespace constants** the CLI uses across every auth-related K8s call.
-- **Per-command transport mechanism** required to satisfy the security model in auth/ ADR-004 and FR-008-CON-1.
+- **Per-command transport mechanism** required to satisfy the security model in auth/ ADR-004 and [FR-008-CON-1](./FR-008-ix-core-tag-convention.md).
 - **Cross-references** to the upstream specs so any divergence is caught.
 
 If anything in this file disagrees with the auth or identity specs, the auth/identity specs win. This file is updated to match, never the other way around.
 
 | Command | Authoritative spec | Mechanism |
 |---|---|---|
-| `ix local init` | auth/FR-008, identity/FR-017 | `kubectl exec` only — no networked endpoint |
-| `ix local auth reset-admin` | auth/FR-008, identity/FR-020 §2.3 | `kubectl exec` only — no networked endpoint |
-| `ix local auth invite <email>` | auth/FR-008, identity/FR-018 | `kubectl create --raw …/services/proxy/internal/users/invite` (kubeconfig-gated API server proxy) |
-| `ix local auth uninvite <email>` | auth/FR-008, identity/FR-018 §5a | `kubectl create --raw …/services/proxy/internal/users/uninvite` (kubeconfig-gated API server proxy) |
-| `ix local auth reset-user <email>` | auth/FR-009, identity/FR-020 §2.2 | `kubectl create --raw …/services/proxy/internal/users/reset` (kubeconfig-gated API server proxy) |
+| `ix local init` | auth/[FR-008](./FR-008-ix-core-tag-convention.md), identity/FR-017 | `kubectl exec` only — no networked endpoint |
+| `ix local auth reset-admin` | auth/[FR-008](./FR-008-ix-core-tag-convention.md), identity/[FR-020](../core/FR-020-core-plugin-schema.md) §2.3 | `kubectl exec` only — no networked endpoint |
+| `ix local auth invite <email>` | auth/[FR-008](./FR-008-ix-core-tag-convention.md), identity/FR-018 | `kubectl create --raw …/services/proxy/internal/users/invite` (kubeconfig-gated API server proxy) |
+| `ix local auth uninvite <email>` | auth/[FR-008](./FR-008-ix-core-tag-convention.md), identity/FR-018 §5a | `kubectl create --raw …/services/proxy/internal/users/uninvite` (kubeconfig-gated API server proxy) |
+| `ix local auth reset-user <email>` | auth/[FR-009](./FR-009-cluster-default-configuration.md), identity/[FR-020](../core/FR-020-core-plugin-schema.md) §2.2 | `kubectl create --raw …/services/proxy/internal/users/reset` (kubeconfig-gated API server proxy) |
 | `ix local auth config …` | identity/FR-024 | `kubectl apply` on `ConfigMap/Secret` + rollout |
-| `ix local auth kubeconfig issue` | ix-cli/FR-044, identity/FR-034, identity/FR-035 | `kubectl get secret -n system ix-cli-admin-token` + `kubectl config view --raw --minify` + local atomic file write (mode 0600). No identity HTTP call. |
-| `ix local auth kubeconfig rotate` | ix-cli/FR-045, identity/FR-034 | `kubectl delete secret -n system ix-cli-admin-token` + poll for SA-token controller recreate. No identity HTTP call. |
+| `ix local auth kubeconfig issue` | ix-cli/[FR-044](./FR-044-auth-kubeconfig-issue.md), identity/[FR-034](./FR-034-refresh-changed-output.md), identity/[FR-035](./FR-035-halt-all-image-mode.md) | `kubectl get secret -n system ix-cli-admin-token` + `kubectl config view --raw --minify` + local atomic file write (mode 0600). No identity HTTP call. |
+| `ix local auth kubeconfig rotate` | ix-cli/[FR-045](./FR-045-auth-kubeconfig-rotate.md), identity/[FR-034](./FR-034-refresh-changed-output.md) | `kubectl delete secret -n system ix-cli-admin-token` + poll for SA-token controller recreate. No identity HTTP call. |
 
 > **Note — Operator Privilege Lifecycle.** `kubeconfig issue` and
 > `kubeconfig rotate` implement Phase 3 and the revocation primitive of
-> the auth umbrella's **Operator Privilege Lifecycle** (auth/FR-008).
+> the auth umbrella's **Operator Privilege Lifecycle** (auth/[FR-008](./FR-008-ix-core-tag-convention.md)).
 > See that section and its recovery matrix for the end-to-end flow:
 > kind cluster-admin → `ix local up` → `ix local init` → `ix local auth
 > kubeconfig issue` → operator runs as scoped SA from then on. Token
@@ -72,7 +72,7 @@ If anything in this file disagrees with the auth or identity specs, the auth/ide
 
 ## Hard rule (security invariant)
 
-`ix local init` and `ix local auth reset-admin` SHALL NOT be reachable via any HTTP, HTTPS, API server proxy, port, ingress, or other networked endpoint. The only acceptable trigger is `kubectl exec` against the identity pod. This invariant is non-negotiable; it derives from auth/ ADR-004 (no race window for admin claim) and FR-008-CON-1 (no admin-mutating endpoint on the network).
+`ix local init` and `ix local auth reset-admin` SHALL NOT be reachable via any HTTP, HTTPS, API server proxy, port, ingress, or other networked endpoint. The only acceptable trigger is `kubectl exec` against the identity pod. This invariant is non-negotiable; it derives from auth/ ADR-004 (no race window for admin claim) and [FR-008-CON-1](./FR-008-ix-core-tag-convention.md) (no admin-mutating endpoint on the network).
 
 Any networked endpoint capable of creating or resetting an admin is a security vulnerability — even when authenticated by kubeconfig, even when restricted by NetworkPolicy. The mechanism difference between admin operations (exec) and non-admin operations (kubeconfig-gated API proxy) is intentional: it tracks the privilege level of the operation, not the identity of the caller.
 
@@ -130,10 +130,10 @@ Cross-namespace traffic note: app services in `apps` reach `auth-service` and `i
 
 - Trigger: operator runs `ix local auth reset-user alice@example.com [--ttl]`.
 - Step 1: `kubectl create --raw /api/v1/namespaces/auth/services/http:identity:80/proxy/internal/users/reset -f -` with body `{email_or_username, ttl_hours?}`.
-- Step 2: identity refuses with `403 cannot_reset_admin_via_api` if target is admin (FR-020-CON-5). CLI surfaces this clearly: tell the operator to use `ix local auth reset-admin` for admin recovery.
+- Step 2: identity refuses with `403 cannot_reset_admin_via_api` if target is admin ([FR-020-CON-5](../core/FR-020-core-plugin-schema.md)). CLI surfaces this clearly: tell the operator to use `ix local auth reset-admin` for admin recovery.
 - Step 3: parse response, print `reset_url`.
 
-### `ix local auth config …` (FR-020)
+### `ix local auth config …` ([FR-020](../core/FR-020-core-plugin-schema.md))
 
 - All subcommands operate on `ConfigMap auth/identity-config` and `Secret auth/identity-secrets`, then trigger `kubectl rollout restart deployment/identity -n auth`.
 - No HTTP calls to identity (the email-test subcommand currently shells into the pod via `kubectl exec` to trigger a test send — acceptable since it's not creating or modifying users).
@@ -157,7 +157,7 @@ The file SHALL NOT export `fetch`, `resolveIdentityUrl`, port-forward setup, or 
 | FR-046-CON-4 | No string-literal namespaces (`"default"`, `"auth"`, `"system"`, `"platform"`, `"apps"`, `"ix-system"`) appear in `packages/local/src/` outside the constant definitions in `config.ts` | Maintainability | grep CI gate |
 | FR-046-CON-5 | The `Deployable` registry entry for `identity`, `auth-service`, and `permission-service` SHALL declare `namespace: IX_AUTH_NAMESPACE`; helm deploys SHALL respect `deployable.namespace` | Correctness | Integration test |
 
-Rationale: FR-046-CON-1 derives from auth/ ADR-004 and FR-008-CON-1 (no
+Rationale: FR-046-CON-1 derives from auth/ ADR-004 and [FR-008-CON-1](./FR-008-ix-core-tag-convention.md) (no
 admin-mutating network endpoint). FR-046-CON-2 enforces blast-radius isolation
 (auth/ ADR-004). FR-046-CON-3 follows the namespace contract above.
 FR-046-CON-4 keeps the namespace constants a single source of truth.
@@ -177,7 +177,7 @@ default.
 
 ## Dependencies
 
-- Upstream: auth/ADR-004, auth/FR-008, auth/FR-009, auth/NFR-004, identity/FR-017, identity/FR-018, identity/FR-020, identity/FR-025.
+- Upstream: auth/ADR-004, auth/[FR-008](./FR-008-ix-core-tag-convention.md), auth/[FR-009](./FR-009-cluster-default-configuration.md), auth/NFR-004, identity/FR-017, identity/FR-018, identity/[FR-020](../core/FR-020-core-plugin-schema.md), identity/FR-025.
 - Downstream: `packages/local/src/commands/auth-{init,reset-admin,invite,reset-user,secret,config,identity}.ts`, `packages/local/src/config.ts`, `packages/local/src/discovery.ts`, `packages/local/src/commands/up-{image,source}.ts`, `packages/local/src/index.ts`.
 
 ## Out of scope (tracked separately)

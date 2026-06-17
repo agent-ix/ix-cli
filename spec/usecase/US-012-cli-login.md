@@ -57,14 +57,14 @@ never disturbs another.
 - **US-012-AC-1**: `ix login <host>` reads the discovery doc, runs the device
   flow, prints the verification URL + user code via `@agent-ix/ix-ui-cli`, and
   on approval reports success and persists the host-keyed token bundle
-  (FR-021-AC-1, FR-021-AC-2).
+  ([FR-021-AC-1](../functional/core/FR-021-ix-login.md), [FR-021-AC-2](../functional/core/FR-021-ix-login.md)).
 - **US-012-AC-2**: A denied or expired login renders a clear failure and exits
-  non-zero (FR-021-AC-3).
+  non-zero ([FR-021-AC-3](../functional/core/FR-021-ix-login.md)).
 - **US-012-AC-3**: `ix whoami` lists logged-in services with host, audience, and
-  expiry and never shows a token (FR-022); `--host` narrows to one service.
+  expiry and never shows a token ([FR-022](../functional/core/FR-022-ix-whoami.md)); `--host` narrows to one service.
 - **US-012-AC-4**: `ix logout --host <host>` clears that host only; `ix logout`
   clears all; both are idempotent and a subsequent `ix whoami` reflects the
-  change (FR-023).
+  change ([FR-023](../functional/core/FR-023-ix-logout.md)).
 - **US-012-AC-5**: Logging into host A does not read or mutate host B's stored
   credentials (host isolation, `ix://agent-ix/ix-cli-core/NFR-005`).
 

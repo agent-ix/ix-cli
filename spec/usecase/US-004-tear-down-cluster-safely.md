@@ -14,7 +14,7 @@ As a **developer**, I want to run `ix local cluster down` and have the kind clus
 
 ## Context
 
-`ix local cluster down` names the specific cluster in the confirmation prompt (NFR-002), then runs `kind delete cluster --name <name>`. The command is idempotent — if the cluster does not exist, it exits cleanly. Scripts can bypass the prompt with `--yes`.
+`ix local cluster down` names the specific cluster in the confirmation prompt ([NFR-002](../non-functional/local/NFR-002-destructive-operation-confirmation.md)), then runs `kind delete cluster --name <name>`. The command is idempotent — if the cluster does not exist, it exits cleanly. Scripts can bypass the prompt with `--yes`.
 
 ## Acceptance
 

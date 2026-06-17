@@ -19,7 +19,7 @@ eventually the public name (`*.agent-ix.dev`) without re-deploying.
 ## Context
 
 Operators set the suffix list once via the persistent `local` plugin
-config (FR-037):
+config ([FR-037](../functional/local/FR-037-multi-host-ingress-config.md)):
 
 ```bash
 ix config set local domain.hosts '["dev.ix","luna.ix","agent-ix.dev"]'
@@ -67,8 +67,8 @@ env var (singular, pins to one entry) and the new
 
 | AC | Verified by |
 |---|---|
-| US-010-AC-1 | Inherits `ix://agent-ix/ix-cli-core/FR-004` (persistent plugin schema) + `ix://agent-ix/ix-cli-core/FR-008` (`ix config set`); covered by TC-037 (write-time rejection round-trip). |
-| US-010-AC-2 | Inherits `ix://agent-ix/ix-cli-core/FR-008` generic round-trip semantics. |
+| US-010-AC-1 | Inherits [FR-004](../functional/local/FR-004-cluster-subcommand-group.md) (persistent plugin schema) + [FR-008](../functional/local/FR-008-ix-core-tag-convention.md) (`ix config set`); covered by TC-037 (write-time rejection round-trip). |
+| US-010-AC-2 | Inherits [FR-008](../functional/local/FR-008-ix-core-tag-convention.md) generic round-trip semantics. |
 | US-010-AC-3 | Integration: `helm template charts/ix-service` against multi-host config — `helm-charts` repo `helm lint` + manual `helm template` recipe in this FR's verification. |
 | US-010-AC-4 | Integration: inspect `kubectl get cert ix-tls -n ingress-nginx -o yaml` after `ix local init`. |
 | US-010-AC-5 | TC-036 (load-time rejection of single-label entries) + TC-037 (write-time rejection by `ix config set`). |

@@ -52,6 +52,6 @@ host-keyed access and refresh secrets and removes the host's
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/stakeholder/StR-001
-- **requires**: ix-cli/spec/functional/core/FR-021
+- **implements**: ix-cli/spec/stakeholder/[StR-001](../../stakeholder/StR-001-unified-cli-entry-point.md)
+- **requires**: ix-cli/spec/functional/core/[FR-021](./FR-021-ix-login.md)
 - **calls**: ix-cli-core/spec/functional/FR-017

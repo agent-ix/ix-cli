@@ -60,6 +60,6 @@ interface ClusterConfig {
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/stakeholder/StR-004
-- **implements**: ix-cli/spec/usecase/US-006
-- **requires**: ix-cli/spec/functional/local/FR-005
+- **implements**: ix-cli/spec/stakeholder/[StR-004](../../stakeholder/StR-004-configurable-default-service-set.md)
+- **implements**: ix-cli/spec/usecase/[US-006](../../usecase/US-006-customize-default-services.md)
+- **requires**: ix-cli/spec/functional/local/[FR-005](./FR-005-cluster-up.md)

@@ -33,7 +33,7 @@ preserved. Per-app hostnames are emitted by toggling
 the tunnel base domain in `global.tunnelBaseDomains` (ix-service ≥
 v0.11.0).
 
-Tunnel scope is **independent** of FR-037 LAN extras: `extraBaseDomains`
+Tunnel scope is **independent** of [FR-037](./FR-037-multi-host-ingress-config.md) LAN extras: `extraBaseDomains`
 / `exposeExtraHosts` cover LAN-friendly multi-host fan-out (e.g.
 `luna.ix`), and `tunnelBaseDomains` / `exposeOnTunnel` cover public
 internet exposure. A service can opt into either, both, or neither. The
@@ -67,7 +67,7 @@ and re-applies any drifted overlays.
 
 Persisted at `~/.config/ix/config.d/local.yaml`. `ix config get/set
 local tunnel.<key>` operates through the standard `config` command
-surface (`ix://agent-ix/ix-cli-core/FR-008`). The
+surface ([FR-008](./FR-008-ix-core-tag-convention.md)). The
 Cloudflare tunnel **token** is a separate secret declared in
 `LocalSecretsSchema` (`local.cloudflare-tunnel-token`, env binding
 `IX_CF_TUNNEL_TOKEN`) — never persisted in plain YAML.
@@ -162,7 +162,7 @@ Cloudflare DNS, so a typo shouldn't require digging through
 `ix config set local tunnel.baseDomain=...` syntax — a dedicated
 verb is friendlier and validates with `isValidBaseDomain`.
 
-### Cluster-start auto-start hook (FR-036 extension)
+### Cluster-start auto-start hook ([FR-036](./FR-036-cluster-stop-start.md) extension)
 
 `runClusterStart` runs an additional step after the API server becomes
 reachable: if `tunnel.autoStart === true`, it calls `runTunnelUp(config,
@@ -194,7 +194,7 @@ true`. The wrapper-chart bare `ingress.<key>` path is never written
 wrapper values, and a silent no-op for a security gate is worse
 than not having the flag.
 
-Required by the FR-037 security boundary: backends that did not opt
+Required by the [FR-037](./FR-037-multi-host-ingress-config.md) security boundary: backends that did not opt
 in must remain unreachable on the public suffix even when the
 suffix is in `global.tunnelBaseDomains`.
 
@@ -221,7 +221,7 @@ without helm or kubectl.
 
 | ID | Criteria | Verification |
 |----|----------|--------------|
-| FR-038-AC-1 | A missing `tunnel` group in the persisted YAML yields `{ autoStart: false, baseDomain: "agent-ix.dev", tunnelId: null }` without error (`ix://agent-ix/ix-cli-core/FR-002`-AC-1 pattern). | Test |
+| FR-038-AC-1 | A missing `tunnel` group in the persisted YAML yields `{ autoStart: false, baseDomain: "agent-ix.dev", tunnelId: null }` without error ([FR-002](./FR-002-phase-table-integration.md)-AC-1 pattern). | Test |
 | FR-038-AC-2 | A YAML `tunnel: { autoStart: true, baseDomain: foo.example.com, tunnelId: abc-123 }` round-trips through `loadTunnelConfig()` unchanged. | Test |
 | FR-038-AC-3 | `tunnel.autoStart` accepts string `"true"`/`"false"` and coerces to boolean (Zod `coerce`). | Test |
 | FR-038-AC-4 | A persisted `tunnel.baseDomain` that fails the base-domain rule (single label, whitespace) does NOT throw at load time — `ConfigService` substitutes the schema default and records the incident (visible via `ix config doctor`). | Test |
@@ -254,7 +254,7 @@ without helm or kubectl.
 
 - **FR-038-AC-1**: A missing `tunnel` group in the persisted YAML
   yields `{ autoStart: false, baseDomain: "agent-ix.dev", tunnelId:
-null }` without error (`ix://agent-ix/ix-cli-core/FR-002`-AC-1 pattern).
+null }` without error (`ix://agent-ix/ix-cli-core/[FR-002](./FR-002-phase-table-integration.md)`-AC-1 pattern).
 - **FR-038-AC-2**: A YAML `tunnel: { autoStart: true, baseDomain:
 foo.example.com, tunnelId: abc-123 }` round-trips through
   `loadTunnelConfig()` unchanged.
@@ -382,7 +382,7 @@ namespace '<ns>'. Run \`ix up <app>\` first.`
 - **FR-038-CON-2**: For umbrella apps, `ingress.exposeOnTunnel` MUST
   be flipped on the entry subchart's values only, never via
   `global.*`. Routing the toggle through globals would breach the
-  FR-037 security boundary by exposing every backend on the public
+  [FR-037](./FR-037-multi-host-ingress-config.md) security boundary by exposing every backend on the public
   suffix.
 - **FR-038-CON-5**: Tunnel and LAN scopes are independent. The CLI
   install paths (`buildGlobalSetArgs`, `buildTunnelSetArgs`) and the
@@ -391,7 +391,7 @@ namespace '<ns>'. Run \`ix up <app>\` first.`
   `tunnelBaseDomains` / `exposeOnTunnel` are tunnel-only.
 - **FR-038-CON-3**: The Cloudflare tunnel token MUST NOT be
   persisted in `~/.config/ix/config.d/local.yaml`. It lives in the
-  SecretsService backend (`ix://agent-ix/ix-cli-core/FR-005`) or in `IX_CF_TUNNEL_TOKEN`.
+  SecretsService backend ([FR-005](./FR-005-cluster-up.md)) or in `IX_CF_TUNNEL_TOKEN`.
 - **FR-038-CON-4**: There is intentionally no interactive prompt for
   credentials during cluster auto-start. Failures during cluster
   bringup must be silent (auto-start) or loud-and-actionable (`ix
@@ -402,12 +402,12 @@ tunnel up`), never blocking on user input.
 The `cloudflared` Deployment terminates external traffic. The
 cluster-internal hop from cloudflared → ingress-nginx is
 in-cluster-only and uses `noTLSVerify: true` because ingress-nginx
-serves the local self-signed cert (FR-037 — `*.dev.ix` initiative).
+serves the local self-signed cert ([FR-037](./FR-037-multi-host-ingress-config.md) — `*.dev.ix` initiative).
 Once that initiative lands a true wildcard cert, this flag SHOULD be
 removed in a follow-up. The decision is documented inline on the
 ConfigMap template.
 
-The FR-037-CON-3 boundary continues to hold: backends without
+The [FR-037-CON-3](./FR-037-multi-host-ingress-config.md) boundary continues to hold: backends without
 `ingress.exposeOnTunnel: true` remain unreachable from the tunnel
 even when cloudflared is up and the base domain is in
 `global.tunnelBaseDomains`. External traffic to backend services
@@ -428,9 +428,9 @@ which redacts it from rendered manifests in `helm get manifest`).
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/stakeholder/StR-007
-- **extends**: ix-cli/spec/usecase/US-010
-- **implements**: ix-cli/spec/usecase/US-011
-- **requires**: ix-cli/spec/functional/local/FR-037
-- **requires**: ix-cli-core/spec/functional/FR-004
-- **requires**: ix-cli-core/spec/functional/FR-005
+- **implements**: ix-cli/spec/stakeholder/[StR-007](../../stakeholder/StR-007-multi-host-ingress-suffixes.md)
+- **extends**: ix-cli/spec/usecase/[US-010](../../usecase/US-010-multi-host-ingress.md)
+- **implements**: ix-cli/spec/usecase/[US-011](../../usecase/US-011-expose-app-via-cloudflare-tunnel.md)
+- **requires**: ix-cli/spec/functional/local/[FR-037](./FR-037-multi-host-ingress-config.md)
+- **requires**: ix-cli-core/spec/functional/[FR-004](./FR-004-cluster-subcommand-group.md)
+- **requires**: ix-cli-core/spec/functional/[FR-005](./FR-005-cluster-up.md)

@@ -14,7 +14,7 @@ relationships:
 
 ## Description
 
-Two new commands extend the `ix local cluster` subcommand group (FR-004): `stop` and `start`. Implementations live in `packages/local/src/commands/cluster-stop.tsx` and `cluster-start.tsx`, mirroring the structure of `cluster-down.tsx` (deps seam for execa override, `<Listing>` for final state).
+Two new commands extend the `ix local cluster` subcommand group ([FR-004](./FR-004-cluster-subcommand-group.md)): `stop` and `start`. Implementations live in `packages/local/src/commands/cluster-stop.tsx` and `cluster-start.tsx`, mirroring the structure of `cluster-down.tsx` (deps seam for execa override, `<Listing>` for final state).
 
 ### `runClusterStop(config, opts, deps)`
 
@@ -100,5 +100,5 @@ sequenceDiagram
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/usecase/US-009
-- **implements**: ix-cli/spec/functional/local/FR-004
+- **implements**: ix-cli/spec/usecase/[US-009](../../usecase/US-009-pause-cluster.md)
+- **implements**: ix-cli/spec/functional/local/[FR-004](./FR-004-cluster-subcommand-group.md)

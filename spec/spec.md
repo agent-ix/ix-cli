@@ -57,40 +57,40 @@ here as the `@agent-ix/ix-cli-core` library.
 
 Framework requirements are referenced from this spec in the form
 `ix://agent-ix/ix-cli-core/<ID>` (for example
-`ix://agent-ix/ix-cli-core/FR-001` is the `ConfigService` API, and
-`ix://agent-ix/ix-cli-core/FR-005` is the `SecretsService` API). The old-style
-inline shorthands (`FR-011`, `FR-014`, etc.) in §8–§10 below have been
+[FR-001](./functional/local/FR-001-migrated-commands.md) is the `ConfigService` API, and
+[FR-005](./functional/local/FR-005-cluster-up.md) is the `SecretsService` API). The old-style
+inline shorthands ([FR-011](./functional/elements/FR-011-elements-init.md), `FR-014`, etc.) in §8–§10 below have been
 repointed to their `ix://agent-ix/ix-cli-core/...` form. The ix-cli-core →
 ix-cli ID mapping is:
 
 | Framework concern                        | ix-cli-core ID                      |
 | ---------------------------------------- | ----------------------------------- |
-| ConfigService API                        | `ix://agent-ix/ix-cli-core/FR-001`  |
-| Per-plugin file isolation                | `ix://agent-ix/ix-cli-core/FR-002`  |
-| Layered config resolution                | `ix://agent-ix/ix-cli-core/FR-003`  |
-| Plugin schema registration               | `ix://agent-ix/ix-cli-core/FR-004`  |
-| SecretsService API                       | `ix://agent-ix/ix-cli-core/FR-005`  |
-| OS keyring backend                       | `ix://agent-ix/ix-cli-core/FR-006`  |
-| Encrypted-file fallback                  | `ix://agent-ix/ix-cli-core/FR-007`  |
-| `config` command group                   | `ix://agent-ix/ix-cli-core/FR-008`  |
-| `secrets` command group                  | `ix://agent-ix/ix-cli-core/FR-009`  |
-| CLI binary composition                   | `ix://agent-ix/ix-cli-core/FR-010`  |
-| Runtime config-root override             | `ix://agent-ix/ix-cli-core/FR-011`  |
-| Plugin discovery (oclif-native)          | `ix://agent-ix/ix-cli-core/FR-012`  |
-| Per-command capability binding           | `ix://agent-ix/ix-cli-core/FR-013`  |
+| ConfigService API                        | [FR-001](./functional/local/FR-001-migrated-commands.md)  |
+| Per-plugin file isolation                | [FR-002](./functional/local/FR-002-phase-table-integration.md)  |
+| Layered config resolution                | [FR-003](./functional/local/FR-003-concurrent-startup.md)  |
+| Plugin schema registration               | [FR-004](./functional/local/FR-004-cluster-subcommand-group.md)  |
+| SecretsService API                       | [FR-005](./functional/local/FR-005-cluster-up.md)  |
+| OS keyring backend                       | [FR-006](./functional/local/FR-006-cluster-down.md)  |
+| Encrypted-file fallback                  | [FR-007](./functional/local/FR-007-cluster-status.md)  |
+| `config` command group                   | [FR-008](./functional/local/FR-008-ix-core-tag-convention.md)  |
+| `secrets` command group                  | [FR-009](./functional/local/FR-009-cluster-default-configuration.md)  |
+| CLI binary composition                   | [FR-010](./functional/elements/FR-010-elements-list.md)  |
+| Runtime config-root override             | [FR-011](./functional/elements/FR-011-elements-init.md)  |
+| Plugin discovery (oclif-native)          | [FR-012](./functional/elements/FR-012-elements-tap.md)  |
+| Per-command capability binding           | [FR-013](./functional/elements/FR-013-elements-new.md)  |
 | ixSchema plugin convention               | `ix://agent-ix/ix-cli-core/FR-014`  |
-| No plaintext secrets                     | `ix://agent-ix/ix-cli-core/NFR-001` |
-| Sensitive-file permissions               | `ix://agent-ix/ix-cli-core/NFR-002` |
+| No plaintext secrets                     | [NFR-001](./non-functional/local/NFR-001-output-via-ix-ui-cli.md) |
+| Sensitive-file permissions               | [NFR-002](./non-functional/local/NFR-002-destructive-operation-confirmation.md) |
 | Schema-error UX                          | `ix://agent-ix/ix-cli-core/NFR-003` |
 | Secrets backend pluggability             | `ix://agent-ix/ix-cli-core/NFR-004` |
-| Pluggable-config stakeholder need        | `ix://agent-ix/ix-cli-core/StR-001` |
-| Secrets-never-plaintext stakeholder need | `ix://agent-ix/ix-cli-core/StR-002` |
-| Reusable-CLI-runtime stakeholder need    | `ix://agent-ix/ix-cli-core/StR-003` |
-| Run-custom-CLI-distribution use case     | `ix://agent-ix/ix-cli-core/US-001`  |
+| Pluggable-config stakeholder need        | [StR-001](./stakeholder/StR-001-unified-cli-entry-point.md) |
+| Secrets-never-plaintext stakeholder need | [StR-002](./stakeholder/StR-002-consistent-terminal-ux.md) |
+| Reusable-CLI-runtime stakeholder need    | [StR-003](./stakeholder/StR-003-cluster-lifecycle-isolation.md) |
+| Run-custom-CLI-distribution use case     | [US-001](./usecase/US-001-deploy-app-to-local-cluster.md)  |
 
-What **remains** ix-cli's own is **FR-020** — the concrete `core` plugin
+What **remains** ix-cli's own is **[FR-020](./functional/core/FR-020-core-plugin-schema.md)** — the concrete `core` plugin
 `configSchema` / `secretsSchema` (auth.serviceUrl, GitHub/IX tokens, telemetry,
-theme, update-check). FR-020 declares IX's specific `core` namespace using the
+theme, update-check). [FR-020](./functional/core/FR-020-core-plugin-schema.md) declares IX's specific `core` namespace using the
 framework's plugin contract.
 
 ---
@@ -101,7 +101,7 @@ framework's plugin contract.
 
 This specification governs:
 
-- The IX `core` plugin schema: the concrete `configSchema` / `secretsSchema` for the reserved `core` id (GitHub/IX auth tokens, auth.serviceUrl, telemetry, theme, update-check) — see FR-020
+- The IX `core` plugin schema: the concrete `configSchema` / `secretsSchema` for the reserved `core` id (GitHub/IX auth tokens, auth.serviceUrl, telemetry, theme, update-check) — see [FR-020](./functional/core/FR-020-core-plugin-schema.md)
 - IX service auth flows: GitHub OAuth device flow, IX service auth, token refresh
 - The `local` package: local cluster commands (placeholder — commands migrated from ix-local-cli)
 - The `elements` package: element discovery, scaffolding, and project initialization commands
@@ -135,7 +135,7 @@ Package structure:
 | (external)          | `@agent-ix/ix-cli-core`     | Generic CLI framework (config/secrets/plugin/runtime). Specified in `agent-ix/ix-cli-core`; consumed as a library.                              |
 | `packages/local`    | `@agent-ix/ix-cli-local`    | Local cluster commands (`ix up`, `ix down`)                                                                                                     |
 | `packages/elements` | `@agent-ix/ix-cli-elements` | Element commands (`ix elements init`, `ix elements list`)                                                                                       |
-| `apps/ix`           | `@agent-ix/ix`              | Unified binary — IX auth flows (GitHub + IX service), the reserved `core` plugin schema (FR-020), and registration of all package command trees |
+| `apps/ix`           | `@agent-ix/ix`              | Unified binary — IX auth flows (GitHub + IX service), the reserved `core` plugin schema ([FR-020](./functional/core/FR-020-core-plugin-schema.md)), and registration of all package command trees |
 
 ### 3.2 Intended Users
 
@@ -192,8 +192,8 @@ Quality constraints: security, output style consistency, credential handling.
 
 | Artifact                   | Format      | Example       |
 | -------------------------- | ----------- | ------------- |
-| Stakeholder Requirement    | `StR-XXX`   | `StR-001`     |
-| User Story                 | `US-XXX`    | `US-002`      |
+| Stakeholder Requirement    | `StR-XXX`   | [StR-001](./stakeholder/StR-001-unified-cli-entry-point.md)     |
+| User Story                 | `US-XXX`    | [US-002](./usecase/US-002-monitor-concurrent-service-startup.md)      |
 | Functional Requirement     | `FR-XXX`    | `FR-014`      |
 | Non-Functional Requirement | `NFR-XXX`   | `NFR-003`     |
 | Acceptance Criteria        | `{FR}-AC-N` | `FR-014-AC-1` |
@@ -233,9 +233,9 @@ All functional requirements SHALL:
     └── <plugin-id>.age
 ```
 
-Each persisted file owned by ix-cli is mode `0o600`, written atomically (temp + rename), and refused on read if its mode is wider. Per-plugin file isolation guarantees that a malformed or buggy plugin's config cannot corrupt unrelated plugins (`ix://agent-ix/ix-cli-core/FR-002`). The config and secrets storage machinery referenced throughout this section is specified in ix-cli-core; this section documents how the IX `ix` binary uses it.
+Each persisted file owned by ix-cli is mode `0o600`, written atomically (temp + rename), and refused on read if its mode is wider. Per-plugin file isolation guarantees that a malformed or buggy plugin's config cannot corrupt unrelated plugins ([FR-002](./functional/local/FR-002-phase-table-integration.md)). The config and secrets storage machinery referenced throughout this section is specified in ix-cli-core; this section documents how the IX `ix` binary uses it.
 
-**Cluster-targeting state out of scope for `core`.** Cluster context (which cluster, kubeconfig context, kind cluster name, internal/external base domains) lives in the `local` plugin's schema for v1, NOT in `core`. The promotion of cluster targeting to `core` is gated on hosted Agent IX clusters landing and is tracked in [agent-ix/ix-cli#2](https://github.com/agent-ix/ix-cli/issues/2). FR-020 enumerates the v1 contents of `core`'s `configSchema` and `secretsSchema`.
+**Cluster-targeting state out of scope for `core`.** Cluster context (which cluster, kubeconfig context, kind cluster name, internal/external base domains) lives in the `local` plugin's schema for v1, NOT in `core`. The promotion of cluster targeting to `core` is gated on hosted Agent IX clusters landing and is tracked in [agent-ix/ix-cli#2](https://github.com/agent-ix/ix-cli/issues/2). [FR-020](./functional/core/FR-020-core-plugin-schema.md) enumerates the v1 contents of `core`'s `configSchema` and `secretsSchema`.
 
 ### 8.2 Configuration Service
 
@@ -243,18 +243,18 @@ Configuration is owned by the `ConfigService` in `@agent-ix/ix-cli-core`:
 
 - Plugins access only their own file via `ConfigService.forPlugin(id, schema)` — the API does not expose cross-plugin reads.
 - Schemas are Zod `.strict()`; unknown keys are rejected at write time.
-- Layered resolution: env (`IX_*` per plugin's declared bindings) → plugin's `config.d/<id>.yaml` → schema defaults (`ix://agent-ix/ix-cli-core/FR-003`).
+- Layered resolution: env (`IX_*` per plugin's declared bindings) → plugin's `config.d/<id>.yaml` → schema defaults ([FR-003](./functional/local/FR-003-concurrent-startup.md)).
 - The reserved id `core` is the only plugin allowed to read or write `~/.config/ix/config.yaml`.
-- A parse or validation error on one plugin's file SHALL NOT block other plugins; the offending plugin falls back to schema defaults and the error is surfaced via `ix config doctor` (`ix://agent-ix/ix-cli-core/FR-002`, `ix://agent-ix/ix-cli-core/FR-008`).
+- A parse or validation error on one plugin's file SHALL NOT block other plugins; the offending plugin falls back to schema defaults and the error is surfaced via `ix config doctor` ([FR-002](./functional/local/FR-002-phase-table-integration.md), [FR-008](./functional/local/FR-008-ix-core-tag-convention.md)).
 
 ### 8.3 Secrets Service
 
 Secrets (GHCR PAT, IX auth refresh token, future plugin secrets) are owned by `SecretsService` in `@agent-ix/ix-cli-core`:
 
-- **Default backend: OS keyring** via `@napi-rs/keyring` — `service = "ix-cli"`, `account = "<plugin-id>.<secret-name>"` (`ix://agent-ix/ix-cli-core/FR-006`).
-- **Fallback backend: per-plugin age-encrypted blobs** at `secrets.d/<plugin-id>.age` with X25519 identity at `secrets.key` (`ix://agent-ix/ix-cli-core/FR-007`). Used only when the keyring capability probe fails.
-- Resolution order for `get()`: env (`IX_*` per plugin's declared `envVar`) → active backend → optional masked TTY prompt (`ix://agent-ix/ix-cli-core/FR-005`).
-- **No secret value is ever persisted in plaintext on disk** (`ix://agent-ix/ix-cli-core/NFR-001`).
+- **Default backend: OS keyring** via `@napi-rs/keyring` — `service = "ix-cli"`, `account = "<plugin-id>.<secret-name>"` ([FR-006](./functional/local/FR-006-cluster-down.md)).
+- **Fallback backend: per-plugin age-encrypted blobs** at `secrets.d/<plugin-id>.age` with X25519 identity at `secrets.key` ([FR-007](./functional/local/FR-007-cluster-status.md)). Used only when the keyring capability probe fails.
+- Resolution order for `get()`: env (`IX_*` per plugin's declared `envVar`) → active backend → optional masked TTY prompt ([FR-005](./functional/local/FR-005-cluster-up.md)).
+- **No secret value is ever persisted in plaintext on disk** ([NFR-001](./non-functional/local/NFR-001-output-via-ix-ui-cli.md)).
 - Backend pluggability: future Vault / 1Password / Bitwarden adapters register via a typed `SecretsBackend` interface without changes to consumers (`ix://agent-ix/ix-cli-core/NFR-004`).
 
 ### 8.4 Auth Flows
@@ -266,7 +266,7 @@ audience-scoped** token bundle. The generic device-login engine — discovery
 client, device-flow runner, host-keyed token store, and browser opener — is
 **owned by ix-cli-core** (`ix://agent-ix/ix-cli-core/FR-015`,
 `.../FR-016`, `.../FR-017`, `.../FR-018`); this binary supplies the IX
-defaults and the `login`/`whoami`/`logout` commands (FR-021, FR-022, FR-023).
+defaults and the `login`/`whoami`/`logout` commands ([FR-021](./functional/core/FR-021-ix-login.md), [FR-022](./functional/core/FR-022-ix-whoami.md), [FR-023](./functional/core/FR-023-ix-logout.md)).
 
 | Flow                              | Provider                                 | Trigger             | Token Storage                                                                                                                                                                                          |
 | --------------------------------- | ---------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -274,7 +274,7 @@ defaults and the `login`/`whoami`/`logout` commands (FR-021, FR-022, FR-023).
 | GitHub OAuth device flow (legacy) | GitHub                                   | `ix login --github` | SecretsService secret `core.github-token`                                                                                                                                                              |
 
 Tokens are persisted only via `SecretsService` — never plaintext on disk
-(`ix://agent-ix/ix-cli-core/NFR-001`, `.../NFR-006`). The browser approves
+([NFR-001](./non-functional/local/NFR-001-output-via-ix-ui-cli.md), `.../NFR-006`). The browser approves
 through the service's **same-origin BFF** and never sees a JWT; the CLI polls
 the BFF directly. `getAccessToken({host})` refreshes before expiry and rotates
 the stored refresh token (`ix://agent-ix/ix-cli-core/FR-017`). Per-host
@@ -289,7 +289,7 @@ ix-cli is pre-release and has no installed user base whose state needs preservin
 
 `--config-root` is a base flag on `BaseCommand` (defined in
 `@agent-ix/ix-cli-core` — the override behavior is specified by
-`ix://agent-ix/ix-cli-core/FR-011`); oclif parses it normally through the
+[FR-011](./functional/elements/FR-011-elements-init.md)); oclif parses it normally through the
 standard flag system. `IX_CONFIG_ROOT` is its environment-variable alias.
 The selected root applies to per-plugin config reads and file-backed
 secrets when a command runs.
@@ -314,7 +314,7 @@ flags > env > project config (./.ix) > selected user config root > schema defaul
 There is no argv preprocessing in the bin script, so the root-position
 form `ix --config-root /tmp/ix-ci ...` is not supported. An earlier
 draft stripped `--config-root` from `process.argv` before oclif loaded;
-that bypass has been superseded — see `ix://agent-ix/ix-cli-core/FR-011`
+that bypass has been superseded — see [FR-011](./functional/elements/FR-011-elements-init.md)
 notes and the follow-up review in
 `spec/reviews/runtime-plugin-addendum-review.md`.
 
@@ -360,8 +360,8 @@ Multi-service progress commands (e.g., `ix up <app>`) SHALL use the `PhaseTable`
 
 > The plugin contract itself (the `ixSchema` convention, capability binding,
 > oclif-native composition, and trust model) is **specified in ix-cli-core** —
-> see `ix://agent-ix/ix-cli-core/FR-014` (ixSchema), `.../FR-013` (capability
-> binding), `.../FR-010` (binary composition), and `.../FR-012` (plugin
+> see `ix://agent-ix/ix-cli-core/FR-014` (ixSchema), [FR-013](./functional/elements/FR-013-elements-new.md) (capability
+> binding), [FR-010](./functional/elements/FR-010-elements-list.md) (binary composition), and [FR-012](./functional/elements/FR-012-elements-tap.md) (plugin
 > discovery). This section summarizes how the `ix` binary applies that
 > contract; it is not the authoritative definition.
 
@@ -410,7 +410,7 @@ export interface CommandCapabilities {
 - `ixSchema.config`, when present, is registered through
   `ConfigService.forPlugin(pluginId)` and read from
   `<config-root>/config.d/<plugin-id>.yaml`. The schema MUST be `.strict()`
-  (`ix://agent-ix/ix-cli-core/FR-004`).
+  ([FR-004](./functional/local/FR-004-cluster-subcommand-group.md)).
 - `ixSchema.secrets`, when present, registers entries through
   `SecretsService` under `<plugin-id>.<secret-name>`.
 - The package name `@agent-ix/ix-cli-core` is reserved for the shared
@@ -428,7 +428,7 @@ discovery. That has been retired — see
 ix-cli plugins run **in-process** with full Node.js privileges (`node:fs`, `node:child_process`, env vars, `process.binding`). The plugin contract MUST NOT be read as adversarial isolation:
 
 - Per-plugin file isolation in `config.d/` and `secrets.d/` defends against **accidental corruption** from buggy plugins, not against deliberate exfiltration. A malicious plugin can read another plugin's config file directly via `node:fs`; nothing in this spec prevents that.
-- The `ConfigService.forPlugin(id, schema)` API takes `id` as a string. Cross-plugin reads are not API-blocked at runtime; the contract that "each plugin reads its own id" is enforced by **static-check lint only** (`ix://agent-ix/ix-cli-core/FR-003`-AC-5).
+- The `ConfigService.forPlugin(id, schema)` API takes `id` as a string. Cross-plugin reads are not API-blocked at runtime; the contract that "each plugin reads its own id" is enforced by **static-check lint only** ([FR-003](./functional/local/FR-003-concurrent-startup.md)-AC-5).
 - This posture matches every other in-process plugin CLI (gh, kubectl, aws-cli, oclif, helm, VS Code extensions). The only major dev CLI that achieves real plugin isolation is Terraform, via subprocess + gRPC.
 - Adversarial isolation (subprocess-per-plugin RPC) is tracked as future work in [agent-ix/ix-cli#1](https://github.com/agent-ix/ix-cli/issues/1).
 
@@ -453,7 +453,7 @@ ships a smaller list. An IX-connected CLI ships whichever IX service
 plugins it needs. There is no `Distribution` runtime object — the binary
 itself is the distribution.
 
-Per-command capability requirements (`ix://agent-ix/ix-cli-core/FR-013`) are
+Per-command capability requirements ([FR-013](./functional/elements/FR-013-elements-new.md)) are
 declared as `static capabilities` on the command class and enforced by
 `BaseCommand.prerun`. Commands requiring unavailable mandatory
 capabilities fail with a structured error before side effects occur.

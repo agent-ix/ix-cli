@@ -35,5 +35,5 @@ The `ix-core` namespace prefix distinguishes platform-managed defaults from proj
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/stakeholder/StR-004
-- **requires**: ix-cli/spec/functional/local/FR-005
+- **implements**: ix-cli/spec/stakeholder/[StR-004](../../stakeholder/StR-004-configurable-default-service-set.md)
+- **requires**: ix-cli/spec/functional/local/[FR-005](./FR-005-cluster-up.md)

@@ -27,7 +27,7 @@ stream live status into each row.
 
 - **pull** — single `helm pull` of the umbrella OCI ref. All rows transition
   `running → done` together when the tarball lands.
-- **secrets** — per-subchart, parallel (unchanged from FR-013).
+- **secrets** — per-subchart, parallel (unchanged from [FR-013](../elements/FR-013-elements-new.md)).
 - **install** — single `helm upgrade --install` against the pulled umbrella
   tarball. Rows remain visible but inactive unless their own Helm hook or
   Kubernetes workload status is active.
@@ -88,7 +88,7 @@ renders the label in dim text alongside a yellow `0` — never red — because
 | FR-031-AC-4 | Per-subchart `waitForRollout` watchers run in parallel during the `ready` phase, gated by `pools.kubectlWatch`, and stream pod-ready counts to the row via `display.setPodStatus`. | Test |
 | FR-031-AC-5 | When `helm pull` of the umbrella fails, all subchart rows show `pull failed` with the umbrella error message; the install short-circuits. | Test |
 | FR-031-AC-6 | When the umbrella `helm upgrade --install` fails without a child-row hook match, the final `PhaseTable` frame is marked failed and shows the umbrella error at the bottom; rollout watchers are not started. | Test |
-| FR-031-AC-7 | When a subchart's rollout fails, only that row shows `ready failed`; sibling watchers continue to completion (FR-021-AC-5). | Test |
+| FR-031-AC-7 | When a subchart's rollout fails, only that row shows `ready failed`; sibling watchers continue to completion ([FR-021-AC-5](../core/FR-021-ix-login.md)). | Test |
 | FR-031-AC-8 | `getDeploymentStatus` returns a `ready/desired·settle` string when at least one workload reports `ready === desired` AND (`observedGeneration < generation` OR `availableReplicas < replicas` OR `updatedReplicas < replicas` OR StatefulSet `currentRevision != updateRevision`). | Test |
 | FR-031-AC-9 | A `helm history <app-name>` command shows a single unified release history for the whole umbrella. | Test |
 | FR-031-AC-10 | A `helm list` shows exactly one row per app instead of one per subchart. | Test |
@@ -97,7 +97,7 @@ renders the label in dim text alongside a yellow `0` — never red — because
 | FR-031-AC-13 | When `readyReplicas === 0`, `waitForRollout` passes an enriched status string `"0/N·label"` to `onStatus` where `label` is one of `sched`, `init`, or `start` depending on pod container state. When `readyReplicas > 0` or `getPodReadyLabel` returns `null`, the bare `"ready/total"` string is passed unchanged. | Test |
 | FR-031-AC-14 | A row with `"1/1·settle"` or any other state-labeled ready count remains active until the state label disappears and the row receives plain `"1/1"`. | Test |
 | FR-031-AC-15 | On successful umbrella app install, ix-cli reads final ingress URLs from `helm get manifest <app-name> -n <namespace>` and passes every rendered Ingress host to the PhaseTable ingress section as a flat list via `tailIngressUrls`, alongside `tailIngressHosts = config.hosts` for per-host grouping. TLS-covered hosts render with `https://`; non-TLS hosts render with `http://`. | Test |
-| FR-031-AC-16 | When the rendered umbrella manifest contains URLs spanning multiple configured ingress hostnames, each URL is rendered under its `◎ Ingress · <host>` block (PhaseTable grouping per FR-004-AC-9). Within each group, URLs preserve chart-rendered order; groups are rendered in the order their first URL appears in the rendered manifest. Example with `config.hosts = ["dev.ix", "luna.ix"]`: `https://auth.dev.ix` under `◎ Ingress · dev.ix`, then `https://auth.luna.ix` under `◎ Ingress · luna.ix`. | Test |
+| FR-031-AC-16 | When the rendered umbrella manifest contains URLs spanning multiple configured ingress hostnames, each URL is rendered under its `◎ Ingress · <host>` block (PhaseTable grouping per [FR-004-AC-9](./FR-004-cluster-subcommand-group.md)). Within each group, URLs preserve chart-rendered order; groups are rendered in the order their first URL appears in the rendered manifest. Example with `config.hosts = ["dev.ix", "luna.ix"]`: `https://auth.dev.ix` under `◎ Ingress · dev.ix`, then `https://auth.luna.ix` under `◎ Ingress · luna.ix`. | Test |
 | FR-031-AC-17 | If the rendered manifest contains no Ingress hosts, ix-cli SHALL NOT synthesize a fallback URL from `<release>.<domain>`. | Test |
 
 - **FR-031-AC-1**: For `deployable.role === "app"`, exactly one
@@ -117,7 +117,7 @@ renders the label in dim text alongside a yellow `0` — never red — because
   a child-row hook match, the final `PhaseTable` frame is marked failed and
   shows the umbrella error at the bottom; rollout watchers are not started.
 - **FR-031-AC-7**: When a subchart's rollout fails, only that row shows
-  `ready failed`; sibling watchers continue to completion (FR-021-AC-5).
+  `ready failed`; sibling watchers continue to completion ([FR-021-AC-5](../core/FR-021-ix-login.md)).
 - **FR-031-AC-8**: `getDeploymentStatus` returns a `ready/desired·settle`
   string when at least one workload reports `ready === desired` AND
   (`observedGeneration < generation` OR `availableReplicas < replicas` OR
@@ -151,7 +151,7 @@ updateRevision`).
 - **FR-031-AC-16**: When the rendered umbrella manifest contains URLs
   spanning multiple configured ingress hostnames, each URL is rendered
   under its `◎ Ingress · <host>` block (PhaseTable grouping per
-  FR-004-AC-9). Within each group, URLs preserve chart-rendered order;
+  [FR-004-AC-9](./FR-004-cluster-subcommand-group.md)). Within each group, URLs preserve chart-rendered order;
   groups are rendered in the order their first URL appears in the
   rendered manifest. Example with `config.hosts = ["dev.ix", "luna.ix"]`:
   `https://auth.dev.ix` under `◎ Ingress · dev.ix`, then
@@ -198,5 +198,5 @@ sequenceDiagram
 
 ## Dependencies
 
-- **extends**: ix-cli/spec/functional/local/FR-008
-- **extends**: ix-cli/spec/functional/local/FR-013
+- **extends**: ix-cli/spec/functional/local/[FR-008](./FR-008-ix-core-tag-convention.md)
+- **extends**: ix-cli/spec/functional/local/[FR-013](../elements/FR-013-elements-new.md)

@@ -44,7 +44,7 @@ Deduplication is by app name. `skipApps` takes precedence over all other inclusi
 | FR-005-AC-4 | `skipApps` entries are removed from the effective set after union. | Test |
 | FR-005-AC-5 | An app appearing in both tag-filter and `extraApps` is deployed exactly once. | Test |
 | FR-005-AC-6 | The effective set is deterministic — same inputs always produce same ordered output. | Test |
-| FR-005-AC-7 | Output uses `introCommand`/`outroSuccess`/`outroError` from `@agent-ix/ix-ui-cli` (NFR-001). | Test |
+| FR-005-AC-7 | Output uses `introCommand`/`outroSuccess`/`outroError` from `@agent-ix/ix-ui-cli` ([NFR-001](../../non-functional/local/NFR-001-output-via-ix-ui-cli.md)). | Test |
 
 - **FR-005-AC-1**: `runInitCluster()` is always called before any deploy, even if `--yes` is passed.
 - **FR-005-AC-2**: Only apps matching a `defaultTags` tag are included in the base set.
@@ -52,7 +52,7 @@ Deduplication is by app name. `skipApps` takes precedence over all other inclusi
 - **FR-005-AC-4**: `skipApps` entries are removed from the effective set after union.
 - **FR-005-AC-5**: An app appearing in both tag-filter and `extraApps` is deployed exactly once.
 - **FR-005-AC-6**: The effective set is deterministic — same inputs always produce same ordered output.
-- **FR-005-AC-7**: Output uses `introCommand`/`outroSuccess`/`outroError` from `@agent-ix/ix-ui-cli` (NFR-001).
+- **FR-005-AC-7**: Output uses `introCommand`/`outroSuccess`/`outroError` from `@agent-ix/ix-ui-cli` ([NFR-001](../../non-functional/local/NFR-001-output-via-ix-ui-cli.md)).
 
 ## Workflow
 
@@ -84,7 +84,7 @@ sequenceDiagram
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/usecase/US-003
-- **implements**: ix-cli/spec/functional/local/FR-004
-- **requires**: ix-cli/spec/functional/local/FR-008
-- **requires**: ix-cli/spec/functional/local/FR-009
+- **implements**: ix-cli/spec/usecase/[US-003](../../usecase/US-003-bring-up-full-cluster.md)
+- **implements**: ix-cli/spec/functional/local/[FR-004](./FR-004-cluster-subcommand-group.md)
+- **requires**: ix-cli/spec/functional/local/[FR-008](./FR-008-ix-core-tag-convention.md)
+- **requires**: ix-cli/spec/functional/local/[FR-009](./FR-009-cluster-default-configuration.md)

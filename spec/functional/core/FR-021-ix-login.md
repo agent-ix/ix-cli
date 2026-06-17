@@ -30,7 +30,7 @@ client (`ix://agent-ix/ix-cli-core/FR-015`), device-flow runner
 (`ix://agent-ix/ix-cli-core/FR-017`) all live in ix-cli-core. This command
 supplies the IX OAuth client id, renders the verification prompt through
 `@agent-ix/ix-ui-cli`, and persists the bundle through the IX `core` plugin's
-`SecretsService` + `core.auth.hosts` config metadata (FR-020).
+`SecretsService` + `core.auth.hosts` config metadata ([FR-020](./FR-020-core-plugin-schema.md)).
 
 `<host>` is whatever the user passes (e.g. `filament.dev.ix`); there is no
 hard-coded IX service. Discovery is read from
@@ -73,8 +73,8 @@ hard-coded IX service. Discovery is read from
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/stakeholder/StR-001
-- **requires**: ix-cli/spec/functional/core/FR-020
+- **implements**: ix-cli/spec/stakeholder/[StR-001](../../stakeholder/StR-001-unified-cli-entry-point.md)
+- **requires**: ix-cli/spec/functional/core/[FR-020](./FR-020-core-plugin-schema.md)
 - **calls**: ix-cli-core/spec/functional/FR-015
 - **calls**: ix-cli-core/spec/functional/FR-016
 - **calls**: ix-cli-core/spec/functional/FR-017

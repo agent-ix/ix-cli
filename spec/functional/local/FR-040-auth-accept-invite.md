@@ -20,11 +20,11 @@ relationships:
 Headless consumption of an invite token issued by `ix local auth invite`
 (FR-017). Operators run this from CI, scripts, or interactive shells to set
 a user's initial password and clear the invite without using a browser. The
-command targets identity's FR-032 endpoint
+command targets identity's [FR-032](./FR-032-ghcr-creds-autoprovision.md) endpoint
 (`POST /internal/users/accept-invite`) via `kubectlRaw`; no public ingress
 traffic is permitted.
 
-Per auth/FR-008-CON-11 (strengthened wording) the new password SHALL NOT
+Per auth/[FR-008-CON-11](./FR-008-ix-core-tag-convention.md) (strengthened wording) the new password SHALL NOT
 appear on the command line. The command requires exactly one of
 `--password-stdin` or `--generate`.
 
@@ -60,7 +60,7 @@ error.
 |---|---|---|
 | 400 | `invalid_token` | "Invite token is invalid, consumed, superseded, or expired." |
 | 400 | `password_policy` | Echo the `detail` field from identity. |
-| 403 | `admin_not_acceptable_headlessly` | "Admin invitations must use the cloud-manager-ui browser flow per FR-008-CON-1." |
+| 403 | `admin_not_acceptable_headlessly` | "Admin invitations must use the cloud-manager-ui browser flow per [FR-008-CON-1](./FR-008-ix-core-tag-convention.md)." |
 | 410 | `token_rate_limited` | "This token has been attempted too many times; request a fresh invite." |
 | 429 | `rate_limited` | "Rate-limited; retry after `Retry-After` seconds." |
 | 500 | `no_default_tenant` | "Legacy user without a default tenant; run `ix local auth tenant set-default <email>` first." |
@@ -88,7 +88,7 @@ error.
 
 ## Dependencies
 
-- Upstream: identity/FR-032 (accept-invite endpoint), auth/FR-008
+- Upstream: identity/[FR-032](./FR-032-ghcr-creds-autoprovision.md) (accept-invite endpoint), auth/[FR-008](./FR-008-ix-core-tag-convention.md)
   (operator privilege lifecycle).
 - Downstream: `apps/ix/src/commands/local/auth/accept-invite.ts`,
   `packages/local/src/commands/auth-accept-invite.tsx`,

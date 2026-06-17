@@ -26,12 +26,12 @@ per-app DNS or tunnel configuration.
 The flow rides on a shared Cloudflare Tunnel: cloudflared runs once
 in the cluster, terminates a wildcard hostname (default
 `*.agent-ix.dev`), and forwards by `Host` header to ingress-nginx.
-Per-app exposure is its own scope, separate from the FR-037 LAN
+Per-app exposure is its own scope, separate from the [FR-037](../functional/local/FR-037-multi-host-ingress-config.md) LAN
 extras: `global.tunnelBaseDomains` + `ingress.exposeOnTunnel: true`
 on the entry subchart's ix-service values renders the public host.
 LAN extras (`extraBaseDomains` / `exposeExtraHosts`) stay
 operator-managed and untouched by tunnel commands. Apps that aren't
-explicitly exposed remain private (FR-037 security boundary).
+explicitly exposed remain private ([FR-037](../functional/local/FR-037-multi-host-ingress-config.md) security boundary).
 
 Operator intent for "this release should be tunnel-routed" lives in
 `~/.config/ix/config.d/local.yaml` under `tunnel.exposed[<release>]`
@@ -167,9 +167,9 @@ recorded intent before installing the app) are reported as
 | US-011-AC-3 | TC-434, TC-435 (setTunnelBaseDomain), TC-436 (`ix tunnel domain` runner — read/write/reject). |
 | US-011-AC-4 | TC-405–TC-409 (overlay merge + entry-subchart targeting). Live-cluster smoke ❌ Missing. |
 | US-011-AC-5 | TC-410–TC-412 (unexpose overlay strips base domain + matching extraHosts). |
-| US-011-AC-6 | TC-409, TC-412 (siblings absent from overlay; FR-037-CON-3 boundary preserved). |
+| US-011-AC-6 | TC-409, TC-412 (siblings absent from overlay; [FR-037-CON-3](../functional/local/FR-037-multi-host-ingress-config.md) boundary preserved). |
 | US-011-AC-7 | TC-424 (static: `--from-source --expose` does not run tunnel exposure). |
-| US-011-AC-8 | Inherits FR-038-AC-12-style `getTunnelStatus` shape; live-cluster integration ❌ Missing. |
+| US-011-AC-8 | Inherits [FR-038-AC-12](../functional/local/FR-038-cloudflare-tunnel-exposure.md)-style `getTunnelStatus` shape; live-cluster integration ❌ Missing. |
 | US-011-AC-9 | TC-417 (autoStart=false skip), TC-418 (autoStart=true success), TC-419 (no-token warn-tail). |
 | US-011-AC-10 | TC-420 (auto-start failure swallowed by cluster-start). |
 | US-011-AC-11 | TC-041–TC-044 (`buildTunnelSetArgs` emits tunnel flags from `tunnel.exposed` on every install pass). Live-cluster `ix down` + `ix up` smoke ❌ Missing. |

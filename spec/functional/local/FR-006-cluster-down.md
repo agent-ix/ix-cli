@@ -19,7 +19,7 @@ relationships:
 
 `runClusterDown(config, opts)` tears down the kind cluster behind two confirmation gates:
 
-1. If `opts.yes` is false, render a `<ConfirmPrompt>` (default false) with a message naming the specific cluster (NFR-002-AC-1). If declined or cancelled, render a cancelled `<Listing>` and return.
+1. If `opts.yes` is false, render a `<ConfirmPrompt>` (default false) with a message naming the specific cluster ([NFR-002-AC-1](../../non-functional/local/NFR-002-destructive-operation-confirmation.md)). If declined or cancelled, render a cancelled `<Listing>` and return.
 2. Render a second `<TextPrompt>` requiring the user to retype the cluster name verbatim (case-sensitive). On mismatch, render a `failed` listing with a "name did not match" message and return non-zero.
 3. Call `kind get clusters` and check whether the target cluster is listed.
 4. If absent, render an info `<Listing>` and return.
@@ -90,6 +90,6 @@ sequenceDiagram
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/usecase/US-004
-- **implements**: ix-cli/spec/functional/local/FR-004
-- **requires**: ix-cli/spec/non-functional/local/NFR-002
+- **implements**: ix-cli/spec/usecase/[US-004](../../usecase/US-004-tear-down-cluster-safely.md)
+- **implements**: ix-cli/spec/functional/local/[FR-004](./FR-004-cluster-subcommand-group.md)
+- **requires**: ix-cli/spec/non-functional/local/[NFR-002](../../non-functional/local/NFR-002-destructive-operation-confirmation.md)

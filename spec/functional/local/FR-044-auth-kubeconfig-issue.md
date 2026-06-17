@@ -22,15 +22,15 @@ relationships:
 
 `ix local auth kubeconfig issue` emits an operator-scoped kubeconfig backed
 by the `system:serviceaccount:system:ix-cli-admin` ServiceAccount provisioned
-by identity FR-034. The emitted kubeconfig carries the long-lived SA token
+by identity [FR-034](./FR-034-refresh-changed-output.md). The emitted kubeconfig carries the long-lived SA token
 stored in `Secret system/ix-cli-admin-token` and is the canonical artifact an
 operator switches to after `ix local init` finishes.
 
 This command is **Phase 3** of the Operator Privilege Lifecycle defined in
-auth/FR-008. After running it and exporting `KUBECONFIG` to the emitted file,
+auth/[FR-008](./FR-008-ix-core-tag-convention.md). After running it and exporting `KUBECONFIG` to the emitted file,
 the operator is no longer using a cluster-admin kubeconfig for routine
 `ix local auth *` operations: the runtime RBAC boundary collapses to exactly
-what identity FR-034 grants (pods/exec on `auth/identity*`), and every other
+what identity [FR-034](./FR-034-refresh-changed-output.md) grants (pods/exec on `auth/identity*`), and every other
 cluster-admin verb (read Secrets in `auth`, exec arbitrary pods, delete
 namespaces, get nodes) becomes a 403.
 
@@ -95,7 +95,7 @@ more than once.
 
 | Code | Trigger | Surface |
 |---|---|---|
-| `secret_not_found` | `kubectl get secret -n system ix-cli-admin-token` returns `NotFound` | "ix-cli admin ServiceAccount token Secret is missing. The identity Helm chart predates FR-034, or `ix local up` is incomplete. Run `ix local up` and retry." |
+| `secret_not_found` | `kubectl get secret -n system ix-cli-admin-token` returns `NotFound` | "ix-cli admin ServiceAccount token Secret is missing. The identity Helm chart predates [FR-034](./FR-034-refresh-changed-output.md), or `ix local up` is incomplete. Run `ix local up` and retry." |
 | `secret_forbidden` | `kubectl get` returns 403 on the Secret | "Caller cannot read `system/ix-cli-admin-token`. Re-run from a kubeconfig with `get` on that Secret (typically cluster-admin during bootstrap)." |
 | `output_exists` | `--output` path exists, `--force` not set | "Refusing to overwrite existing file `<path>`. Pass `--force` to overwrite, or remove the file." |
 | `kubectl_unavailable` | `kubectl` binary not on PATH or fails to execute | Standard ix-cli `kubectl_unavailable` envelope (matches existing `auth-identity.ts` helper). |
@@ -183,8 +183,8 @@ sequenceDiagram
 
 ## Dependencies
 
-- Upstream: identity/FR-034 (SA + RBAC), identity/FR-035 (token retrieval
-  contract), auth/FR-008 (Operator Privilege Lifecycle).
+- Upstream: identity/[FR-034](./FR-034-refresh-changed-output.md) (SA + RBAC), identity/[FR-035](./FR-035-halt-all-image-mode.md) (token retrieval
+  contract), auth/[FR-008](./FR-008-ix-core-tag-convention.md) (Operator Privilege Lifecycle).
 - Cross-reference: `spec/functional/local/auth.md` Command Implementation
   Contract is amended to add this command.
 - Downstream consumers: `apps/ix/src/commands/local/auth/kubeconfig/issue.ts`,
@@ -194,7 +194,7 @@ sequenceDiagram
 
 ## Out of scope
 
-- Rotating the SA token (deletion + re-create) is FR-045.
+- Rotating the SA token (deletion + re-create) is [FR-045](./FR-045-auth-kubeconfig-rotate.md).
 - Bound-token / projected-token migration is tracked separately.
 - Multi-cluster kubeconfig merge is the operator's responsibility via
   `KUBECONFIG=a:b:c` — this command emits a single-cluster file by design.

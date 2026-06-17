@@ -17,7 +17,7 @@ relationships:
 
 ## Description
 
-Orchestrator that combines invite (FR-017) and accept-invite (FR-040)
+Orchestrator that combines invite (FR-017) and accept-invite ([FR-040](./FR-040-auth-accept-invite.md))
 into a single command suitable for bots, CI, and operator quickstarts.
 When `agent-browser` is on PATH the command also saves the credential to
 the operator's local vault so subsequent `agent-browser` runs can log
@@ -80,7 +80,7 @@ re-raises.
 
 ## Dependencies
 
-- Upstream: identity/FR-018 (invite), identity/FR-032 (accept-invite),
+- Upstream: identity/FR-018 (invite), identity/[FR-032](./FR-032-ghcr-creds-autoprovision.md) (accept-invite),
   agent-browser CLI.
 - Downstream: `apps/ix/src/commands/local/auth/create-user.ts`,
   `packages/local/src/commands/auth-create-user.tsx`,

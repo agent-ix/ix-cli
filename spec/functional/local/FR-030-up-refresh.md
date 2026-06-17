@@ -87,4 +87,4 @@ sequenceDiagram
 
 ## Dependencies
 
-- **extends**: ix-cli/spec/functional/local/FR-008
+- **extends**: ix-cli/spec/functional/local/[FR-008](./FR-008-ix-core-tag-convention.md)

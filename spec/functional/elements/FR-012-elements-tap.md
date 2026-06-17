@@ -45,4 +45,4 @@ The `ix elements tap` subcommand group manages the list of tap sources from whic
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/stakeholder/StR-001
+- **implements**: ix-cli/spec/stakeholder/[StR-001](../../stakeholder/StR-001-unified-cli-entry-point.md)

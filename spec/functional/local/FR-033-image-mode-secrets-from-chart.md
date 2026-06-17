@@ -163,6 +163,6 @@ sequenceDiagram
 
 ## Dependencies
 
-- **extends**: ix-cli/spec/functional/local/FR-008
-- **extends**: ix-cli/spec/functional/local/FR-031
-- **extends**: ix-cli/spec/functional/local/FR-032
+- **extends**: ix-cli/spec/functional/local/[FR-008](./FR-008-ix-core-tag-convention.md)
+- **extends**: ix-cli/spec/functional/local/[FR-031](./FR-031-umbrella-install.md)
+- **extends**: ix-cli/spec/functional/local/[FR-032](./FR-032-ghcr-creds-autoprovision.md)

@@ -45,7 +45,7 @@ oclif's native plugin system rather than layering on top of it.
 
 ### Specific gaps that triggered the retraction
 
-- FR-023 manifest loader's helpers existed in
+- [FR-023](../functional/core/FR-023-ix-logout.md) manifest loader's helpers existed in
   `packages/core/src/runtime/manifest.ts` but had zero callers in
   `apps/ix/src/` — the on-disk plugin manifest was never read.
 - FR-024 capability resolver in
@@ -80,7 +80,7 @@ who want a different plugin set ship or install a different binary).
 
 ### Outcome
 
-StR-008 and FR-021–FR-025 have been rewritten around oclif-native
+StR-008 and [FR-021](../functional/core/FR-021-ix-login.md)–FR-025 have been rewritten around oclif-native
 composition. `runtime-plugin-platform-plan.md` is marked superseded.
 The custom `IxPlugin` contract, registry, manifest loader, distribution
 object, and bin-level argv preprocessing are all being removed. The

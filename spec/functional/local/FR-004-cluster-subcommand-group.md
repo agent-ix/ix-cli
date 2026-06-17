@@ -42,6 +42,6 @@ The oclif topic `"local cluster"` is registered in `apps/ix/package.json` under 
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/usecase/US-003
-- **implements**: ix-cli/spec/usecase/US-004
-- **implements**: ix-cli/spec/usecase/US-005
+- **implements**: ix-cli/spec/usecase/[US-003](../../usecase/US-003-bring-up-full-cluster.md)
+- **implements**: ix-cli/spec/usecase/[US-004](../../usecase/US-004-tear-down-cluster-safely.md)
+- **implements**: ix-cli/spec/usecase/[US-005](../../usecase/US-005-cluster-health-status.md)

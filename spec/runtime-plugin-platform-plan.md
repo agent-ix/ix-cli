@@ -21,7 +21,7 @@ Date: 2026-05-10
 > per-project plugin enable/disable feature that justified the on-disk
 > manifest loader was dropped as not actually required.
 >
-> See the revised StR-008 and FR-021–FR-025 for the current shape:
+> See the revised StR-008 and [FR-021](./functional/core/FR-021-ix-login.md)–FR-025 for the current shape:
 > oclif-native plugin discovery + `@agent-ix/ix-cli-core` library
 > (`BaseCommand`, `ConfigService`, `SecretsService`, `CapabilityResolver`,
 > `IxPluginSchema`).
@@ -30,9 +30,9 @@ Date: 2026-05-10
 
 Completed the runtime/plugin platform requirements that remained after FR-025:
 
-- FR-021 Runtime Distributions
-- FR-022 Runtime Config Root Override
-- FR-023 Plugin Manifest Loading
+- [FR-021](./functional/core/FR-021-ix-login.md) Runtime Distributions
+- [FR-022](./functional/core/FR-022-ix-whoami.md) Runtime Config Root Override
+- [FR-023](./functional/core/FR-023-ix-logout.md) Plugin Manifest Loading
 - FR-024 Plugin Capability Binding
 
 FR-025 is complete and provides the contract foundation: `IxPlugin`,
@@ -47,14 +47,14 @@ registration, and capability declarations.
   `registerIxPlugin`.
 - `@agent-ix/workflow-cli-plugin` exports `workflowIxPlugin` as the first
   external plugin descriptor.
-- The spec matrix marks FR-021 through FR-024 test cases TC-500 through TC-515
+- The spec matrix marks [FR-021](./functional/core/FR-021-ix-login.md) through FR-024 test cases TC-500 through TC-515
   as complete.
 
 ## Completed Work
 
 ### 1. Runtime Distribution Model
 
-Target: FR-021, TC-500 through TC-502. Status: complete.
+Target: [FR-021](./functional/core/FR-021-ix-login.md), TC-500 through TC-502. Status: complete.
 
 Add a core runtime distribution type that describes:
 
@@ -69,7 +69,7 @@ hard-coding plugin defaults directly in startup.
 
 ### 2. Runtime Config Root Selection
 
-Target: FR-022, TC-503 through TC-507. Status: complete.
+Target: [FR-022](./functional/core/FR-022-ix-whoami.md), TC-503 through TC-507. Status: complete.
 
 Add bootstrap-time config-root resolution:
 
@@ -85,7 +85,7 @@ inputs, even if the first implementation keeps project config loading narrow.
 
 ### 3. Plugin Manifest Loader
 
-Target: FR-023, TC-508 through TC-511. Status: complete.
+Target: [FR-023](./functional/core/FR-023-ix-logout.md), TC-508 through TC-511. Status: complete.
 
 Add manifest parsing and layer merge:
 
@@ -115,10 +115,10 @@ Add capability resolution for plugin command execution:
 
 ## Suggested Implementation Order
 
-1. Add `packages/core/src/runtime/distribution.ts` and tests for FR-021.
+1. Add `packages/core/src/runtime/distribution.ts` and tests for [FR-021](./functional/core/FR-021-ix-login.md).
 2. Add config-root runtime context support to core config/secrets paths and app
-   bootstrap, then tests for FR-022.
-3. Add manifest schema, manifest merge, and loader diagnostics for FR-023.
+   bootstrap, then tests for [FR-022](./functional/core/FR-022-ix-whoami.md).
+3. Add manifest schema, manifest merge, and loader diagnostics for [FR-023](./functional/core/FR-023-ix-logout.md).
 4. Add capability resolver and command guard helpers for FR-024.
 5. Update `apps/ix` to use the distribution object and loader in its init hook.
 6. Update `spec/tests.md` statuses from in-progress to complete only as tests

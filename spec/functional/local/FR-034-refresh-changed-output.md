@@ -93,4 +93,4 @@ sequenceDiagram
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/usecase/US-007
+- **implements**: ix-cli/spec/usecase/[US-007](../../usecase/US-007-refresh-registry-visibility.md)

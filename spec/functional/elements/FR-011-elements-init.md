@@ -41,4 +41,4 @@ relationships:
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/stakeholder/StR-001
+- **implements**: ix-cli/spec/stakeholder/[StR-001](../../stakeholder/StR-001-unified-cli-entry-point.md)

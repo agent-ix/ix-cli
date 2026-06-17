@@ -105,6 +105,6 @@ sequenceDiagram
 
 ## Dependencies
 
-- **implements**: ix-cli/spec/usecase/US-008
-- **requires**: ix-cli/spec/functional/local/FR-031
-- **extends**: ix-cli/spec/functional/local/FR-006
+- **implements**: ix-cli/spec/usecase/[US-008](../../usecase/US-008-halt-all-services.md)
+- **requires**: ix-cli/spec/functional/local/[FR-031](./FR-031-umbrella-install.md)
+- **extends**: ix-cli/spec/functional/local/[FR-006](./FR-006-cluster-down.md)
