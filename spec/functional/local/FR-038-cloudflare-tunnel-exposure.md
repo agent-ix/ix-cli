@@ -254,7 +254,7 @@ without helm or kubectl.
 
 - **FR-038-AC-1**: A missing `tunnel` group in the persisted YAML
   yields `{ autoStart: false, baseDomain: "agent-ix.dev", tunnelId:
-null }` without error (`ix://agent-ix/ix-cli-core/[FR-002](./FR-002-phase-table-integration.md)`-AC-1 pattern).
+null }` without error (`ix://agent-ix/ix-cli-core/[FR-002](ix://agent-ix/ix-cli-core/FR-002)`-AC-1 pattern).
 - **FR-038-AC-2**: A YAML `tunnel: { autoStart: true, baseDomain:
 foo.example.com, tunnelId: abc-123 }` round-trips through
   `loadTunnelConfig()` unchanged.
