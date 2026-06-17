@@ -22,7 +22,7 @@ relationships:
 
 `ix local auth kubeconfig issue` emits an operator-scoped kubeconfig backed
 by the `system:serviceaccount:system:ix-cli-admin` ServiceAccount provisioned
-by identity [FR-034](./FR-034-refresh-changed-output.md). The emitted kubeconfig carries the long-lived SA token
+by identity [FR-034](ix://agent-ix/identity/FR-034). The emitted kubeconfig carries the long-lived SA token
 stored in `Secret system/ix-cli-admin-token` and is the canonical artifact an
 operator switches to after `ix local init` finishes.
 
@@ -30,7 +30,7 @@ This command is **Phase 3** of the Operator Privilege Lifecycle defined in
 auth/[FR-008](./FR-008-ix-core-tag-convention.md). After running it and exporting `KUBECONFIG` to the emitted file,
 the operator is no longer using a cluster-admin kubeconfig for routine
 `ix local auth *` operations: the runtime RBAC boundary collapses to exactly
-what identity [FR-034](./FR-034-refresh-changed-output.md) grants (pods/exec on `auth/identity*`), and every other
+what identity [FR-034](ix://agent-ix/identity/FR-034) grants (pods/exec on `auth/identity*`), and every other
 cluster-admin verb (read Secrets in `auth`, exec arbitrary pods, delete
 namespaces, get nodes) becomes a 403.
 

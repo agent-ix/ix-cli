@@ -25,7 +25,7 @@ Direct calls to `console.log`, `console.error`, `console.warn`, or `process.stde
 
 ## Rationale
 
-ix-ui-cli is the design system. Centralizing visual decisions there means a single tweak (e.g. shifting the tail connector right by 3 columns, swapping the orbit glyph) propagates across every `ix` command and every third-party plugin without touching ix-cli source. Letting ix-cli inline its own ANSI sequences or define alternative framing helpers silently forks the design language and defeats the centralization (ix-ui FR-016, NFR-003).
+ix-ui-cli is the design system. Centralizing visual decisions there means a single tweak (e.g. shifting the tail connector right by 3 columns, swapping the orbit glyph) propagates across every `ix` command and every third-party plugin without touching ix-cli source. Letting ix-cli inline its own ANSI sequences or define alternative framing helpers silently forks the design language and defeats the centralization (ix-ui [FR-016](ix://agent-ix/ix-ui/FR-016), NFR-003).
 
 ## Output Routing Table
 

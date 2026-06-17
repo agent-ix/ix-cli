@@ -22,7 +22,7 @@ relationships:
 
 Four sibling subcommands wrap identity's [FR-033](./FR-033-image-mode-secrets-from-chart.md) `/admin/users/{user_id}/memberships`
 endpoints so operators can manage tenant membership from the CLI. Every
-verb first resolves email → user_id via identity [FR-036](./FR-036-cluster-stop-start.md)
+verb first resolves email → user_id via identity [FR-036](ix://agent-ix/identity/FR-036)
 (`POST /internal/users/lookup`), then issues the relevant [FR-033](./FR-033-image-mode-secrets-from-chart.md) HTTP verb.
 
 | Subcommand | Verb | Path |
@@ -37,8 +37,8 @@ verb first resolves email → user_id via identity [FR-036](./FR-036-cluster-sto
 
 | Call | Path | Runtime gate |
 |---|---|---|
-| email → user_id resolution | `POST /internal/users/lookup` (identity [FR-036](./FR-036-cluster-stop-start.md)) | K8s RBAC `pods/exec` on `auth/identity*` ([FR-034](./FR-034-refresh-changed-output.md)) — in-pod-exec-gated |
-| Membership CRUD | `/admin/users/{user_id}/memberships*` (identity [FR-033](./FR-033-image-mode-secrets-from-chart.md)) | K8s RBAC `pods/exec` on `auth/identity*` ([FR-034](./FR-034-refresh-changed-output.md)) — in-pod-exec-gated |
+| email → user_id resolution | `POST /internal/users/lookup` (identity [FR-036](ix://agent-ix/identity/FR-036)) | K8s RBAC `pods/exec` on `auth/identity*` ([FR-034](./FR-034-refresh-changed-output.md)) — in-pod-exec-gated |
+| Membership CRUD | `/admin/users/{user_id}/memberships*` (identity [FR-033](ix://agent-ix/identity/FR-033)) | K8s RBAC `pods/exec` on `auth/identity*` ([FR-034](./FR-034-refresh-changed-output.md)) — in-pod-exec-gated |
 
 Both calls go through `kubectlRaw`, the in-pod-exec shim. The earlier design
 routed resolution through identity's JWT-gated `GET /admin/users?q=<email>`
