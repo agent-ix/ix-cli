@@ -9,7 +9,7 @@ relationships:
     cardinality: "1:1"
 ---
 
-## Behavior
+## Description
 
 `ix local refresh` snapshots the existing registry cache before forcing a
 re-discovery, then renders one body row per chart whose version changed or
@@ -29,7 +29,16 @@ The diff is computed by chart `name`. If the prior cache is absent, malformed,
 or recorded against a different `org`, every entry in the fresh registry is
 treated as new.
 
-## Acceptance
+## Acceptance Criteria
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-034-AC-1 | Per-chart rows are emitted via `Listing.item(...)`, not `note(...)` or `raw(...)`. | Test |
+| FR-034-AC-2 | Row text matches the format above exactly, including the ` -> ` separator and the literal `(new)` marker. | Test |
+| FR-034-AC-3 | `runRefresh` reads the cache snapshot before calling `loadRegistry({ refresh: true })`. The snapshot is the source of "old" versions for the diff. | Test |
+| FR-034-AC-4 | When the prior cache is missing or its `org` field does not match the configured org, the diff treats every fresh entry as new. | Test |
+| FR-034-AC-5 | When zero rows are produced, no `item()` calls are made; the command emits only the closing `success(...)` line. | Test |
+| FR-034-AC-6 | Registry-discovery errors continue to propagate — the command logs `error(...)` and rethrows, unchanged from prior behavior. | Test |
 
 - **FR-034-AC-1**: Per-chart rows are emitted via `Listing.item(...)`, not
   `note(...)` or `raw(...)`.
@@ -82,3 +91,6 @@ sequenceDiagram
     Listing-->>User: rendered output
 ```
 
+## Dependencies
+
+- **implements**: ix-cli/spec/usecase/US-007

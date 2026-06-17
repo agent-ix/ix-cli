@@ -2,7 +2,6 @@
 id: FR-023
 title: "ix logout [--host] — forget credentials"
 type: FR
-object: command
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-001"
     type: "implements"
@@ -25,6 +24,15 @@ host-keyed access and refresh secrets and removes the host's
 
 ## Acceptance Criteria
 
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-023-AC-1 | `ix logout --host <host>` deletes the access secret, the refresh secret, and the metadata entry for `<host>`, leaving other hosts' credentials untouched (host isolation, `ix://agent-ix/ix-cli-core/NFR-005`). | Test |
+| FR-023-AC-2 | `ix logout` with no flag clears every logged-in host. | Test |
+| FR-023-AC-3 | `ix logout` when nothing is stored reports "nothing to do" and exits zero (idempotent). | Test |
+| FR-023-AC-4 | After `ix logout --host <host>`, a subsequent `ix whoami --host <host>` reports that host is no longer logged in. | Test |
+| FR-023-AC-5 | All output is rendered via `@agent-ix/ix-ui-cli` — no raw `console.log` in the command handler. | Test |
+
+
 - **FR-023-AC-1**: `ix logout --host <host>` deletes the access secret, the
   refresh secret, and the metadata entry for `<host>`, leaving other hosts'
   credentials untouched (host isolation, `ix://agent-ix/ix-cli-core/NFR-005`).
@@ -41,3 +49,9 @@ host-keyed access and refresh secrets and removes the host's
 - `apps/ix/src/commands/logout.tsx`; clears via `ixTokenStore().clear(host)` and
   enumerates targets via `loggedInHostSlugs()` from
   `apps/ix/src/auth-engine.ts`.
+
+## Dependencies
+
+- **implements**: ix-cli/spec/stakeholder/StR-001
+- **requires**: ix-cli/spec/functional/core/FR-021
+- **calls**: ix-cli-core/spec/functional/FR-017

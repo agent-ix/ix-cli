@@ -2,7 +2,6 @@
 id: FR-041
 title: "ix local auth rotate-password — Headless must_rotate flow"
 type: FR
-object: cli_command
 relationships:
   - target: "ix://agent-ix/identity/FR-019"
     type: "implements"

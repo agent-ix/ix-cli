@@ -9,7 +9,7 @@ relationships:
     cardinality: "1:1"
 ---
 
-## Behavior
+## Description
 
 `ix local up --refresh` forces `helm dependency update` for every source-mode
 install in the run, re-pulling subchart `.tgz` artifacts from the OCI registry
@@ -32,7 +32,16 @@ installs. To re-pull chart artifacts in image mode, omit `--tag` and rely on the
 umbrella `Chart.yaml`'s pinned subchart versions, or use `ix local refresh`
 (separate command) to invalidate the registry cache.
 
-## Acceptance
+## Acceptance Criteria
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-030-AC-1 | `--refresh` is declared on `apps/ix/src/commands/local/up.ts` as `Flags.boolean({ description: ... })` and reaches `runUp` via the parsed options object. | Test |
+| FR-030-AC-2 | `runUp` propagates `refresh` into the `UpFilterOptions` passed to `runSourceModeUp`. | Test |
+| FR-030-AC-3 | When `opts.refresh === true`, every `LocalInstall` produced by `runSourceModeUp` has `dependencyUpdate === true`, regardless of what `shouldDependencyUpdate(chartPath)` returned during resolution. | Test |
+| FR-030-AC-4 | When `opts.refresh` is unset or false, install `dependencyUpdate` values are unchanged from `shouldDependencyUpdate`. | Test |
+| FR-030-AC-5 | The flag is documented in the `--help` output of `ix local up`. | Test |
+| FR-030-AC-6 | `--refresh` does not change image-mode behavior — no edits to `up-image.ts` are required to satisfy this FR. | Test |
 
 - **FR-030-AC-1**: `--refresh` is declared on `apps/ix/src/commands/local/up.ts`
   as `Flags.boolean({ description: ... })` and reaches `runUp` via the parsed
@@ -76,3 +85,6 @@ sequenceDiagram
     RunUp-->>User: outroSuccess / outroError
 ```
 
+## Dependencies
+
+- **extends**: ix-cli/spec/functional/local/FR-008

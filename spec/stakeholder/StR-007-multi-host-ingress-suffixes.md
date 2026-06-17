@@ -28,6 +28,26 @@ gateway services into the public-facing suffixes while keeping
 backend services reachable only on the cluster-internal suffix (for
 debugging, not external exposure).
 
+## Rationale
+
+A laptop cluster needs only one suffix, but a cluster running on a named or
+network-reachable host must answer to several at once — a local-stable suffix so
+existing docs and muscle memory keep working, a machine-stable suffix so others
+can address it by host identity, and a public suffix once it fronts a real
+audience — without forcing edge and backend services to share the same exposure.
+A per-cluster list of suffixes, with selective opt-in of edge services to the
+public suffixes, is therefore required.
+
 ## Priority
 
 Must-Have
+
+## Validation Criteria
+
+This need is satisfied when an operator can configure a per-cluster list of host
+suffixes that the cluster answers to simultaneously; when the local-stable
+suffix continues to resolve regardless of where the cluster runs; and when edge
+or gateway services can be opted into the public-facing suffixes while backend
+services remain reachable only on the cluster-internal suffix. Satisfaction is
+judged by deploying a cluster with multiple configured suffixes and demonstrating
+each of these outcomes.

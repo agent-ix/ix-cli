@@ -16,11 +16,20 @@ Developers working across Agent IX projects currently use separate CLIs per conc
 3. Exposes element scaffolding (`ix elements`) and spec workflows (`ix spec`) as first-class subcommands
 4. Supports third-party packages extending the command tree via a typed plugin interface
 
+## Rationale
+
+Separate per-concern CLIs force developers to learn different install paths and
+invocation styles and offer no shared auth session, so credentials are
+re-entered per tool and the ecosystem feels fragmented. A single `ix` binary
+with one authenticated session and one consistent command tree removes that
+friction and is a precondition for a coherent developer experience across every
+Agent IX project.
+
 ## Priority
 
 Must-Have
 
-## Acceptance
+## Validation Criteria
 
 - **StR-001-AC-1**: A single `ix` binary provides all Agent IX CLI functionality.
 - **StR-001-AC-2**: `ix login` authenticates once; all subcommands resolve credentials from `~/.config/ix/credentials.json` without re-prompting.

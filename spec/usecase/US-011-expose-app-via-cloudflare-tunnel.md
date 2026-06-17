@@ -16,10 +16,10 @@ relationships:
 As a **platform engineer** running an app on my local kind cluster
 (via `ix up`), I want to share that app with a teammate or stakeholder
 on the public internet using a friendly hostname like
-`cloud-manager.agent-ix.dev` — without exposing my LAN, without
-restarting the cluster, and without per-app DNS or tunnel
-configuration. When I'm done demoing I want to take it private again
-just as quickly.
+`cloud-manager.agent-ix.dev` — and take it private again just as
+quickly when I'm done — so that I can demo a local app over a public
+hostname without exposing my LAN, restarting the cluster, or doing
+per-app DNS or tunnel configuration.
 
 ## Context
 

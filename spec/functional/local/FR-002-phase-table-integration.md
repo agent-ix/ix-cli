@@ -110,9 +110,28 @@ inferred from the suffix list.
 
 ## Acceptance Criteria
 
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-002-AC-1 | `ix up <app>` renders a phase-column table using `PhaseTable<Phase>` imported from `@agent-ix/ix-ui-cli`. | Test |
+| FR-002-AC-2 | All acceptance criteria from ix-local-cli FR-022 are satisfied via the `PhaseTable` component. | Test |
+| FR-002-AC-3 | `grep -r "AppDisplay" packages/local/src/` returns zero matches. | Test |
+| FR-002-AC-4 | The `Phase` type and `PHASES` constant are defined in `src/phases.ts` and not duplicated elsewhere in the package. | Test |
+| FR-002-AC-5 | The header for `ix up <target>` is `ix local up · <target>` and SHALL NOT include the Helm registry. | Test |
+| FR-002-AC-6 | The success frame passes all rendered ingress URLs to `PhaseTable` via `tailIngressUrls` (flat list, in chart-rendered order) AND the configured hosts via `tailIngressHosts = config.hosts`. PhaseTable groups URLs into per-host `◎ Ingress · <host>` blocks via longest-host-suffix match (FR-004-AC-9). If no Ingress exists, no ingress section is rendered. | Test |
+
+
 - **FR-002-AC-1**: `ix up <app>` renders a phase-column table using `PhaseTable<Phase>` imported from `@agent-ix/ix-ui-cli`.
 - **FR-002-AC-2**: All acceptance criteria from ix-local-cli FR-022 are satisfied via the `PhaseTable` component.
 - **FR-002-AC-3**: `grep -r "AppDisplay" packages/local/src/` returns zero matches.
 - **FR-002-AC-4**: The `Phase` type and `PHASES` constant are defined in `src/phases.ts` and not duplicated elsewhere in the package.
 - **FR-002-AC-5**: The header for `ix up <target>` is `ix local up · <target>` and SHALL NOT include the Helm registry.
 - **FR-002-AC-6**: The success frame passes all rendered ingress URLs to `PhaseTable` via `tailIngressUrls` (flat list, in chart-rendered order) AND the configured hosts via `tailIngressHosts = config.hosts`. PhaseTable groups URLs into per-host `◎ Ingress · <host>` blocks via longest-host-suffix match (FR-004-AC-9). If no Ingress exists, no ingress section is rendered.
+
+## Dependencies
+
+- **migrated_from**: ix-local-cli/spec/functional/FR-022
+- **requires**: ix-ui/spec/functional/cli/FR-001
+- **requires**: ix-ui/spec/functional/cli/FR-002
+- **requires**: ix-ui/spec/functional/cli/FR-003
+- **implements**: ix-cli/spec/usecase/US-002
+- **requires**: ix-cli/spec/functional/local/FR-037

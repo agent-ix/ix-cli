@@ -12,7 +12,7 @@ relationships:
     cardinality: "1:1"
 ---
 
-## Behavior
+## Description
 
 Two new commands extend the `ix local cluster` subcommand group (FR-004): `stop` and `start`. Implementations live in `packages/local/src/commands/cluster-stop.tsx` and `cluster-start.tsx`, mirroring the structure of `cluster-down.tsx` (deps seam for execa override, `<Listing>` for final state).
 
@@ -30,7 +30,17 @@ Two new commands extend the `ix local cluster` subcommand group (FR-004): `stop`
 3. Wait for the API server to respond by polling `kubectl get ns` (timeout 60s, 2s interval). Failure to become reachable within the timeout renders a warn listing but does not error out (the docker containers are running; user can investigate).
 4. Render a `<Listing>` of `(node, state)` rows.
 
-## Acceptance
+## Acceptance Criteria
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-036-AC-1 | `ix local cluster stop` runs `docker stop` on every node container of the configured kind cluster. | Test |
+| FR-036-AC-2 | `ix local cluster start` runs `docker start` on every node container, then waits for the API server before returning. | Test |
+| FR-036-AC-3 | Both commands are idempotent: already-stopped containers on stop and already-running containers on start are reported but do not error. | Test |
+| FR-036-AC-4 | If no kind cluster exists, both commands render `failed` and return non-zero — they never auto-create the cluster. | Test |
+| FR-036-AC-5 | Both commands render a `<Listing>` reporting each node's resulting state. | Test |
+| FR-036-AC-6 | Stop → start round trip preserves PVC data and Helm release state (verified by integration test re-reading a known PVC after start). | Test |
+| FR-036-AC-7 | API-server reachability timeout on start renders a `warn` (not `failed`) listing, since the containers are running and the issue may be transient. | Test |
 
 - **FR-036-AC-1**: `ix local cluster stop` runs `docker stop` on every node container of the configured kind cluster.
 - **FR-036-AC-2**: `ix local cluster start` runs `docker start` on every node container, then waits for the API server before returning.
@@ -88,3 +98,7 @@ sequenceDiagram
     UI-->>User: final state
 ```
 
+## Dependencies
+
+- **implements**: ix-cli/spec/usecase/US-009
+- **implements**: ix-cli/spec/functional/local/FR-004

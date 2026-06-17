@@ -12,7 +12,7 @@ relationships:
     cardinality: "1:1"
 ---
 
-## Behavior
+## Description
 
 `runImageModeUp` collapses an app-role deployable into a **single Helm
 release** per umbrella chart, instead of one release per declared subchart.
@@ -78,7 +78,27 @@ renders the label in dim text alongside a yellow `0` — never red — because
     • elapsed 4.2s · 1/4 ready
 ```
 
-## Acceptance
+## Acceptance Criteria
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-031-AC-1 | For `deployable.role === "app"`, exactly one `helm upgrade --install <app-name> <umbrella-tgz>` runs per `ix up` invocation, regardless of how many subcharts the umbrella declares. | Test |
+| FR-031-AC-2 | Exactly one `helm pull` runs per umbrella per invocation; `pools.dockerPull` is no longer used in the app branch. | Test |
+| FR-031-AC-3 | Each subchart's row in the `PhaseTable` still shows `secrets / pull / install / ready` columns and transitions through them. | Test |
+| FR-031-AC-4 | Per-subchart `waitForRollout` watchers run in parallel during the `ready` phase, gated by `pools.kubectlWatch`, and stream pod-ready counts to the row via `display.setPodStatus`. | Test |
+| FR-031-AC-5 | When `helm pull` of the umbrella fails, all subchart rows show `pull failed` with the umbrella error message; the install short-circuits. | Test |
+| FR-031-AC-6 | When the umbrella `helm upgrade --install` fails without a child-row hook match, the final `PhaseTable` frame is marked failed and shows the umbrella error at the bottom; rollout watchers are not started. | Test |
+| FR-031-AC-7 | When a subchart's rollout fails, only that row shows `ready failed`; sibling watchers continue to completion (FR-021-AC-5). | Test |
+| FR-031-AC-8 | `getDeploymentStatus` returns a `ready/desired·settle` string when at least one workload reports `ready === desired` AND (`observedGeneration < generation` OR `availableReplicas < replicas` OR `updatedReplicas < replicas` OR StatefulSet `currentRevision != updateRevision`). | Test |
+| FR-031-AC-9 | A `helm history <app-name>` command shows a single unified release history for the whole umbrella. | Test |
+| FR-031-AC-10 | A `helm list` shows exactly one row per app instead of one per subchart. | Test |
+| FR-031-AC-11 | `runDown` (`ix local halt <app>`) for `role=app` uninstalls the umbrella release first, then any leftover per-subchart releases (transitional cleanup). Both pushed via a deduping `pushRelease` helper so the same release isn't queued twice. | Test |
+| FR-031-AC-12 | Per-subchart uninstall during halt uses `--ignore-not-found` so missing legacy releases are a no-op, not an error — supports users mid-migration with mixed release state. | Test |
+| FR-031-AC-13 | When `readyReplicas === 0`, `waitForRollout` passes an enriched status string `"0/N·label"` to `onStatus` where `label` is one of `sched`, `init`, or `start` depending on pod container state. When `readyReplicas > 0` or `getPodReadyLabel` returns `null`, the bare `"ready/total"` string is passed unchanged. | Test |
+| FR-031-AC-14 | A row with `"1/1·settle"` or any other state-labeled ready count remains active until the state label disappears and the row receives plain `"1/1"`. | Test |
+| FR-031-AC-15 | On successful umbrella app install, ix-cli reads final ingress URLs from `helm get manifest <app-name> -n <namespace>` and passes every rendered Ingress host to the PhaseTable ingress section as a flat list via `tailIngressUrls`, alongside `tailIngressHosts = config.hosts` for per-host grouping. TLS-covered hosts render with `https://`; non-TLS hosts render with `http://`. | Test |
+| FR-031-AC-16 | When the rendered umbrella manifest contains URLs spanning multiple configured ingress hostnames, each URL is rendered under its `◎ Ingress · <host>` block (PhaseTable grouping per FR-004-AC-9). Within each group, URLs preserve chart-rendered order; groups are rendered in the order their first URL appears in the rendered manifest. Example with `config.hosts = ["dev.ix", "luna.ix"]`: `https://auth.dev.ix` under `◎ Ingress · dev.ix`, then `https://auth.luna.ix` under `◎ Ingress · luna.ix`. | Test |
+| FR-031-AC-17 | If the rendered manifest contains no Ingress hosts, ix-cli SHALL NOT synthesize a fallback URL from `<release>.<domain>`. | Test |
 
 - **FR-031-AC-1**: For `deployable.role === "app"`, exactly one
   `helm upgrade --install <app-name> <umbrella-tgz>` runs per `ix up`
@@ -176,3 +196,7 @@ sequenceDiagram
     Table-->>User: final frame
 ```
 
+## Dependencies
+
+- **extends**: ix-cli/spec/functional/local/FR-008
+- **extends**: ix-cli/spec/functional/local/FR-013

@@ -43,3 +43,7 @@ The default allowlist hardcodes the CLI device `client_id` (`ix-cli`) alongside 
 - The allowlist (this FR) then maps whatever `client_id` the service mandates to its audiences; products that keep `ix-cli` need no extra allowlist entry beyond what their service advertises.
 
 This is additive (schema stays version `"1"`) and spans two repos (`gateway-bff-contract` model + `ix-cli-core` consumer), so it is deferred. The allowlist `ix-cli → ["filament"]` entry above unblocks `ix login` device flow today.
+
+## Dependencies
+
+- **Upstream**: see `relationships` in frontmatter.

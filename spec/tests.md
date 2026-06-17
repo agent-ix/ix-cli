@@ -1,6 +1,8 @@
 ---
-type: test-matrix
+id: TM-001
+type: TestMatrix
 name: ix-cli / packages/local + packages/elements
+title: "Test Matrix"
 ---
 
 # Test Matrix
@@ -270,13 +272,13 @@ Tests fall into four types:
 
 ## packages/elements (`@agent-ix/ix-cli-elements`)
 
-### Stakeholder Requirement Coverage
+### Stakeholder Requirement Coverage (packages/elements)
 
 | Stakeholder Req | Trace to FR            | Test Cases    | Coverage Status                                 |
 | --------------- | ---------------------- | ------------- | ----------------------------------------------- |
 | StR-001         | FR-010, FR-011, FR-012 | TC-044–TC-075 | ✅ Partial (unit + static; integration pending) |
 
-### Functional Requirement Coverage
+### Functional Requirement Coverage (packages/elements)
 
 | Functional Req | Acceptance Criteria                       | Test Cases            | Coverage Status                           |
 | -------------- | ----------------------------------------- | --------------------- | ----------------------------------------- |
@@ -302,7 +304,7 @@ Tests fall into four types:
 | FR-013         | AC-1–AC-3: new element scaffolding        | —                     | ❌ Missing (stub — pending meta-template) |
 | FR-013         | AC-4: manual steps printed                | —                     | Review                                    |
 
-### Non-Functional Requirement Coverage
+### Non-Functional Requirement Coverage (packages/elements)
 
 | Non-Functional Req | Verification Method                                         | Test Cases | Status               |
 | ------------------ | ----------------------------------------------------------- | ---------- | -------------------- |

@@ -12,7 +12,7 @@ relationships:
     cardinality: "1:1"
 ---
 
-## Behavior
+## Description
 
 Image-mode installs (`ix local up <app>` without `--from-source`) reference
 container images on ghcr.io. The kubelet pulls those images, which requires
@@ -33,7 +33,16 @@ namespaces: users don't have to remember to provision ghcr-creds per
 namespace, and image pulls succeed regardless of whether the kind node
 has cached layers from prior source-mode deploys.
 
-## Acceptance
+## Acceptance Criteria
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-032-AC-1 | `local-secrets.ts` exports `ensureGhcrCredsInNamespace` with signature `(namespace: string, token: string, username?: string) => Promise<void>`. | Test |
+| FR-032-AC-2 | The function applies a `Secret` of type `kubernetes.io/dockerconfigjson` named `ghcr-creds`, with a `.dockerconfigjson` data field encoding `auths: { "ghcr.io": ... }`. | Test |
+| FR-032-AC-3 | `runImageModeUp` calls `ensureGhcrCredsInNamespace` exactly once per distinct install namespace, **after** GHCR token resolution and **before** helm install (covers both single-service and umbrella branches). | Test |
+| FR-032-AC-4 | The username defaults to `"_token"` (matching the `helm registry login -u "_token"` convention used elsewhere). | Test |
+| FR-032-AC-5 | Repeated invocations are no-ops — `kubectl apply` keeps the secret in sync without churning resourceVersion when content hasn't changed. | Test |
+| FR-032-AC-6 | Source mode (`up-source.ts`) is unaffected — that path uses `make build` + `make kind-load` per subchart, which loads images directly into the kind node and bypasses ghcr.io entirely. | Test |
 
 - **FR-032-AC-1**: `local-secrets.ts` exports `ensureGhcrCredsInNamespace`
   with signature `(namespace: string, token: string, username?: string) =>
@@ -82,3 +91,7 @@ sequenceDiagram
     ImageUp-->>User: PhaseTable: pull → secrets → install → ready
 ```
 
+## Dependencies
+
+- **extends**: ix-cli/spec/functional/local/FR-008
+- **extends**: ix-cli/spec/functional/local/FR-031

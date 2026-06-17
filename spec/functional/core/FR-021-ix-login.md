@@ -2,7 +2,6 @@
 id: FR-021
 title: "ix login <host> — service-first device login"
 type: FR
-object: command
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-001"
     type: "implements"
@@ -39,6 +38,15 @@ hard-coded IX service. Discovery is read from
 
 ## Acceptance Criteria
 
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-021-AC-1 | `ix login <host>` fetches the service discovery document for `<host>`, runs the device flow, and on approval persists the access token, refresh token, and `{expiresAt, audience, scope}` metadata keyed by `<host>`. | Test |
+| FR-021-AC-2 | The verification URI and user code are rendered prominently via `@agent-ix/ix-ui-cli` (no raw `console.log`). The browser is opened best-effort; `--no-browser` suppresses the attempt and the URL is shown for manual entry. | Test |
+| FR-021-AC-3 | A denied approval (`access_denied`) and an expired device code (`expired_token`) each render a clear failure Listing and exit non-zero. | Test |
+| FR-021-AC-4 | Plain-HTTP discovery is refused for non-`.dev.ix` hosts unless `--insecure` is passed; `*.dev.ix` hosts are allowed over HTTP (delegated to `ix://agent-ix/ix-cli-core/NFR-005`). | Test |
+| FR-021-AC-5 | The stored token value is never echoed to the terminal and never written to config metadata (only the secrets backend holds it — `ix://agent-ix/ix-cli-core/NFR-006`). | Test |
+
+
 - **FR-021-AC-1**: `ix login <host>` fetches the service discovery document for
   `<host>`, runs the device flow, and on approval persists the access token,
   refresh token, and `{expiresAt, audience, scope}` metadata keyed by `<host>`.
@@ -62,3 +70,11 @@ hard-coded IX service. Discovery is read from
 - IX OAuth client id: `ix-cli` (`IX_DEVICE_CLIENT_ID`).
 - Secret ids are `core.auth-access-token-<slug>` /
   `core.auth-refresh-token-<slug>` where `<slug>` is the slugified host.
+
+## Dependencies
+
+- **implements**: ix-cli/spec/stakeholder/StR-001
+- **requires**: ix-cli/spec/functional/core/FR-020
+- **calls**: ix-cli-core/spec/functional/FR-015
+- **calls**: ix-cli-core/spec/functional/FR-016
+- **calls**: ix-cli-core/spec/functional/FR-017

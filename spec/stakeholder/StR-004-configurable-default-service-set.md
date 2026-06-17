@@ -18,7 +18,15 @@ Different teams and projects need different default services deployed to their l
 
 Must-Have
 
-## Acceptance
+## Rationale
+
+A single hard-coded default service set cannot fit every team: forcing
+observability tooling onto every developer's machine wastes resources, while
+core services must always be present. A convention-based default tag plus a
+per-user override config lets each operator tune the set without editing shared
+repository configuration.
+
+## Validation Criteria
 
 - **StR-004-AC-1**: Services tagged `ix-core` in their OCI manifest are included in the default cluster bring-up.
 - **StR-004-AC-2**: Operators can add non-tagged services to the default set via `extraApps` in `~/.ix/config.yaml`.

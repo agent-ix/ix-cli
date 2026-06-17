@@ -2,7 +2,6 @@
 id: FR-043
 title: "ix local auth create-user — One-shot user creation"
 type: FR
-object: cli_command
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/functional/local/FR-017"
     type: "uses"

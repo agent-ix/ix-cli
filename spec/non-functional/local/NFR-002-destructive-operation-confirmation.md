@@ -19,7 +19,21 @@ Any command that irreversibly destroys cluster state SHALL prompt the user for c
 
 Cluster teardown destroys all PVC data, deployed releases, and secret state. A misfire in an interactive shell (e.g. running `ix local cluster down` instead of `ix local cluster status`) would require full cluster re-initialisation. Naming the cluster in the prompt forces the user to consciously read what will be deleted.
 
-## Constraints
+## Measurement and Evaluation
+
+| Metric | Target | Threshold | Method |
+|--------|--------|-----------|--------|
+| Destructive cluster commands gated by a name-naming confirmation prompt | 100% | 100% | Demonstration |
+| Declined/cancelled confirmations that proceed with destruction | 0 | 0 | Test |
+
+## Verification
+
+The cluster-teardown command tests drive `ix local cluster down` with and
+without `--yes`, asserting the prompt names the target cluster and that a
+declined or cancelled prompt exits 0 with no destructive call. CI fails on any
+regression.
+
+## Acceptance Criteria
 
 - **NFR-002-AC-1**: The confirmation prompt MUST include the literal cluster name (e.g. `'ix'`) in its message text.
 - **NFR-002-AC-2**: Declined or cancelled confirmation MUST exit 0 with no destructive action taken.

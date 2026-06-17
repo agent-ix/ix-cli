@@ -30,8 +30,21 @@ Pool sizes are read from `~/.ix/config.yaml` under the `concurrency:` key; defau
 
 ## Acceptance Criteria
 
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-003-AC-1 | Services blocked on a pool slot signal `PhaseTable` with `queued` phase state (visible as `⏳` on TTY). | Test |
+| FR-003-AC-2 | A failure in one child service does not abort other concurrent pipelines; all run to completion before the command exits. | Test |
+| FR-003-AC-3 | Exit code 0 iff every child service succeeded; exit code 1 if any failed. | Test |
+
+
 All acceptance criteria from ix-local-cli FR-021-AC-1 through FR-021-AC-7 apply to this package unchanged.
 
 - **FR-003-AC-1**: Services blocked on a pool slot signal `PhaseTable` with `queued` phase state (visible as `⏳` on TTY).
 - **FR-003-AC-2**: A failure in one child service does not abort other concurrent pipelines; all run to completion before the command exits.
 - **FR-003-AC-3**: Exit code 0 iff every child service succeeded; exit code 1 if any failed.
+
+## Dependencies
+
+- **migrated_from**: ix-local-cli/spec/functional/FR-021
+- **requires**: ix-cli/spec/functional/local/FR-002
+- **implements**: ix-cli/spec/usecase/US-001

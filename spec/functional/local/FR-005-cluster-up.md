@@ -18,7 +18,7 @@ relationships:
     cardinality: "1:1"
 ---
 
-## Behavior
+## Description
 
 `runClusterUp(config, clusterConfig, opts)` executes in two phases:
 
@@ -34,7 +34,17 @@ effective = (apps where any tag in defaultTags ∪ overrideTags) ∪ extraApps �
 
 Deduplication is by app name. `skipApps` takes precedence over all other inclusion criteria.
 
-## Acceptance
+## Acceptance Criteria
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-005-AC-1 | `runInitCluster()` is always called before any deploy, even if `--yes` is passed. | Test |
+| FR-005-AC-2 | Only apps matching a `defaultTags` tag are included in the base set. | Test |
+| FR-005-AC-3 | `extraApps` entries are unioned into the effective set after tag filtering. | Test |
+| FR-005-AC-4 | `skipApps` entries are removed from the effective set after union. | Test |
+| FR-005-AC-5 | An app appearing in both tag-filter and `extraApps` is deployed exactly once. | Test |
+| FR-005-AC-6 | The effective set is deterministic — same inputs always produce same ordered output. | Test |
+| FR-005-AC-7 | Output uses `introCommand`/`outroSuccess`/`outroError` from `@agent-ix/ix-ui-cli` (NFR-001). | Test |
 
 - **FR-005-AC-1**: `runInitCluster()` is always called before any deploy, even if `--yes` is passed.
 - **FR-005-AC-2**: Only apps matching a `defaultTags` tag are included in the base set.
@@ -72,3 +82,9 @@ sequenceDiagram
     CLI-->>User: outroSuccess / outroError
 ```
 
+## Dependencies
+
+- **implements**: ix-cli/spec/usecase/US-003
+- **implements**: ix-cli/spec/functional/local/FR-004
+- **requires**: ix-cli/spec/functional/local/FR-008
+- **requires**: ix-cli/spec/functional/local/FR-009

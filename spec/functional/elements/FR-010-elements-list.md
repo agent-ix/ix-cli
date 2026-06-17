@@ -14,6 +14,15 @@ relationships:
 
 ## Acceptance Criteria
 
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-010-AC-1 | Output groups element types by tap URL, with the root tap (`github.com/agent-ix`) appearing first. | Test |
+| FR-010-AC-2 | Each entry shows the element type name and, if present, its description from `spec/spec.md` frontmatter. | Test |
+| FR-010-AC-3 | With `--refresh`, the cache is bypassed and results are re-fetched from all taps. | Test |
+| FR-010-AC-4 | When no elements are found, a message directs the user to add a tap. | Test |
+| FR-010-AC-5 | All output is rendered via `@agent-ix/ix-ui-cli` — no raw `console.log` in the command handler. | Test |
+
+
 - **FR-010-AC-1**: Output groups element types by tap URL, with the root tap (`github.com/agent-ix`) appearing first.
 - **FR-010-AC-2**: Each entry shows the element type name and, if present, its description from `spec/spec.md` frontmatter.
 - **FR-010-AC-3**: With `--refresh`, the cache is bypassed and results are re-fetched from all taps.
@@ -25,3 +34,7 @@ relationships:
 - Resolution order per tap: `<org>/ix-elements/registry.yaml` index → GitHub topic search `topic:ix-element org:<org>`.
 - Element metadata is sourced from `spec/spec.md` YAML frontmatter (`component_type: template`, `template_for`, `name`, `description`).
 - Cache TTL: 1 hour at `~/.cache/ix/elements/<tap-slug>.json`.
+
+## Dependencies
+
+- **implements**: ix-cli/spec/stakeholder/StR-001

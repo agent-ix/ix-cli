@@ -15,7 +15,7 @@ relationships:
     cardinality: "1:1"
 ---
 
-## Behavior
+## Description
 
 `runClusterDown(config, opts)` tears down the kind cluster behind two confirmation gates:
 
@@ -28,7 +28,17 @@ relationships:
 
 `opts.yes` bypasses both confirmation gates so scripts can run unattended.
 
-## Acceptance
+## Acceptance Criteria
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-006-AC-1 | Without `--yes`, a `<ConfirmPrompt>` is shown before any destructive action. | Test |
+| FR-006-AC-2 | Prompt decline or cancel returns without calling `kind delete cluster`. | Test |
+| FR-006-AC-3 | The command is idempotent — absent cluster returns with an informational message. | Test |
+| FR-006-AC-4 | `kind delete cluster` is the only process spawned for destruction (no helm uninstall). | Test |
+| FR-006-AC-5 | Failure of `kind delete cluster` propagates the error after rendering a `failed` listing. | Test |
+| FR-006-AC-6 | After the first confirm passes, a second prompt requires the user to retype the cluster name; mismatch aborts before any destructive call. | Test |
+| FR-006-AC-7 | `--yes` bypasses both confirmation gates. | Test |
 
 - **FR-006-AC-1**: Without `--yes`, a `<ConfirmPrompt>` is shown before any destructive action.
 - **FR-006-AC-2**: Prompt decline or cancel returns without calling `kind delete cluster`.
@@ -78,3 +88,8 @@ sequenceDiagram
     UI-->>User: final state
 ```
 
+## Dependencies
+
+- **implements**: ix-cli/spec/usecase/US-004
+- **implements**: ix-cli/spec/functional/local/FR-004
+- **requires**: ix-cli/spec/non-functional/local/NFR-002

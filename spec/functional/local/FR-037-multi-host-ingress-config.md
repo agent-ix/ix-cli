@@ -18,7 +18,13 @@ relationships:
     cardinality: "1:1"
 ---
 
-## Behavior
+## Description
+
+The `local` plugin SHALL support configuring multiple internal base-domain
+suffixes (`config.hosts`) and render one ingress host per configured suffix,
+so a single deploy is reachable under every operator-configured host. The
+persistent schema, resolution precedence, and Helm rendering behavior are
+detailed below.
 
 ### Schema (persistent, `local` plugin)
 
@@ -125,7 +131,22 @@ joined into a single line.
 | `IX_INTERNAL_BASE_DOMAINS` | session | string (env var, comma-separated) | (unset) | Plural override of `hosts`; below the legacy singular env var, above the persisted file. |
 | `ingress.exposeExtraHosts` | creation | boolean (chart value) | `false` | Per-service `ix-service` chart default; when `true`, fans out one ingress host per `(fullname, baseDomain)` pair. Deliberate security boundary (see Security). |
 
-## Acceptance
+## Acceptance Criteria
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-037-AC-1 | A missing `domain` group in the persisted YAML yields `hosts: ["dev.ix"]` plus the documented defaults for the other fields without error (`ix://agent-ix/ix-cli-core/FR-002`-AC-1 pattern). | Test |
+| FR-037-AC-2 | A YAML `domain.hosts: [dev.ix, luna.ix, agent-ix.dev]` round-trips through `loadConfig()` as a three-entry list with `internalBaseDomain == "dev.ix"`. | Test |
+| FR-037-AC-3 | `IX_INTERNAL_BASE_DOMAINS="luna.ix, agent-ix.dev"` with no singular env var present overrides the persisted list. | Test |
+| FR-037-AC-4 | `IX_INTERNAL_BASE_DOMAIN=ci.ix` set alongside the plural env var overrides both file and plural env to `hosts: ["ci.ix"]`. | Test |
+| FR-037-AC-5 | A persisted entry that fails the base-domain rule (single label, contains whitespace) causes `loadConfig()` to throw `ConfigValidationError` naming the offending entry. `ix config set local domain.hosts '["ix"]'` is rejected at write time by the schema. | Test |
+| FR-037-AC-6 | `buildGlobalSetArgs` with `hosts: ["dev.ix"]` emits `global.internalBaseDomain=dev.ix` and no `extraBaseDomains` flag. With `hosts: ["dev.ix","luna.ix","agent-ix.dev"]` it additionally emits `global.extraBaseDomains[0]=luna.ix` and `global.extraBaseDomains[1]=agent-ix.dev`. | Test |
+| FR-037-AC-7 | For a service chart with default `ingress.exposeExtraHosts: false`, `helm template` against a multi-host config renders a single `host:` entry (the canonical primary). With `exposeExtraHosts: true`, it renders one `host:` entry per `(fullname, baseDomain)` pair plus per-service literal `ingress.extraHosts`. | Test |
+| FR-037-AC-8 | The wildcard TLS cert created by `init-cluster` contains one `*.<host>` SAN per entry in `config.hosts`. | Test |
+| FR-037-AC-9 | With the `ix-tls` Secret present and its SANs covering every configured `*.<host>`, `runUp` does not re-apply either Certificate and emits no cert-related output. | Test |
+| FR-037-AC-10 | With the `ix-tls` Secret missing, or with at least one `*.<host>` absent from its SAN set, `runUp` re-applies both Certificate manifests, waits for them to become Ready, and renders a `Listing` reporting the action before proceeding to the per-app installs. A failure inside the cert check renders a `failed` `Listing` and continues; it does NOT abort the up flow. | Test |
+| FR-037-AC-11 | `ix local cluster refresh-cert` (no flags) unconditionally re-applies both Certificate manifests using the current `config.hosts`, waits for them to become Ready, and renders a `Listing` whose body lists the new DNS SAN set. | Test |
+| FR-037-AC-12 | `ix local cluster refresh-cert --if-needed` follows the same logic as the `runUp` auto-check (no-op when the cert already covers; refresh otherwise). | Test |
 
 - **FR-037-AC-1**: A missing `domain` group in the persisted YAML
   yields `hosts: ["dev.ix"]` plus the documented defaults for the
@@ -203,3 +224,10 @@ through an opted-in gateway service's `apiGateway.routes` (e.g.
 `cloud-manager-ui.agent-ix.dev/g/identity/...`). Operators who flip
 `exposeExtraHosts: true` on a chart are accepting that the service's
 backing pod becomes directly reachable on every external suffix.
+
+## Dependencies
+
+- **implements**: ix-cli/spec/stakeholder/StR-007
+- **implements**: ix-cli/spec/usecase/US-010
+- **requires**: ix-cli-core/spec/functional/FR-004
+- **requires**: ix-cli-core/spec/functional/FR-008

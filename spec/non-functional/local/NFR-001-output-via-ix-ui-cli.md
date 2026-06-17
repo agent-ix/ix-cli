@@ -50,6 +50,14 @@ ix-ui-cli is the design system. Centralizing visual decisions there means a sing
 - **NFR-001-AC-6**: Live Ink command wrappers delegate Helm, Kubernetes, and long-running process orchestration to controller modules; React components own rendering state only.
 - **NFR-001-AC-7**: Shared phase-row state is modeled outside command wrappers and emits immutable snapshots for live Ink renderers.
 
+## Measurement and Evaluation
+
+| Metric | Target | Threshold | Method |
+|--------|--------|-----------|--------|
+| Direct-output calls (`console.*`, `process.stderr.write`) in `packages/*/src` and `apps/*/src` | 0 | 0 | Static Grep Check |
+| Deprecated framing-API references (`introCommand`, `outroSuccess`, etc.) | 0 | 0 | Static Grep Check |
+| Inline ANSI / box-drawing sequences outside test files | 0 | 0 | Static Grep Check |
+
 ## Verification
 
 The static-check test suite (`packages/*/tests/static-checks.test.ts`) runs each grep above and fails the build on any match. CI catches violations on every push.

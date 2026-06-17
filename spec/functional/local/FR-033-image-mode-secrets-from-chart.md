@@ -15,7 +15,7 @@ relationships:
     cardinality: "1:1"
 ---
 
-## Behavior
+## Description
 
 Image-mode installs (`ix local up <service>` without `--from-source`) must not
 require a local repo checkout to apply service secrets. When a deployable uses
@@ -69,7 +69,22 @@ secret contract. A deployable whose rendered manifests or hook jobs reference a
 required Secret but whose published chart artifact omits the corresponding
 `ix-local.secrets.yaml` is an artifact defect.
 
-## Acceptance
+## Acceptance Criteria
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-033-AC-1 | `local-secrets.ts` exports `loadSecretContractFromTgz(tgzPath, chartName)` which extracts the tgz via `tar -xzf` (no npm tar dependency), calls `loadSecretContract` on the extracted directory, cleans up the temp dir in a `finally` block, and returns `null` when `ix-local.secrets.yaml` is absent. | Test |
+| FR-033-AC-2 | `up-image.ts` does not import or call `findSecretContractDir`. | Test |
+| FR-033-AC-3 | `runImageModeUp` does not declare or use a `devDir` parameter. | Test |
+| FR-033-AC-4 | `UP_PHASES` in `up-image.ts` lists `"pull"` before `"secrets"`. | Test |
+| FR-033-AC-5 | For app mode, `contractsByName` is populated from bundled subcharts extracted from the umbrella after the umbrella pull completes, regardless of whether those bundled subcharts are vendored as directories or tgzs. | Test |
+| FR-033-AC-6 | For single-service mode, `runImageModeUp` pulls the chart tgz before calling `runSingleServiceListr`; the install uses the local tgz path. | Test |
+| FR-033-AC-7 | A chart tgz containing no `ix-local.secrets.yaml` results in the secrets phase completing silently with `done` status (not `failed`). | Test |
+| FR-033-AC-8 | All temporary directories created during tgz extraction are deleted in `finally` blocks, regardless of outcome. | Test |
+| FR-033-AC-9 | When an umbrella chart vendors a subchart as `<umbrella>/charts/<name>/`, `runImageModeUp` SHALL load `<umbrella>/charts/<name>/ix-local.secrets.yaml` if present instead of requiring a sibling `.tgz`. | Test |
+| FR-033-AC-10 | The directory-based app-mode loader SHALL import and call `loadSecretContract` for bundled subchart directories. | Test |
+| FR-033-AC-11 | A chart that expects image-mode secret materialization SHALL place `ix-local.secrets.yaml` inside the packaged chart source tree (for example `chart/ix-local.secrets.yaml` in source, yielding `<chart>/ix-local.secrets.yaml` in the published artifact). A repo-root file outside the packaged chart directory is non-conformant. | Test |
+| FR-033-AC-12 | If a rendered manifest or Helm hook references a Secret that would normally be materialized from `ix-local.secrets.yaml`, omission of that contract from the published chart artifact is an artifact defect, not a valid graceful-skip case. | Test |
 
 - **FR-033-AC-1**: `local-secrets.ts` exports `loadSecretContractFromTgz(tgzPath, chartName)`
   which extracts the tgz via `tar -xzf` (no npm tar dependency), calls
@@ -146,3 +161,8 @@ sequenceDiagram
     ImageUp-->>User: PhaseTable: pull → secrets → install → ready
 ```
 
+## Dependencies
+
+- **extends**: ix-cli/spec/functional/local/FR-008
+- **extends**: ix-cli/spec/functional/local/FR-031
+- **extends**: ix-cli/spec/functional/local/FR-032

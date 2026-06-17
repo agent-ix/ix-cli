@@ -14,6 +14,14 @@ relationships:
 
 ## Acceptance Criteria
 
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-013-AC-1 | Creates a new repo from a meta-template (`element-cookiecutter-cookiecutter`) with directory structure: `spec/`, `hooks/`, `{{ cookiecutter.project_slug }}/`. | Test |
+| FR-013-AC-2 | `spec/spec.md` is initialised with `component_type: template` and `template_for: [<name>]` in YAML frontmatter. | Test |
+| FR-013-AC-3 | Sets `ix-element` GitHub topic via `gh repo edit --add-topic ix-element`. | Test |
+| FR-013-AC-4 | Instructs user to add their org as a tap if not already present. | Test |
+
+
 - **FR-013-AC-1**: Creates a new repo from a meta-template (`element-cookiecutter-cookiecutter`) with directory structure: `spec/`, `hooks/`, `{{ cookiecutter.project_slug }}/`.
 - **FR-013-AC-2**: `spec/spec.md` is initialised with `component_type: template` and `template_for: [<name>]` in YAML frontmatter.
 - **FR-013-AC-3**: Sets `ix-element` GitHub topic via `gh repo edit --add-topic ix-element`.
@@ -23,3 +31,7 @@ relationships:
 
 - Requires a `element-cookiecutter-cookiecutter` meta-template (tracked as future work — current implementation prints manual steps).
 - Once the meta-template exists, this command follows the same clone → cookiecutter → git → gh flow as `ix elements init`.
+
+## Dependencies
+
+- **implements**: ix-cli/spec/stakeholder/StR-001

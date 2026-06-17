@@ -1,8 +1,7 @@
 ---
-id: auth
+id: FR-046
 title: "ix local auth — Command Suite & Namespace Contract"
 type: FR
-object: command_suite
 relationships:
   - target: "ix://agent-ix/auth/ADR-004"
     type: "implements"
@@ -29,7 +28,16 @@ relationships:
     type: "constrained_by"
     cardinality: "1:1"
 ---
-# [auth] `ix local auth` — Command Suite & Namespace Contract
+# [FR-046] `ix local auth` — Command Suite & Namespace Contract
+
+## Description
+
+`packages/local` SHALL implement the `ix local auth` command suite (init,
+reset-admin, invite, uninvite, reset-user, config, kubeconfig) and the
+four-namespace contract using the transport mechanism mandated for each command
+by the upstream `auth`/`identity` specs. This document is the implementation
+contract for `packages/local`; the authoritative command behavior is owned by
+the `auth` and `identity` repos.
 
 ## Source of truth
 
@@ -141,24 +149,31 @@ The file SHALL NOT export `fetch`, `resolveIdentityUrl`, port-forward setup, or 
 
 ## Constraints
 
-| ID | Constraint | Rationale | Validation |
+| ID | Constraint | Type | Validation |
 |---|---|---|---|
-| ix-cli-auth-CON-1 | `auth-init.ts` and `auth-reset-admin.ts` SHALL NOT contain `fetch`, `kubectlRaw`, `http`, `https`, or any networked transport for identity | auth/ ADR-004 / FR-008-CON-1 | grep CI gate |
-| ix-cli-auth-CON-2 | `auth-secret.ts` SHALL write the `admin-bootstrap` Secret to `IX_SYSTEM_NAMESPACE`, never `IX_AUTH_NAMESPACE` or any other | Blast-radius isolation (auth/ ADR-004) | Integration test |
-| ix-cli-auth-CON-3 | All auth `kubectlRaw` calls SHALL target `IX_AUTH_NAMESPACE` (where identity runs) | Namespace contract | grep / unit test |
-| ix-cli-auth-CON-4 | No string-literal namespaces (`"default"`, `"auth"`, `"system"`, `"platform"`, `"apps"`, `"ix-system"`) appear in `packages/local/src/` outside the constant definitions in `config.ts` | Single source of truth | grep CI gate |
-| ix-cli-auth-CON-5 | The `Deployable` registry entry for `identity`, `auth-service`, and `permission-service` SHALL declare `namespace: IX_AUTH_NAMESPACE`; helm deploys SHALL respect `deployable.namespace` | Auth services land in `auth`, not the default | Integration test |
+| FR-046-CON-1 | `auth-init.ts` and `auth-reset-admin.ts` SHALL NOT contain `fetch`, `kubectlRaw`, `http`, `https`, or any networked transport for identity | Security | grep CI gate |
+| FR-046-CON-2 | `auth-secret.ts` SHALL write the `admin-bootstrap` Secret to `IX_SYSTEM_NAMESPACE`, never `IX_AUTH_NAMESPACE` or any other | Security | Integration test |
+| FR-046-CON-3 | All auth `kubectlRaw` calls SHALL target `IX_AUTH_NAMESPACE` (where identity runs) | Security | grep / unit test |
+| FR-046-CON-4 | No string-literal namespaces (`"default"`, `"auth"`, `"system"`, `"platform"`, `"apps"`, `"ix-system"`) appear in `packages/local/src/` outside the constant definitions in `config.ts` | Maintainability | grep CI gate |
+| FR-046-CON-5 | The `Deployable` registry entry for `identity`, `auth-service`, and `permission-service` SHALL declare `namespace: IX_AUTH_NAMESPACE`; helm deploys SHALL respect `deployable.namespace` | Correctness | Integration test |
+
+Rationale: FR-046-CON-1 derives from auth/ ADR-004 and FR-008-CON-1 (no
+admin-mutating network endpoint). FR-046-CON-2 enforces blast-radius isolation
+(auth/ ADR-004). FR-046-CON-3 follows the namespace contract above.
+FR-046-CON-4 keeps the namespace constants a single source of truth.
+FR-046-CON-5 ensures auth services land in the `auth` namespace, not the
+default.
 
 ## Acceptance criteria
 
 | ID | Criteria | Verification |
 |---|---|---|
-| ix-cli-auth-AC-1 | Source review of `auth-init.ts` and `auth-reset-admin.ts` finds no HTTP transport (grep `fetch\|http://\|https://\|--raw` returns no matches in the relevant code paths) | Source inspection |
-| ix-cli-auth-AC-2 | After `ix up`, `kubectl get ns system auth platform apps` shows all four namespaces present | Integration test |
-| ix-cli-auth-AC-3 | After `ix local init`, the bootstrap Secret exists at `system/admin-bootstrap`, NOT at `auth/admin-bootstrap` | Integration test |
-| ix-cli-auth-AC-4 | After `ix up`, `kubectl get deployment identity -n auth` returns the deployment | Integration test |
-| ix-cli-auth-AC-5 | `ix local auth reset-user <admin-email>` surfaces a clear "use reset-admin" message when identity refuses with `cannot_reset_admin_via_api` | Integration test |
-| ix-cli-auth-AC-6 | Grep `packages/local/src` for namespace literals returns zero matches outside `config.ts` | CI gate |
+| FR-046-AC-1 | Source review of `auth-init.ts` and `auth-reset-admin.ts` finds no HTTP transport (grep `fetch\|http://\|https://\|--raw` returns no matches in the relevant code paths) | Source inspection |
+| FR-046-AC-2 | After `ix up`, `kubectl get ns system auth platform apps` shows all four namespaces present | Integration test |
+| FR-046-AC-3 | After `ix local init`, the bootstrap Secret exists at `system/admin-bootstrap`, NOT at `auth/admin-bootstrap` | Integration test |
+| FR-046-AC-4 | After `ix up`, `kubectl get deployment identity -n auth` returns the deployment | Integration test |
+| FR-046-AC-5 | `ix local auth reset-user <admin-email>` surfaces a clear "use reset-admin" message when identity refuses with `cannot_reset_admin_via_api` | Integration test |
+| FR-046-AC-6 | Grep `packages/local/src` for namespace literals returns zero matches outside `config.ts` | CI gate |
 
 ## Dependencies
 

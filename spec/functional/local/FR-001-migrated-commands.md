@@ -94,5 +94,34 @@ relationships:
 
 ## Acceptance Criteria
 
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-001-AC-1 | All commands listed in the migration table are registered under the `local` command tree. | Test |
+| FR-001-AC-2 | Acceptance criteria from ix-local-cli FR-001 through FR-020 are satisfied by the implementation in this package. | Test |
+
+
 - **FR-001-AC-1**: All commands listed in the migration table are registered under the `local` command tree.
 - **FR-001-AC-2**: Acceptance criteria from ix-local-cli FR-001 through FR-020 are satisfied by the implementation in this package.
+
+## Dependencies
+
+- **migrated_from**: ix-local-cli/spec/functional/FR-001
+- **migrated_from**: ix-local-cli/spec/functional/FR-002
+- **migrated_from**: ix-local-cli/spec/functional/FR-003
+- **migrated_from**: ix-local-cli/spec/functional/FR-004
+- **migrated_from**: ix-local-cli/spec/functional/FR-006
+- **migrated_from**: ix-local-cli/spec/functional/FR-007
+- **migrated_from**: ix-local-cli/spec/functional/FR-008
+- **migrated_from**: ix-local-cli/spec/functional/FR-009
+- **migrated_from**: ix-local-cli/spec/functional/FR-010
+- **migrated_from**: ix-local-cli/spec/functional/FR-011
+- **migrated_from**: ix-local-cli/spec/functional/FR-012
+- **migrated_from**: ix-local-cli/spec/functional/FR-013
+- **migrated_from**: ix-local-cli/spec/functional/FR-014
+- **migrated_from**: ix-local-cli/spec/functional/FR-015
+- **migrated_from**: ix-local-cli/spec/functional/FR-016
+- **migrated_from**: ix-local-cli/spec/functional/FR-017
+- **migrated_from**: ix-local-cli/spec/functional/FR-018
+- **migrated_from**: ix-local-cli/spec/functional/FR-019
+- **migrated_from**: ix-local-cli/spec/functional/FR-020
+- **implements**: ix-cli/spec/usecase/US-001

@@ -24,7 +24,15 @@ Platform engineers and developers need to bring up, tear down, and inspect the l
 
 Must-Have
 
-## Acceptance
+## Rationale
+
+Driving the local cluster through raw `kind`, `kubectl`, and `helm` makes
+onboarding error-prone and irreproducible, and an unguarded teardown can destroy
+all PVC data and release state in a single mistyped command. A managed
+`ix local cluster` command tree with a guarded teardown, a read-only status, and
+reversible stop/start makes the lifecycle reproducible and safe.
+
+## Validation Criteria
 
 - **StR-003-AC-1**: `ix local cluster up` bootstraps the kind cluster and deploys all ix-core tagged services in one command.
 - **StR-003-AC-2**: `ix local cluster down` requires explicit confirmation (or `--yes`) before deleting the cluster.

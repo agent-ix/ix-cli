@@ -2,7 +2,6 @@
 id: FR-038
 title: "Cloudflare Tunnel Exposure — shared cloudflared + per-app expose/unexpose"
 type: FR
-object: external-access
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-007"
     type: "implements"
@@ -24,7 +23,7 @@ relationships:
     cardinality: "1:1"
 ---
 
-## Behavior
+## Description
 
 External app exposure rides on a shared `cloudflared` Deployment that
 terminates a wildcard hostname (default `*.agent-ix.dev`) and forwards
@@ -218,7 +217,40 @@ without helm or kubectl.
 4. Optional: `ix config set local tunnel.tunnelId=<id>`,
    `ix config set local tunnel.autoStart=true`.
 
-## Acceptance
+## Acceptance Criteria
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-038-AC-1 | A missing `tunnel` group in the persisted YAML yields `{ autoStart: false, baseDomain: "agent-ix.dev", tunnelId: null }` without error (`ix://agent-ix/ix-cli-core/FR-002`-AC-1 pattern). | Test |
+| FR-038-AC-2 | A YAML `tunnel: { autoStart: true, baseDomain: foo.example.com, tunnelId: abc-123 }` round-trips through `loadTunnelConfig()` unchanged. | Test |
+| FR-038-AC-3 | `tunnel.autoStart` accepts string `"true"`/`"false"` and coerces to boolean (Zod `coerce`). | Test |
+| FR-038-AC-4 | A persisted `tunnel.baseDomain` that fails the base-domain rule (single label, whitespace) does NOT throw at load time — `ConfigService` substitutes the schema default and records the incident (visible via `ix config doctor`). | Test |
+| FR-038-AC-5 | `resolveCloudflareToken()` returns the value of `IX_CF_TUNNEL_TOKEN` when set, even if a different value is stored in the SecretsService backend. | Test |
+| FR-038-AC-6 | With `IX_CF_TUNNEL_TOKEN` unset and a value stored in the SecretsService backend, `resolveCloudflareToken()` returns the stored value. | Test |
+| FR-038-AC-7 | With neither env nor backend set, `resolveCloudflareToken()` returns `null` and `requireCloudflareToken()` throws a `TunnelCredentialsError` whose message names the env var. | Test |
+| FR-038-AC-8 | `buildExposeOverlay({}, "agent-ix.dev", null, null)` writes `global.tunnelBaseDomains: ["agent-ix.dev"]` and `ix-service.ingress.exposeOnTunnel: true`. The toggle MUST land on the `ix-service.ingress` path because every service-wrapper chart at this org composes ix-service as a named subchart — writing at the wrapper-chart's bare `ingress.<key>` would silently no-op, which for a security gate is worse than not having the flag at all. The overlay never writes `extraBaseDomains` or `exposeExtraHosts` — those are the LAN scope and remain operator-managed. | Test |
+| FR-038-AC-9 | `buildExposeOverlay` is idempotent — re-exposing a release whose `global.tunnelBaseDomains` already contains the base domain does not duplicate it. | Test |
+| FR-038-AC-10 | When given an `entryKey`, `buildExposeOverlay` routes the ingress flip through `<entryKey>.ix-service.ingress` (the actual ix-service subchart values inside the wrapper). The overlay MUST NOT contain entries for sibling subcharts so `helm upgrade --reuse-values -f <file>` keeps their values intact. Other keys inside the same `<entryKey>.ix-service` block (e.g. `fullnameOverride`) round-trip unchanged. | Test |
+| FR-038-AC-11 | `buildUnexposeOverlay` removes the base domain from `global.tunnelBaseDomains`, sets `ingress.exposeOnTunnel: false`, and strips any `ingress.extraHosts` entries that end with `.<baseDomain>` (operator-supplied hosts under other suffixes are preserved). LAN keys (`extraBaseDomains`, `exposeExtraHosts`) are not touched. | Test |
+| FR-038-AC-12 | `helm template charts/cloudflared --set tunnelToken=...` renders a Deployment, ConfigMap, and Secret. With `tunnelToken` empty/missing, the template fails with the exact error `cloudflared: .Values.tunnelToken is required (pass via '--set-string tunnelToken=…')`. | Test |
+| FR-038-AC-13 | With `tunnel.autoStart=false` and the cluster reachable, `runClusterStart` produces no cloudflared install call and no tunnel-related Listing. | Test |
+| FR-038-AC-14 | With `tunnel.autoStart=true` and a resolvable token, `runClusterStart` invokes `runTunnelUp(config)` after the API server is reachable and renders a `passed` tunnel Listing. | Test |
+| FR-038-AC-15 | With `tunnel.autoStart=true` and no resolvable token, `runClusterStart` renders a `warn`-tail tunnel Listing (`Skipped: no Cloudflare token`) and returns success. | Test |
+| FR-038-AC-16 | Failures inside the tunnel auto-start hook (`runTunnelUp` throws) MUST NOT propagate out of `runClusterStart`. The cluster start exit code is unchanged, and a `warn`-tail Listing surfaces the failure message. | Test |
+| FR-038-AC-17 | `ix tunnel expose <app>` with a missing helm release fails with the message `No helm release named '<app>' in namespace '<ns>'. Run \`ix up <app>\` first.` | Test |
+| FR-038-AC-20 | `firstRunSetup({ isTTY: false })` with no resolvable token throws `TunnelCredentialsError` whose message contains `no TTY — refusing to prompt`. CI never hangs on stdin. | Test |
+| FR-038-AC-21 | `firstRunSetup({ isTTY: false })` with a token already set returns `{ token, baseDomain }` without prompting and without writing to disk. | Test |
+| FR-038-AC-22 | `firstRunSetup({ isTTY: true })` with no token invokes the password prompt then the base-domain prompt; on success, persists token to SecretsService and base domain to `~/.config/ix/config.d/local.yaml`. | Test |
+| FR-038-AC-23 | `firstRunSetup` is idempotent — when both token and a non-default `tunnel.baseDomain` are already configured, it returns them without prompting and without writing. | Test |
+| FR-038-AC-24 | `setTunnelBaseDomain(value)` rejects values that fail `isValidBaseDomain` with `TunnelCredentialsError` and does NOT write to disk. | Test |
+| FR-038-AC-25 | `ix tunnel domain` (no arg) prints the current `tunnel.baseDomain`. `ix tunnel domain <value>` validates, persists, and reports the new value plus a reminder to verify the matching `*.<value>` CNAME in Cloudflare DNS. | Test |
+| FR-038-AC-18 | `ix tunnel down` with no installed release exits zero (idempotent). | Test |
+| FR-038-AC-19 | Every `apps/ix/src/commands/tunnel/*.ts` command has a matching `apps/ix/vite.config.ts` build entry and is emitted under `dist/commands/tunnel/*`. | Test |
+| FR-038-AC-26 | `buildTunnelSetArgs(tunnel, release, null)` returns `[]` when `tunnel.exposed[release]` is absent (so install paths can append the result unconditionally without leaking tunnel keys onto releases that have no expose intent). | Test |
+| FR-038-AC-27 | `buildTunnelSetArgs(tunnel, release, null)` for an exposed single-service release emits `global.tunnelBaseDomains[0]=<base>` and `ix-service.ingress.exposeOnTunnel=true`. With a non-null `entryKey`, the toggle is `<entryKey>.ix-service.ingress.exposeOnTunnel=true` and the wrapper-level/top-level forms are NOT set — non-entry subcharts must never inherit exposure, and a wrapper-level toggle would silently no-op (the value isn't read by ix-service). | Test |
+| FR-038-AC-28 | `buildTunnelSetArgs` with a non-null `tunnel.exposed[release].hostname` appends `<entryKey>.ix-service.ingress.extraHosts[0]=<override>` (or `ix-service.ingress.extraHosts[0]=<override>` for single-service releases). Same `ix-service.` prefix rationale as AC-8. | Test |
+| FR-038-AC-29 | `runTunnelExposeCommand` persists the release's intent into `tunnel.exposed` after the helm upgrade succeeds. `runTunnelUnexposeCommand` removes the entry. Subsequent `loadTunnelConfig()` reads reflect the change. | Test |
+| FR-038-AC-30 | After cloudflared install succeeds, `runTunnelUpCommand` reconciles every entry in `tunnel.exposed` by calling `exposeApp` (idempotent). Releases that don't exist yet produce a `skipped` row and do not fail the reconcile; helm errors produce a `failed` row and the command exits non-zero. | Test |
 
 - **FR-038-AC-1**: A missing `tunnel` group in the persisted YAML
   yields `{ autoStart: false, baseDomain: "agent-ix.dev", tunnelId:
@@ -393,3 +425,12 @@ ability to publish traffic on the configured Cloudflare zone.
 Resolution avoids logs (no echo, no `--set` plain string at command-line
 top-level — passed only via `--set-string tunnelToken=` to helm
 which redacts it from rendered manifests in `helm get manifest`).
+
+## Dependencies
+
+- **implements**: ix-cli/spec/stakeholder/StR-007
+- **extends**: ix-cli/spec/usecase/US-010
+- **implements**: ix-cli/spec/usecase/US-011
+- **requires**: ix-cli/spec/functional/local/FR-037
+- **requires**: ix-cli-core/spec/functional/FR-004
+- **requires**: ix-cli-core/spec/functional/FR-005

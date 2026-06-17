@@ -1,3 +1,9 @@
+---
+id: REV-001
+title: "Runtime Plugin Addendum Review"
+type: Review
+---
+
 # Runtime Plugin Addendum Review
 
 Date: 2026-05-10

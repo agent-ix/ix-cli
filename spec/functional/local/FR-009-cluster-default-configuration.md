@@ -15,7 +15,7 @@ relationships:
     cardinality: "1:1"
 ---
 
-## Behavior
+## Description
 
 `loadClusterConfig()` reads the `cluster:` key from `~/.ix/config.yaml` (the same file used by `loadConfig()` for pool and other settings). It returns a `ClusterConfig` object:
 
@@ -42,10 +42,24 @@ interface ClusterConfig {
 | `cluster.extraApps` | creation | string[] | `[]` | Additional apps to deploy beyond the tag-selected default set. |
 | `cluster.skipApps` | creation | string[] | `[]` | Apps to exclude from the default set. |
 
-## Acceptance
+## Acceptance Criteria
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| FR-009-AC-1 | Absent config file returns `{ defaultTags: ["ix-core"], extraApps: [], skipApps: [] }`. | Test |
+| FR-009-AC-2 | Present config with valid `cluster:` key returns the parsed values. | Test |
+| FR-009-AC-3 | Non-array value for any cluster field throws `ConfigValidationError`. | Test |
+| FR-009-AC-4 | `cluster:` key absent in a valid YAML file returns defaults. | Test |
+| FR-009-AC-5 | `ConfigValidationError` message identifies the offending field by name. | Test |
 
 - **FR-009-AC-1**: Absent config file returns `{ defaultTags: ["ix-core"], extraApps: [], skipApps: [] }`.
 - **FR-009-AC-2**: Present config with valid `cluster:` key returns the parsed values.
 - **FR-009-AC-3**: Non-array value for any cluster field throws `ConfigValidationError`.
 - **FR-009-AC-4**: `cluster:` key absent in a valid YAML file returns defaults.
 - **FR-009-AC-5**: `ConfigValidationError` message identifies the offending field by name.
+
+## Dependencies
+
+- **implements**: ix-cli/spec/stakeholder/StR-004
+- **implements**: ix-cli/spec/usecase/US-006
+- **requires**: ix-cli/spec/functional/local/FR-005
