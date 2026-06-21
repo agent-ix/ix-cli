@@ -4,7 +4,7 @@ title: "Consistent Terminal UX Across All ix Commands"
 type: StR
 relationships:
   - target: "ix://agent-ix/ix-ui/spec/stakeholder/StR-001"
-    type: "requires"
+    type: "depends_on"
     cardinality: "1:1"
 ---
 

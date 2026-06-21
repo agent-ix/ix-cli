@@ -4,16 +4,16 @@ title: "All Terminal Output Routes Through @agent-ix/ix-ui-cli"
 type: NFR
 relationships:
   - target: "ix://agent-ix/ix-cli/spec/stakeholder/StR-002"
-    type: "implements"
+    type: "traces_to"
     cardinality: "1:1"
   - target: "ix://agent-ix/ix-ui/spec/functional/cli/FR-013"
-    type: "requires"
+    type: "depends_on"
     cardinality: "1:1"
   - target: "ix://agent-ix/ix-ui/spec/functional/cli/FR-016"
-    type: "requires"
+    type: "depends_on"
     cardinality: "1:1"
   - target: "ix://agent-ix/ix-ui/spec/non-functional/cli/NFR-002"
-    type: "requires"
+    type: "depends_on"
     cardinality: "1:1"
 ---
 
