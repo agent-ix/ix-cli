@@ -5,6 +5,7 @@
  * init-cluster-controller so React owns rendering only.
  */
 
+import { FlowLine, colors } from "@agent-ix/ix-ui-cli";
 import type { IxConfig } from "../config.js";
 import { renderPhaseTableRun } from "../phase-table-runner.js";
 import {
@@ -22,10 +23,14 @@ export async function runInitCluster(
   config: IxConfig,
   _reconfigureCredentials: boolean,
 ): Promise<void> {
+  const preflight = (
+    <FlowLine>{colors.dim("Initializing local cluster")}</FlowLine>
+  );
   await renderPhaseTableRun<InitPhase, InitClusterResult>({
     header: "ix · local · init-cluster",
     phases: INIT_PHASES,
     phaseLabels: INIT_PHASE_LABELS,
+    preflight,
     initialServices: initialInitRows(),
     controller: (emit) => runInitClusterController(config, emit),
     frameForSuccess: ({ clusterIp }) => {
