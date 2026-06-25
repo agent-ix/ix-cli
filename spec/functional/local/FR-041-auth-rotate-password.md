@@ -13,7 +13,7 @@ relationships:
     type: "extends"
     cardinality: "1:1"
 ---
-# [FR-041] `ix local auth rotate-password` — Headless must_rotate flow
+# FR-041: `ix local auth rotate-password` — Headless must_rotate flow
 
 ## Description
 

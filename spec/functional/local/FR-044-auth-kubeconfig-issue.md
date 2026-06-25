@@ -16,7 +16,7 @@ relationships:
     type: "extends"
     cardinality: "1:1"
 ---
-# [FR-044] `ix local auth kubeconfig issue` — Emit operator-scoped kubeconfig
+# FR-044: `ix local auth kubeconfig issue` — Emit operator-scoped kubeconfig
 
 ## Description
 

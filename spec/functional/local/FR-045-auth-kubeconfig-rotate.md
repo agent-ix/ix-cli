@@ -13,7 +13,7 @@ relationships:
     type: "implements"
     cardinality: "1:1"
 ---
-# [FR-045] `ix local auth kubeconfig rotate` — Invalidate and reissue SA token
+# FR-045: `ix local auth kubeconfig rotate` — Invalidate and reissue SA token
 
 > **Status:** skeleton. Ships after [FR-044](./FR-044-auth-kubeconfig-issue.md). This FR is registered now so
 > callers (auth/[FR-008](./FR-008-ix-core-tag-convention.md) recovery matrix, operator runbooks) can reference
