@@ -13,7 +13,7 @@ relationships:
     type: "extends"
     cardinality: "1:1"
 ---
-# [FR-040] `ix local auth accept-invite` — Headless invite acceptance
+# FR-040: `ix local auth accept-invite` — Headless invite acceptance
 
 ## Description
 

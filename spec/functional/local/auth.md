@@ -28,7 +28,7 @@ relationships:
     type: "constrained_by"
     cardinality: "1:1"
 ---
-# [FR-046] `ix local auth` — Command Suite & Namespace Contract
+# FR-046: `ix local auth` — Command Suite & Namespace Contract
 
 ## Description
 

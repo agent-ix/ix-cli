@@ -13,7 +13,7 @@ relationships:
     type: "implements"
     cardinality: "1:1"
 ---
-# [FR-043] `ix local auth create-user` — One-shot user creation
+# FR-043: `ix local auth create-user` — One-shot user creation
 
 ## Description
 

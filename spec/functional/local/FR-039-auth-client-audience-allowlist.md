@@ -4,7 +4,7 @@ title: "Auth Client Audience Allowlist Rendering"
 type: FR
 object: configuration
 ---
-# [FR-039] Auth Client Audience Allowlist Rendering
+# FR-039: Auth Client Audience Allowlist Rendering
 
 ## Description
 

@@ -16,7 +16,7 @@ relationships:
     type: "extends"
     cardinality: "1:1"
 ---
-# [FR-042] `ix local auth tenant` — Tenant membership CRUD
+# FR-042: `ix local auth tenant` — Tenant membership CRUD
 
 ## Description
 
