@@ -6,9 +6,8 @@
  * - bin/ix.js does NOT preprocess argv (FR-022 revised).
  * - The init hook walks Config.plugins for ixSchema (FR-025 revised),
  *   not a custom IxPlugin registry.
- * - apps/ix/package.json lists @agent-ix/workflow-cli-plugin in
- *   oclif.plugins instead of registering it through the legacy
- *   distribution module.
+ * - Workflow functionality is no longer part of ix-cli (moved to ix-flow);
+ *   apps/ix ships no workflow commands and bundles no workflow plugins.
  */
 
 import { describe, expect, it } from "vitest";
@@ -84,16 +83,16 @@ describe("shared CLI output style", () => {
 });
 
 describe("oclif-native plugin architecture (FR-021/022/025 revised)", () => {
-  it("workflow commands live in the workflow-cli-plugin, not apps/ix", () => {
+  it("workflow functionality is not in apps/ix (moved to ix-flow)", () => {
     expect(existsSync(join(SRC_ROOT, "commands/workflow"))).toBe(false);
     expect(existsSync(join(SRC_ROOT, "workflow.ts"))).toBe(false);
-  });
-
-  it("apps/ix/package.json lists workflow-cli-plugin in oclif.plugins", () => {
     const pkg = JSON.parse(
       readFileSync(join(APP_ROOT, "package.json"), "utf-8"),
     );
-    expect(pkg.oclif.plugins).toContain("@agent-ix/workflow-cli-plugin");
+    expect(pkg.oclif.plugins).not.toContain("@agent-ix/workflow-cli-plugin");
+    expect(JSON.stringify(pkg.dependencies)).not.toContain(
+      "@agent-ix/workflow",
+    );
   });
 
   it("bin/ix.js does NOT preprocess argv for --config-root", () => {

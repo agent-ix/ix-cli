@@ -11,8 +11,6 @@ import {
   type SecretsBackend,
   type SecretsBackendMode,
 } from "@agent-ix/ix-cli-core";
-import { registerWorkflowPlugin } from "@agent-ix/workflow-cli-plugin";
-import type { WorkflowPlugin } from "@agent-ix/workflow-core";
 import {
   LocalConfigSchema,
   LocalEnvBindings,
@@ -108,30 +106,6 @@ const hook: Hook<"init"> = async function ({ config }) {
         );
       }
     }
-
-    // FR-010: also collect `workflowPlugin` exports into the
-    // workflow-cli-plugin process-scope registry. FR-010-AC-3 makes
-    // `ixSchema` mandatory for any workflow contributor — a plugin
-    // that ships `workflowPlugin` without `ixSchema` is rejected
-    // (warn-and-skip, consistent with the rest of init).
-    const workflowPlugin = (mod as { workflowPlugin?: WorkflowPlugin })
-      .workflowPlugin;
-    if (workflowPlugin) {
-      if (!ixSchema) {
-        this.warn(
-          `${plugin.name} exports workflowPlugin but is missing ixSchema; ` +
-            `FR-010-AC-3 requires both. Skipping workflow registration.`,
-        );
-      } else {
-        try {
-          registerWorkflowPlugin(plugin.name, workflowPlugin);
-        } catch (regErr) {
-          this.warn(
-            `${plugin.name} workflowPlugin registration failed: ${regErr instanceof Error ? regErr.message : String(regErr)}`,
-          );
-        }
-      }
-    }
   }
 
   // ── SecretsService default ─────────────────────────────────────────
@@ -175,22 +149,16 @@ async function loadPluginMain(plugin: {
     if (hasIxExports(imported)) return imported;
   } catch {
     // Some oclif plugins do not expose importable package mains. Those
-    // remain valid plugins; they simply have no IX config/secrets schema
-    // or workflow contributions.
+    // remain valid plugins; they simply have no IX config/secrets schema.
   }
 
   return loaded;
 }
 
-function hasIxExports(
-  value: unknown,
-): value is { ixSchema?: IxPluginSchema; workflowPlugin?: WorkflowPlugin } {
+function hasIxExports(value: unknown): value is { ixSchema?: IxPluginSchema } {
   if (typeof value !== "object" || value === null) return false;
-  const obj = value as {
-    ixSchema?: IxPluginSchema;
-    workflowPlugin?: WorkflowPlugin;
-  };
-  return Boolean(obj.ixSchema) || Boolean(obj.workflowPlugin);
+  const obj = value as { ixSchema?: IxPluginSchema };
+  return Boolean(obj.ixSchema);
 }
 
 export default hook;

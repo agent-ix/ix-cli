@@ -102,7 +102,6 @@ export default defineConfig({
         "@agent-ix/ix-cli-core",
         "@agent-ix/ix-cli-elements",
         "@agent-ix/ix-ui-cli",
-        "@agent-ix/workflow-cli-plugin",
         "@oclif/core",
         "picocolors",
         /^node:/,

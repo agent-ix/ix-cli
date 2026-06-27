@@ -2,6 +2,7 @@
   "name": "@agent-ix/ix-cli-local",
   "description": "Local cluster commands for ix-cli (up, down, init-cluster, auth).",
   "version": "0.6.0",
+  "license": "AGPL-3.0-or-later",
   "type": "module",
   "files": [
     "dist/",
@@ -34,8 +35,8 @@
     "url": "git+https://github.com/agent-ix/ix-cli.git"
   },
   "dependencies": {
-    "@agent-ix/ix-cli-core": ">=0.10.3",
-    "@agent-ix/ix-ui-cli": ">=0.4.6",
+    "@agent-ix/ix-cli-core": ">=0.11.0",
+    "@agent-ix/ix-ui-cli": ">=0.4.10",
     "@clack/prompts": ">=1.1.0",
     "cli-table3": ">=0.6.5",
     "execa": ">=9.6.1",
