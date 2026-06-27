@@ -3,6 +3,9 @@
   "description": "Local cluster commands for ix-cli (up, down, init-cluster, auth).",
   "version": "0.6.0",
   "license": "AGPL-3.0-or-later",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "files": [
     "dist/",
