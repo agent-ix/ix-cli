@@ -14,5 +14,11 @@ jobs:
     uses: agent-ix/nodejs-actions/.github/workflows/release-monorepo.yml@main
     with:
       npm_registry: https://registry.npmjs.org
-      trusted_publish: true
-      node_version: "22"   # OIDC Trusted Publishing requires Node >= 22.14
+      # Token-based for the first publish: OIDC Trusted Publishing can't
+      # bootstrap a package that doesn't exist on npmjs yet. Flip back to
+      # trusted_publish: true once the packages exist + trusted publishers
+      # are configured on npmjs.com.
+      trusted_publish: false
+      node_version: "22"
+    secrets:
+      NPM_REGISTRY_TOKEN: ${{ secrets.NPM_TOKEN }}
