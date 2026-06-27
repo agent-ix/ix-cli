@@ -2,6 +2,7 @@
   "name": "@agent-ix/ix",
   "description": "The Agent IX unified CLI binary.",
   "version": "0.6.0",
+  "license": "AGPL-3.0-or-later",
   "type": "module",
   "bin": {
     "ix": "./bin/ix.js"
@@ -15,10 +16,7 @@
     "bin": "ix",
     "dirname": "ix",
     "commands": "./dist/commands",
-    "plugins": [
-      "@agent-ix/workflow-cli-plugin",
-      "@agent-ix/workflow-definitions"
-    ],
+    "plugins": [],
     "hooks": {
       "init": "./dist/hooks/init"
     },
@@ -61,13 +59,10 @@
     "clean": "rm -rf dist coverage oclif.manifest.json"
   },
   "dependencies": {
-    "@agent-ix/ix-cli-core": ">=0.10.3",
+    "@agent-ix/ix-cli-core": ">=0.11.0",
     "@agent-ix/ix-cli-elements": "workspace:*",
     "@agent-ix/ix-cli-local": "workspace:*",
-    "@agent-ix/ix-ui-cli": ">=0.4.6",
-    "@agent-ix/workflow-cli-plugin": ">=0.1.4",
-    "@agent-ix/workflow-core": ">=0.1.4",
-    "@agent-ix/workflow-definitions": ">=0.1.4",
+    "@agent-ix/ix-ui-cli": ">=0.4.10",
     "@oclif/core": ">=4.10.6",
     "picocolors": ">=1.1.1",
     "react": ">=18.3.1",

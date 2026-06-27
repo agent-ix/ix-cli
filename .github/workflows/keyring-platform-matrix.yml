@@ -41,15 +41,12 @@ jobs:
           node-version: "22"
           cache: "pnpm"
 
-      - name: Configure npm auth for @agent-ix
+      - name: Configure npm registry for @agent-ix
         shell: bash
-        env:
-          NPM_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
         run: |
           {
             echo "registry=https://registry.npmjs.org/"
-            echo "@agent-ix:registry=https://npm.pkg.github.com"
-            echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}"
+            echo "@agent-ix:registry=https://registry.npmjs.org/"
           } > .npmrc
 
       - name: Install dependencies

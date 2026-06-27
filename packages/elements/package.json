@@ -2,6 +2,7 @@
   "name": "@agent-ix/ix-cli-elements",
   "description": "Element discovery, tap management, and project scaffolding commands for ix-cli.",
   "version": "0.6.0",
+  "license": "AGPL-3.0-or-later",
   "type": "module",
   "files": [
     "dist/",
@@ -24,8 +25,8 @@
     "url": "git+https://github.com/agent-ix/ix-cli.git"
   },
   "dependencies": {
-    "@agent-ix/ix-cli-core": ">=0.10.3",
-    "@agent-ix/ix-ui-cli": ">=0.4.6",
+    "@agent-ix/ix-cli-core": ">=0.11.0",
+    "@agent-ix/ix-ui-cli": ">=0.4.10",
     "@clack/prompts": ">=1.1.0",
     "execa": ">=9.6.1",
     "picocolors": ">=1.1.1",
