@@ -10,15 +10,6 @@ name: Keyring Platform Matrix
 # only runs in this matrix.
 
 on:
-  push:
-    branches: [main]
-    tags: ["*.*.*"]
-  pull_request:
-    paths:
-      - "packages/core/src/secrets/**"
-      - "packages/core/tests/keyring-backend.test.ts"
-      - "packages/core/package.json"
-      - ".github/workflows/keyring-platform-matrix.yml"
   workflow_dispatch:
 
 jobs:
