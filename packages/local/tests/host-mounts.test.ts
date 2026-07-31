@@ -65,3 +65,43 @@ describe("vaultKeys host-mount entry", () => {
     expect(vk).toBeUndefined();
   });
 });
+
+describe("ageVault host-mount entry", () => {
+  it("is present in the canonical catalog", () => {
+    const entry = HOST_MOUNT_CATALOG.find((e) => e.name === "ageVault");
+    expect(entry).toBeDefined();
+    expect(entry?.containerPath).toBe("/vault");
+  });
+
+  it("resolves to ~/.ix/age-vault/data for local profile by default", () => {
+    const resolved = resolveCatalog(HOST_MOUNT_CATALOG, {}, "local");
+    const av = resolved.find((m) => m.name === "ageVault");
+    expect(av).toBeDefined();
+    expect(av!.source.type).toBe("hostPath");
+    if (av!.source.type === "hostPath") {
+      expect(av!.source.path).toBe(
+        path.join(os.homedir(), ".ix", "age-vault", "data"),
+      );
+      expect(av!.source.hostPathType).toBe("DirectoryOrCreate");
+    }
+  });
+
+  it("respects IX_AGE_VAULT_DATA_DIR override", () => {
+    const resolved = resolveCatalog(
+      HOST_MOUNT_CATALOG,
+      { IX_AGE_VAULT_DATA_DIR: "/custom/vault" },
+      "local",
+    );
+    const av = resolved.find((m) => m.name === "ageVault");
+    expect(av).toBeDefined();
+    if (av!.source.type === "hostPath") {
+      expect(av!.source.path).toBe("/custom/vault");
+    }
+  });
+
+  it("is omitted for non-local profiles (no source defined)", () => {
+    const resolved = resolveCatalog(HOST_MOUNT_CATALOG, {}, "prod");
+    const av = resolved.find((m) => m.name === "ageVault");
+    expect(av).toBeUndefined();
+  });
+});
