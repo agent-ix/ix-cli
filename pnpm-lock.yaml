@@ -33,8 +33,8 @@ importers:
   apps/ix:
     dependencies:
       '@agent-ix/ix-cli-core':
-        specifier: '>=0.11.0'
-        version: 0.11.0(@oclif/core@4.11.4)(@types/react@19.2.16)
+        specifier: ^0.12.0
+        version: 0.12.0(@types/react@19.2.16)
       '@agent-ix/ix-cli-elements':
         specifier: workspace:*
         version: link:../../packages/elements
@@ -45,8 +45,8 @@ importers:
         specifier: '>=0.4.10'
         version: 0.4.10(@types/react@19.2.16)
       '@oclif/core':
-        specifier: '>=4.10.6'
-        version: 4.11.4
+        specifier: '>=4.11.14'
+        version: 4.12.0
       picocolors:
         specifier: '>=1.1.1'
         version: 1.1.1
@@ -76,8 +76,8 @@ importers:
   packages/elements:
     dependencies:
       '@agent-ix/ix-cli-core':
-        specifier: '>=0.11.0'
-        version: 0.11.0(@oclif/core@4.11.4)(@types/react@19.2.16)
+        specifier: ^0.12.0
+        version: 0.12.0(@types/react@19.2.16)
       '@agent-ix/ix-ui-cli':
         specifier: '>=0.4.10'
         version: 0.4.10(@types/react@19.2.16)
@@ -113,8 +113,8 @@ importers:
   packages/local:
     dependencies:
       '@agent-ix/ix-cli-core':
-        specifier: '>=0.11.0'
-        version: 0.11.0(@oclif/core@4.11.4)(@types/react@19.2.16)
+        specifier: ^0.12.0
+        version: 0.12.0(@types/react@19.2.16)
       '@agent-ix/ix-ui-cli':
         specifier: '>=0.4.10'
         version: 0.4.10(@types/react@19.2.16)
@@ -161,10 +161,8 @@ importers:
 
 packages:
 
-  '@agent-ix/ix-cli-core@0.11.0':
-    resolution: {integrity: sha512-/QKQIxIroscYIzEEf8HO4xX+WtDIKjyWTarWwiCZOH252K3VFqWrPmTbric9cjZyoAWZUSZ43Dj1As/TmsDqbA==}
-    peerDependencies:
-      '@oclif/core': '>=4.11.4'
+  '@agent-ix/ix-cli-core@0.12.0':
+    resolution: {integrity: sha512-6nu7twhNUIT6u+/Q8bhQ2doArdGxIsNK5r2pkV6jjcMMUpSKu+BNhnRd23QF1u6KUEbDEjQcffoYHDalijUWfA==}
 
   '@agent-ix/ix-ui-cli@0.4.10':
     resolution: {integrity: sha512-03CRd4KdX7IpcH7WOlQPjpPFzu4d+wW12IYKp1Q+kkakzjqveFJtSh6flP2Kez8QkFZQKI7aDdDTl8ewII3u/Q==}
@@ -172,8 +170,8 @@ packages:
   '@agent-ix/ix-ui-semantic@0.4.10':
     resolution: {integrity: sha512-kjDiorrEnWRJlSrQvLiNC+wblBwwZtXcesBD/9KhtOAMGt6WBHMjTr2Ae8iepzcZ6lqsPk1m3EY5YQmoOeVurw==}
 
-  '@agent-ix/ts-plugin-kit@0.1.3':
-    resolution: {integrity: sha512-tHBt0LEX/J69vCmW3gr8ppxkDsZAvWERIQ6mvD4ztIHTMqfU+4dM+Tv2Cs6PZ7Pzm9sgs1Qzjb2L+seyto6u/A==}
+  '@agent-ix/ts-plugin-kit@0.2.0':
+    resolution: {integrity: sha512-ujqG/CnzyGxP1AAbqutb5OZnDcQbKDjXtPaiZPzLAZv7Kf8NWRA6H5FdHpebJy37vLatG0+tZDO4vjIR19INNw==}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     resolution: {integrity: sha512-p+CMKJ93HFmLkjXKlXiVGlMQEuRb6H0MokBSwUsX+S6BRX8eV5naFZpQJFfJHjRZY0Hmnqy1/r6UWl3x+19zYA==}
@@ -306,8 +304,16 @@ packages:
     resolution: {integrity: sha512-FILJa1gGKEFTGZAJE9RpVhrjKz3c3h4ar60dSv6cGuDqufQ84YEIS3GAGvZiN+H6yaLbbvTFNejjCC4tXpZEuw==}
     engines: {node: '>= 20.12.0'}
 
+  '@clack/core@1.4.3':
+    resolution: {integrity: sha512-/kr3UWNtdJfxZtPgDqUOmG2pvwlmcLGheex5yiZKdwbzZJxhV+HMNR9QNmyY5cGwTNV6LrR7Jtp+KjhUAP1qBQ==}
+    engines: {node: '>= 20.12.0'}
+
   '@clack/prompts@1.5.1':
     resolution: {integrity: sha512-zccHj2z2oCCO4yrDiRSlFOxWerGqRiysP7a5jPK6uoI9URKAquwY42Dd/iUP8JWHxEzdRe4TlbvZCo8z1/mhrw==}
+    engines: {node: '>= 20.12.0'}
+
+  '@clack/prompts@1.7.0':
+    resolution: {integrity: sha512-y7/yvZ2TPAnR9+jnc00klvNNLkJiXFFrQA/hlLCcxA9a2A4zQIOimyFQ9XfwYKiGD1fb5GY8vbKIIgO8d5Tb2A==}
     engines: {node: '>= 20.12.0'}
 
   '@colors/colors@1.5.0':
@@ -661,8 +667,8 @@ packages:
   '@nodable/entities@2.1.1':
     resolution: {integrity: sha512-Pig3HxDIoMgjdEH8OCf/dkcTmLFjJRjWuq8jSnklu284/TKOPibSRERmOykiwmyXTtv61mP+44f3GMx0tLAyjg==}
 
-  '@oclif/core@4.11.4':
-    resolution: {integrity: sha512-URwiQ5ALx/sJ2iH4vzXEd+H4K6NAI7LRs6Jag3hrgKEpGmaE6alfRC8qjO4GIgb6A3ACaJumqP9twi/M9ywdHQ==}
+  '@oclif/core@4.12.0':
+    resolution: {integrity: sha512-xoUX6ZDixfyHSkllriITpq/3kA78E/oXOliz4em+De6qe22kg2CcKN9KKxMB4NyD4U1SFUsd0tfnG9uyeV5P7w==}
     engines: {node: '>=18.0.0'}
 
   '@oclif/plugin-help@6.2.50':
@@ -1984,6 +1990,11 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  semver@7.8.5:
+    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
   sentence-case@3.0.4:
     resolution: {integrity: sha512-8LS0JInaQMCRoQ7YUytAo/xUu5W2XnQxV2HI/6uM6U7CITS1RqPElr30V6uIqyMKM9lJGRVFy5/4CuzcixNYSg==}
 
@@ -2411,13 +2422,13 @@ packages:
 
 snapshots:
 
-  '@agent-ix/ix-cli-core@0.11.0(@oclif/core@4.11.4)(@types/react@19.2.16)':
+  '@agent-ix/ix-cli-core@0.12.0(@types/react@19.2.16)':
     dependencies:
       '@agent-ix/ix-ui-cli': 0.4.10(@types/react@19.2.16)
-      '@agent-ix/ts-plugin-kit': 0.1.3
-      '@clack/prompts': 1.5.1
+      '@agent-ix/ts-plugin-kit': 0.2.0
+      '@clack/prompts': 1.7.0
       '@napi-rs/keyring': 1.3.0
-      '@oclif/core': 4.11.4
+      '@oclif/core': 4.12.0
       age-encryption: 0.3.0
       react: 19.2.7
       yaml: 2.9.0
@@ -2446,7 +2457,7 @@ snapshots:
 
   '@agent-ix/ix-ui-semantic@0.4.10': {}
 
-  '@agent-ix/ts-plugin-kit@0.1.3': {}
+  '@agent-ix/ts-plugin-kit@0.2.0': {}
 
   '@alcalzone/ansi-tokenize@0.3.0':
     dependencies:
@@ -2725,9 +2736,21 @@ snapshots:
       fast-wrap-ansi: 0.2.2
       sisteransi: 1.0.5
 
+  '@clack/core@1.4.3':
+    dependencies:
+      fast-wrap-ansi: 0.2.2
+      sisteransi: 1.0.5
+
   '@clack/prompts@1.5.1':
     dependencies:
       '@clack/core': 1.4.1
+      fast-string-width: 3.0.2
+      fast-wrap-ansi: 0.2.2
+      sisteransi: 1.0.5
+
+  '@clack/prompts@1.7.0':
+    dependencies:
+      '@clack/core': 1.4.3
       fast-string-width: 3.0.2
       fast-wrap-ansi: 0.2.2
       sisteransi: 1.0.5
@@ -3061,7 +3084,7 @@ snapshots:
 
   '@nodable/entities@2.1.1': {}
 
-  '@oclif/core@4.11.4':
+  '@oclif/core@4.12.0':
     dependencies:
       ansi-escapes: 4.3.2
       ansis: 3.17.0
@@ -3074,7 +3097,7 @@ snapshots:
       is-wsl: 2.2.0
       lilconfig: 3.1.3
       minimatch: 10.2.5
-      semver: 7.8.2
+      semver: 7.8.5
       string-width: 4.2.3
       supports-color: 8.1.1
       tinyglobby: 0.2.17
@@ -3084,12 +3107,12 @@ snapshots:
 
   '@oclif/plugin-help@6.2.50':
     dependencies:
-      '@oclif/core': 4.11.4
+      '@oclif/core': 4.12.0
 
   '@oclif/plugin-not-found@3.2.87(@types/node@25.9.1)':
     dependencies:
       '@inquirer/prompts': 7.10.1(@types/node@25.9.1)
-      '@oclif/core': 4.11.4
+      '@oclif/core': 4.12.0
       ansis: 3.17.0
       fast-levenshtein: 3.0.0
     transitivePeerDependencies:
@@ -3097,7 +3120,7 @@ snapshots:
 
   '@oclif/plugin-warn-if-update-available@3.1.65':
     dependencies:
-      '@oclif/core': 4.11.4
+      '@oclif/core': 4.12.0
       ansis: 3.17.0
       debug: 4.4.3(supports-color@8.1.1)
       http-call: 5.3.0
@@ -4181,7 +4204,7 @@ snapshots:
   normalize-package-data@6.0.2:
     dependencies:
       hosted-git-info: 7.0.2
-      semver: 7.8.2
+      semver: 7.8.5
       validate-npm-package-license: 3.0.4
 
   normalize-url@8.1.1: {}
@@ -4200,7 +4223,7 @@ snapshots:
       '@inquirer/confirm': 3.2.0
       '@inquirer/input': 2.3.0
       '@inquirer/select': 2.5.0
-      '@oclif/core': 4.11.4
+      '@oclif/core': 4.12.0
       '@oclif/plugin-help': 6.2.50
       '@oclif/plugin-not-found': 3.2.87(@types/node@25.9.1)
       '@oclif/plugin-warn-if-update-available': 3.1.65
@@ -4390,6 +4413,8 @@ snapshots:
 
   semver@7.8.2: {}
 
+  semver@7.8.5: {}
+
   sentence-case@3.0.4:
     dependencies:
       no-case: 3.0.4
@@ -4439,7 +4464,7 @@ snapshots:
       get-stdin: 9.0.0
       git-hooks-list: 3.2.0
       is-plain-obj: 4.1.0
-      semver: 7.8.2
+      semver: 7.8.5
       sort-object-keys: 1.1.3
       tinyglobby: 0.2.17
 
