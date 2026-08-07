@@ -31,6 +31,10 @@ Must-Have
 
 ## Validation Criteria
 
-- **StR-001-AC-1**: A single `ix` binary provides all Agent IX CLI functionality.
-- **StR-001-AC-2**: `ix login` authenticates once; all subcommands resolve credentials from `~/.config/ix/credentials.json` without re-prompting.
-- **StR-001-AC-3**: `ix up`, `ix elements`, and `ix spec` are co-installable from a single package.
+
+| ID | Criteria | Validation |
+|----|----------|------------|
+| StR-001-VC-1 | **StR-001-AC-1**: A single `ix` binary provides all Agent IX CLI functionality. | Demonstration |
+| StR-001-VC-2 | **StR-001-AC-2**: `ix login` authenticates once; all subcommands resolve credentials from `~/.config/ix/credentials.json` without re-prompting. | Inspection |
+| StR-001-VC-3 | **StR-001-AC-3**: `ix up`, `ix elements`, and `ix spec` are co-installable from a single package. | Demonstration |
+

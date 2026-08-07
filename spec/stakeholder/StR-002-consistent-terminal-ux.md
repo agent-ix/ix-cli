@@ -31,6 +31,10 @@ Must-Have
 
 ## Validation Criteria
 
-- **StR-002-AC-1**: All ix commands use `@agent-ix/ix-ui-cli` wrappers for all terminal output.
-- **StR-002-AC-2**: A grep for `console\.log` or `process\.stderr\.write` in `packages/local/src/` returns zero matches.
-- **StR-002-AC-3**: Multi-service progress (e.g., `ix up <app>`) renders via `PhaseTable` from `@agent-ix/ix-ui-cli`.
+
+| ID | Criteria | Validation |
+|----|----------|------------|
+| StR-002-VC-1 | **StR-002-AC-1**: All ix commands use `@agent-ix/ix-ui-cli` wrappers for all terminal output. | Demonstration |
+| StR-002-VC-2 | **StR-002-AC-2**: A grep for `console\.log` or `process\.stderr\.write` in `packages/local/src/` returns zero matches. | Demonstration |
+| StR-002-VC-3 | **StR-002-AC-3**: Multi-service progress (e.g., `ix up <app>`) renders via `PhaseTable` from `@agent-ix/ix-ui-cli`. | Demonstration |
+
