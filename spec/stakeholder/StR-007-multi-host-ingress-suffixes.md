@@ -44,10 +44,12 @@ Must-Have
 
 ## Validation Criteria
 
-This need is satisfied when an operator can configure a per-cluster list of host
-suffixes that the cluster answers to simultaneously; when the local-stable
-suffix continues to resolve regardless of where the cluster runs; and when edge
-or gateway services can be opted into the public-facing suffixes while backend
-services remain reachable only on the cluster-internal suffix. Satisfaction is
-judged by deploying a cluster with multiple configured suffixes and demonstrating
-each of these outcomes.
+
+| ID | Criteria | Validation |
+|----|----------|------------|
+| StR-007-VC-1 | An operator can configure a per-cluster list of host suffixes that the cluster answers to simultaneously. | Demonstration |
+| StR-007-VC-2 | The local-stable suffix continues to resolve regardless of where the cluster runs. | Demonstration |
+| StR-007-VC-3 | Edge or gateway services can be opted into the public-facing suffixes while backend services remain reachable only on the cluster-internal suffix. | Demonstration |
+
+Satisfaction is judged by deploying a cluster with multiple configured suffixes and demonstrating each of these outcomes.
+
