@@ -35,7 +35,11 @@ regression.
 
 ## Acceptance Criteria
 
-- **NFR-002-AC-1**: The confirmation prompt MUST include the literal cluster name (e.g. `'ix'`) in its message text.
-- **NFR-002-AC-2**: Declined or cancelled confirmation MUST exit 0 with no destructive action taken.
-- **NFR-002-AC-3**: `--yes` flag bypasses the prompt; the destructive action proceeds immediately.
-- **NFR-002-AC-4**: No other cluster teardown command (future additions) may skip this constraint without an explicit NFR exemption.
+
+| ID | Criteria | Verification |
+|----|----------|--------------|
+| NFR-002-AC-1 | The confirmation prompt MUST include the literal cluster name (e.g. `'ix'`) in its message text. | Demonstration |
+| NFR-002-AC-2 | Declined or cancelled confirmation MUST exit 0 with no destructive action taken. | Demonstration |
+| NFR-002-AC-3 | `--yes` flag bypasses the prompt; the destructive action proceeds immediately. | Demonstration |
+| NFR-002-AC-4 | No other cluster teardown command (future additions) may skip this constraint without an explicit NFR exemption. | Demonstration |
+
