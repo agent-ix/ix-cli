@@ -28,7 +28,11 @@ repository configuration.
 
 ## Validation Criteria
 
-- **StR-004-AC-1**: Services tagged `ix-core` in their OCI manifest are included in the default cluster bring-up.
-- **StR-004-AC-2**: Operators can add non-tagged services to the default set via `extraApps` in `~/.ix/config.yaml`.
-- **StR-004-AC-3**: Operators can exclude tagged services from the default set via `skipApps` in `~/.ix/config.yaml`.
-- **StR-004-AC-4**: When `~/.ix/config.yaml` is absent, sensible defaults apply (`ix-core` tag only, no extras or skips).
+
+| ID | Criteria | Validation |
+|----|----------|------------|
+| StR-004-VC-1 | **StR-004-AC-1**: Services tagged `ix-core` in their OCI manifest are included in the default cluster bring-up. | Inspection |
+| StR-004-VC-2 | **StR-004-AC-2**: Operators can add non-tagged services to the default set via `extraApps` in `~/.ix/config.yaml`. | Inspection |
+| StR-004-VC-3 | **StR-004-AC-3**: Operators can exclude tagged services from the default set via `skipApps` in `~/.ix/config.yaml`. | Inspection |
+| StR-004-VC-4 | **StR-004-AC-4**: When `~/.ix/config.yaml` is absent, sensible defaults apply (`ix-core` tag only, no extras or skips). | Inspection |
+

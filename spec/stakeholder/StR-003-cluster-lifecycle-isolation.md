@@ -34,8 +34,12 @@ reversible stop/start makes the lifecycle reproducible and safe.
 
 ## Validation Criteria
 
-- **StR-003-AC-1**: `ix local cluster up` bootstraps the kind cluster and deploys all ix-core tagged services in one command.
-- **StR-003-AC-2**: `ix local cluster down` requires explicit confirmation (or `--yes`) before deleting the cluster.
-- **StR-003-AC-3**: `ix local cluster status` shows current node readiness and any unhealthy pods without modifying cluster state.
-- **StR-003-AC-4**: `ix local cluster stop` and `ix local cluster start` pause and resume the cluster reversibly, preserving PVC data and Helm release state.
-- **StR-003-AC-5**: `ix local halt all` uninstalls every deployed service after confirmation, leaving the cluster itself running.
+
+| ID | Criteria | Validation |
+|----|----------|------------|
+| StR-003-VC-1 | **StR-003-AC-1**: `ix local cluster up` bootstraps the kind cluster and deploys all ix-core tagged services in one command. | Demonstration |
+| StR-003-VC-2 | **StR-003-AC-2**: `ix local cluster down` requires explicit confirmation (or `--yes`) before deleting the cluster. | Demonstration |
+| StR-003-VC-3 | **StR-003-AC-3**: `ix local cluster status` shows current node readiness and any unhealthy pods without modifying cluster state. | Demonstration |
+| StR-003-VC-4 | **StR-003-AC-4**: `ix local cluster stop` and `ix local cluster start` pause and resume the cluster reversibly, preserving PVC data and Helm release state. | Demonstration |
+| StR-003-VC-5 | **StR-003-AC-5**: `ix local halt all` uninstalls every deployed service after confirmation, leaving the cluster itself running. | Demonstration |
+
