@@ -107,12 +107,14 @@ other output stream — same invariant as [FR-044-CON-3](./FR-044-auth-kubeconfi
 | ID | Criteria | Verification |
 |---|---|---|
 | FR-045-AC-1 | Running without `--force` on a TTY and declining the prompt SHALL exit 0 with no `kubectl delete` invocation | Unit test (mocked prompt + kubectl) |
-| FR-045-AC-2 | Running with `--force` SHALL delete `Secret system/ix-cli-admin-token`; within 30s the Secret SHALL be recreated by the SA-token controller; the token value in the recreated Secret SHALL differ from the pre-rotation value | Integration test (kind cluster) |
+| FR-045-AC-2 | Running with `--force` SHALL delete `Secret system/ix-cli-admin-token` | Integration test (kind cluster) |
 | FR-045-AC-3 | With `--reissue --output <path> --force`, the command SHALL emit a fresh kubeconfig at `<path>` that authenticates as `system:serviceaccount:system:ix-cli-admin` after the rotation completes | Integration test |
 | FR-045-AC-4 | A kubeconfig issued by [FR-044](./FR-044-auth-kubeconfig-issue.md) before this rotation SHALL fail authentication against the cluster after rotation completes (verified via `kubectl --kubeconfig=<old> get pods -n auth` returning a 401/`InvalidBearerToken`) | Integration test |
 | FR-045-AC-5 | If the SA-token controller does not recreate the Secret within 30s, the command SHALL exit non-zero with the `recreate_timeout` envelope; the file at `--output` (if any) SHALL NOT be modified | Unit test (mocked kubectl never returning a recreated Secret) |
 | FR-045-AC-6 | In a non-TTY context without `--force`, the command SHALL exit non-zero with a CI-safe message naming `--force` as the bypass; no `kubectl delete` SHALL be invoked | Unit test |
 | FR-045-AC-7 | When `--reissue` is passed without `--output`, the command SHALL reject with exit code 2 and message `--reissue requires --output <path>`. No Secret deletion SHALL occur. | Unit test |
+| FR-045-AC-8 | After that deletion, the SA-token controller SHALL have recreated the Secret within 30s | Integration test (kind cluster) |
+| FR-045-AC-9 | The token value in the recreated Secret SHALL differ from the pre-rotation value | Integration test (kind cluster) |
 
 ## Sequence
 
