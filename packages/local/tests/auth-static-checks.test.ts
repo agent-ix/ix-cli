@@ -46,14 +46,14 @@ function stripCommentsAndStrings(src: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// ix-cli-auth-AC-1 / ix-cli-auth-CON-1 — TC-080 / TC-086
+// FR-046-AC-1 / FR-046-CON-1 — TC-080 / TC-086
 //
 // `auth-init.ts` and `auth-reset-admin.ts` SHALL NOT contain any networked
 // transport for identity. The only acceptable mechanism is `kubectl exec`
 // via `kubectlExecJson` (auth/ADR-004, FR-008-CON-1).
 // ---------------------------------------------------------------------------
 
-describe("ix-cli-auth-AC-1 — admin commands have no networked transport", () => {
+describe("FR-046-AC-1 — admin commands have no networked transport", () => {
   const FORBIDDEN = [
     /\bfetch\s*\(/, // global fetch / undici fetch
     /from\s+["']undici["']/,
@@ -80,13 +80,13 @@ describe("ix-cli-auth-AC-1 — admin commands have no networked transport", () =
 });
 
 // ---------------------------------------------------------------------------
-// ix-cli-auth-AC-6 / ix-cli-auth-CON-4 — TC-085
+// FR-046-AC-6 / FR-046-CON-4 — TC-085
 //
 // No string-literal namespaces in src outside config.ts. All namespace use
 // SHALL go through the IX_*_NAMESPACE constants exported from config.ts.
 // ---------------------------------------------------------------------------
 
-describe("ix-cli-auth-AC-6 — namespace constants are the single source of truth", () => {
+describe("FR-046-AC-6 — namespace constants are the single source of truth", () => {
   // Forbidden as standalone string literals only — bare words inside identifiers
   // (e.g. `IX_AUTH_NAMESPACE`) and inside comments / string contents are fine
   // because we strip both before scanning.
@@ -146,13 +146,13 @@ describe("ix-cli-auth-AC-6 — namespace constants are the single source of trut
 });
 
 // ---------------------------------------------------------------------------
-// ix-cli-auth-CON-2 — TC-087 (static)
+// FR-046-CON-2 — TC-087 (static)
 //
 // `auth-secret.ts` writes the admin-bootstrap Secret to IX_SYSTEM_NAMESPACE,
 // never IX_AUTH_NAMESPACE or any other.
 // ---------------------------------------------------------------------------
 
-describe("ix-cli-auth-CON-2 — bootstrap Secret namespace", () => {
+describe("FR-046-CON-2 — bootstrap Secret namespace", () => {
   it("auth-secret.ts imports IX_SYSTEM_NAMESPACE and uses it in the manifest", () => {
     const src = readSrc("commands/auth-secret.ts");
     expect(src).toMatch(/IX_SYSTEM_NAMESPACE/);
@@ -164,13 +164,13 @@ describe("ix-cli-auth-CON-2 — bootstrap Secret namespace", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ix-cli-auth-CON-3 — TC-088
+// FR-046-CON-3 — TC-088
 //
 // Every kubectlRaw(...) invocation in auth-*.ts passes IX_AUTH_NAMESPACE
 // (or another IX_*_NAMESPACE constant) as the namespace argument.
 // ---------------------------------------------------------------------------
 
-describe("ix-cli-auth-CON-3 — kubectlRaw targets the auth namespace", () => {
+describe("FR-046-CON-3 — kubectlRaw targets the auth namespace", () => {
   const AUTH_FILES = [
     "commands/auth-invite.ts",
     "commands/auth-reset-user.ts",
