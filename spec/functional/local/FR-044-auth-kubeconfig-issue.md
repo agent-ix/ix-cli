@@ -144,7 +144,7 @@ command exits non-zero and writes nothing to `--output` on any error.
 | FR-044-AC-7 | `--context-name foo` causes both `contexts[0].name` and `current-context` of the emitted kubeconfig to equal `foo` | Unit test (parse emitted YAML) |
 | FR-044-AC-8 | The emitted kubeconfig's `clusters[0].cluster.server` and `clusters[0].cluster.certificate-authority-data` byte-match the values returned by `kubectl config view --raw --minify` against the active kubeconfig | Unit test |
 | FR-044-AC-9 | A `.data.token` value that fails base64 decode produces a non-zero exit, no file written, no token-shaped string in stdout/stderr | Unit test |
-| FR-044-AC-10 | The command never invokes `fetch`, `http`, `https`, port-forward setup, or any HTTP client for identity (matches `auth.md` ix-cli-auth-CON-1 posture extended to kubeconfig issuance) | Static / grep CI gate |
+| FR-044-AC-10 | The command never invokes `fetch`, `http`, `https`, port-forward setup, or any HTTP client for identity (matches `auth.md` FR-046-CON-1 posture extended to kubeconfig issuance) | Static / grep CI gate |
 
 ## Test pattern
 
