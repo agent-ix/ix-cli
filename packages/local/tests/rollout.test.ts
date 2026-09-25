@@ -83,9 +83,35 @@ describe("waitForRollout", () => {
     expect(firstCall[0]).toBe("kubectl");
     const argv = firstCall[1] as string[];
     expect(argv).toContain("get");
-    expect(argv).toContain("deployments,statefulsets");
+    expect(argv).toContain("deployments,statefulsets,daemonsets");
     expect(argv).toContain("-l");
     expect(argv).toContain("app.kubernetes.io/part-of=vault");
+  });
+
+  it("reports DaemonSet readiness from its numberReady/desired counters", async () => {
+    mockExeca.mockResolvedValueOnce({
+      stdout: "daemonset.apps/promtail\n",
+    } as never);
+    mockExeca.mockResolvedValueOnce({
+      stdout: JSON.stringify({
+        kind: "DaemonSet",
+        metadata: { generation: 1 },
+        status: {
+          desiredNumberScheduled: 1,
+          numberReady: 1,
+          numberAvailable: 1,
+          updatedNumberScheduled: 1,
+          observedGeneration: 1,
+        },
+      }),
+    } as never);
+
+    const status = await getRolloutReadyStatus(
+      "promtail",
+      "platform",
+      "app.kubernetes.io/instance=promtail",
+    );
+    expect(status).toBe("1/1");
   });
 
   it("throws a workload-aware error when selector matches nothing", async () => {
@@ -93,7 +119,7 @@ describe("waitForRollout", () => {
     await expect(
       waitForRollout("ghost", "default", 30, fakeTask, "app=ghost"),
     ).rejects.toThrow(
-      /No workloads \(deployment\/statefulset\) found for selector 'app=ghost'/,
+      /No workloads \(deployment\/statefulset\/daemonset\) found for selector 'app=ghost'/,
     );
   });
 

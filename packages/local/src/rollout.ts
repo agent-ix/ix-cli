@@ -505,6 +505,11 @@ interface WorkloadJson {
     replicas?: number;
     updatedReplicas?: number;
     updateRevision?: string;
+    // DaemonSet counters (it has no spec.replicas).
+    desiredNumberScheduled?: number;
+    numberReady?: number;
+    numberAvailable?: number;
+    updatedNumberScheduled?: number;
   };
 }
 
@@ -513,10 +518,19 @@ function workloadReplicaStatus(workload: WorkloadJson): {
   total: number;
   settling: boolean;
 } {
-  const total = workload.spec?.replicas ?? workload.status?.replicas ?? 1;
-  const ready = workload.status?.readyReplicas ?? 0;
-  const available = workload.status?.availableReplicas;
-  const updated = workload.status?.updatedReplicas;
+  const isDaemonSet = workload.kind === "DaemonSet";
+  const total = isDaemonSet
+    ? (workload.status?.desiredNumberScheduled ?? 0)
+    : (workload.spec?.replicas ?? workload.status?.replicas ?? 1);
+  const ready = isDaemonSet
+    ? (workload.status?.numberReady ?? 0)
+    : (workload.status?.readyReplicas ?? 0);
+  const available = isDaemonSet
+    ? workload.status?.numberAvailable
+    : workload.status?.availableReplicas;
+  const updated = isDaemonSet
+    ? workload.status?.updatedNumberScheduled
+    : workload.status?.updatedReplicas;
   const observed = workload.status?.observedGeneration ?? 0;
   const generation = workload.metadata?.generation ?? 0;
   const currentRevision = workload.status?.currentRevision;
@@ -588,7 +602,7 @@ export async function getRolloutReadyStatus(
             "kubectl",
             [
               "get",
-              "deployments,statefulsets",
+              "deployments,statefulsets,daemonsets",
               "-n",
               namespace,
               "-l",
@@ -645,7 +659,7 @@ export async function waitForRollout(
           "kubectl",
           [
             "get",
-            "deployments,statefulsets",
+            "deployments,statefulsets,daemonsets",
             "-n",
             namespace,
             "-l",
@@ -663,7 +677,7 @@ export async function waitForRollout(
 
   if (deployments.length === 0) {
     throw new Error(
-      `No workloads (deployment/statefulset) found for selector '${labelSelector}' in namespace '${namespace}'`,
+      `No workloads (deployment/statefulset/daemonset) found for selector '${labelSelector}' in namespace '${namespace}'`,
     );
   }
 
