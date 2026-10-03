@@ -1,6 +1,6 @@
 # ix-cli
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20us-5865F2?logo=discord&logoColor=white)](https://discord.gg/6qsdhSPE)
+[![Discord](https://img.shields.io/badge/Discord-Join%20us-5865F2?logo=discord&logoColor=white)](https://discord.gg/k8DVhuYBR2)
 
 The Agent IX command-line tool (`ix`). Hosts pluggable command groups
 contributed by other repos in the Agent IX ecosystem.
