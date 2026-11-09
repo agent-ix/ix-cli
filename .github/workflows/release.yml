@@ -5,18 +5,12 @@ on:
 
 permissions:
   contents: read
-  id-token: write # OIDC token for npm Trusted Publishing (no-op for token-based GH Packages)
+  id-token: write # OIDC token for npm Trusted Publishing
 
 jobs:
   ci:
     uses: agent-ix/nodejs-actions/.github/workflows/release-monorepo.yml@main
     with:
       npm_registry: https://registry.npmjs.org
-      # Token-based for the first publish: OIDC Trusted Publishing can't
-      # bootstrap a package that doesn't exist on npmjs yet. Flip back to
-      # trusted_publish: true once the packages exist + trusted publishers
-      # are configured on npmjs.com.
-      trusted_publish: false
+      trusted_publish: true
       node_version: "22"
-    secrets:
-      NPM_REGISTRY_TOKEN: ${{ secrets.NPM_TOKEN }}
