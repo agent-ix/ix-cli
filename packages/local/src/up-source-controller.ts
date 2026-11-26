@@ -28,6 +28,7 @@ import {
 import { ensureNamespace } from "./namespaces.js";
 import { PhaseRows, createPhaseRows } from "./phase-rows.js";
 import { waitForRollout } from "./rollout.js";
+import { restartReleaseWorkloads } from "./workload-restart.js";
 
 /**
  * Resolve the values overlay file for an app chart, profile-aware.
@@ -510,17 +511,7 @@ export async function runSourceModePipeline(
         all: true,
       });
       rows.setPhase(install.name, "install", "running", "rollout restart");
-      await execa(
-        "kubectl",
-        [
-          "rollout",
-          "restart",
-          `deployment/${install.name}`,
-          "-n",
-          install.namespace,
-        ],
-        { all: true },
-      );
+      await restartReleaseWorkloads(install.name, install.namespace);
       rows.setPhase(install.name, "install", "done");
 
       phase = "ready";
