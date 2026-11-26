@@ -13,7 +13,7 @@ interface KubernetesWorkload {
 
 /**
  * Restart release workloads using their discovered Kubernetes resource kinds.
- * FR-030-AC-7
+ * Implements: FR-030-AC-7.
  */
 export async function restartReleaseWorkloads(
   releaseName: string,

@@ -418,6 +418,7 @@ export async function planSourceModeUp(
   }
 }
 
+/** Implements: FR-030-AC-7. */
 export async function runSourceModePipeline(
   plan: SourceModePlan,
   config: IxConfig,
