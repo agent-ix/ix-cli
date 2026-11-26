@@ -50,6 +50,7 @@
     "zod": ">=4.0.0"
   },
   "devDependencies": {
+    "@agent-ix/ix-trace-ts": "0.1.1",
     "@types/node": ">=25.6.0",
     "@types/react": ">=18.3.12",
     "vite": ">=6.3.4",

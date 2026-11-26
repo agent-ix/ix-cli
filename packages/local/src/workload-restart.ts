@@ -11,10 +11,8 @@ interface KubernetesWorkload {
   metadata?: { name?: unknown };
 }
 
-/**
- * Restart release workloads using their discovered Kubernetes resource kinds.
- * Implements: FR-030-AC-7.
- */
+// Implements: FR-030-AC-7
+/** Restart release workloads using their discovered Kubernetes resource kinds. */
 export async function restartReleaseWorkloads(
   releaseName: string,
   namespace: string,

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { execa } from "execa";
+import { trace } from "@agent-ix/ix-trace-ts/vitest";
 import { restartReleaseWorkloads } from "../src/workload-restart.js";
 
 vi.mock("execa", () => ({ execa: vi.fn() }));
@@ -9,7 +10,8 @@ const mockedExeca = vi.mocked(execa);
 describe("restartReleaseWorkloads", () => {
   beforeEach(() => mockedExeca.mockReset());
 
-  it("TC-293: restarts every supported workload (Trace: FR-030-AC-7)", async () => {
+  it("TC-293: restarts every supported workload", async () => {
+    trace("FR-030-AC-7");
     mockedExeca
       .mockResolvedValueOnce({
         stdout: JSON.stringify({
@@ -75,7 +77,8 @@ describe("restartReleaseWorkloads", () => {
     ]);
   });
 
-  it("TC-294: skips restart when no workload is found (Trace: FR-030-AC-7)", async () => {
+  it("TC-294: skips restart when no workload is found", async () => {
+    trace("FR-030-AC-7");
     mockedExeca.mockResolvedValueOnce({
       stdout: JSON.stringify({ items: [] }),
     } as never);
