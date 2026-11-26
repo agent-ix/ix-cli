@@ -418,13 +418,13 @@ export async function planSourceModeUp(
   }
 }
 
-// Implements: FR-030-AC-7
 export async function runSourceModePipeline(
   plan: SourceModePlan,
   config: IxConfig,
   opts: UpFilterOptions,
   emit: (services: ServiceRow<SourcePhase>[]) => void,
 ): Promise<SourceModeResult> {
+  // Implements: FR-030-AC-7
   const rows = new PhaseRows(
     plan.installs.map((install) => ({
       name: install.name,

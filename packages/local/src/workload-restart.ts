@@ -11,12 +11,12 @@ interface KubernetesWorkload {
   metadata?: { name?: unknown };
 }
 
-// Implements: FR-030-AC-7
 /** Restart release workloads using their discovered Kubernetes resource kinds. */
 export async function restartReleaseWorkloads(
   releaseName: string,
   namespace: string,
 ): Promise<void> {
+  // Implements: FR-030-AC-7
   const { stdout } = await execa(
     "kubectl",
     [
