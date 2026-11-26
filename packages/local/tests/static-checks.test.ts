@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { trace } from "@agent-ix/ix-trace-ts/vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -242,6 +243,7 @@ describe("Source and image mode share the live PhaseTable renderer", () => {
   });
 
   it("TC-283: source command wrapper delegates process orchestration to the controller", () => {
+    trace("FR-030-AC-7");
     const src = readSrc("commands/up-source.ts");
     const controller = readSrc("up-source-controller.ts");
 
@@ -249,7 +251,9 @@ describe("Source and image mode share the live PhaseTable renderer", () => {
     expect(src).not.toMatch(/\bwaitForRollout\(/);
     expect(src).not.toMatch(/\bmkdtempSync\(/);
     expect(src).not.toMatch(/\brmSync\(/);
-    expect(controller).toMatch(/export async function runSourceModePipeline/);
+    expect(controller).toMatch(
+      /export const runSourceModePipeline = implementing\("FR-030-AC-7"\)\(/,
+    );
   });
 
   it("TC-284: init-cluster command wrapper delegates process orchestration to the controller", () => {

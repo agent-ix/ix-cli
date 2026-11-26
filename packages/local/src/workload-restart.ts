@@ -1,4 +1,5 @@
 import { execa } from "execa";
+import { implementing } from "@agent-ix/ix-trace-ts";
 
 const RESOURCE_BY_KIND: Readonly<Record<string, string>> = {
   Deployment: "deployment",
@@ -12,43 +13,44 @@ interface KubernetesWorkload {
 }
 
 /** Restart release workloads using their discovered Kubernetes resource kinds. */
-export async function restartReleaseWorkloads(
-  releaseName: string,
-  namespace: string,
-): Promise<void> {
-  // Implements: FR-030-AC-7
-  const { stdout } = await execa(
-    "kubectl",
-    [
-      "get",
-      "deployments,daemonsets,statefulsets",
-      "-n",
-      namespace,
-      "-l",
-      `app.kubernetes.io/part-of=${releaseName}`,
-      "-o",
-      "json",
-    ],
-    { all: true },
-  );
-  const workloads = (JSON.parse(stdout) as { items?: KubernetesWorkload[] })
-    .items;
-
-  for (const workload of workloads ?? []) {
-    if (typeof workload.kind !== "string") continue;
-    const resource = RESOURCE_BY_KIND[workload.kind];
-    if (!resource || typeof workload.metadata?.name !== "string") continue;
-
-    await execa(
+export const restartReleaseWorkloads = implementing("FR-030-AC-7")(
+  async function restartReleaseWorkloads(
+    releaseName: string,
+    namespace: string,
+  ): Promise<void> {
+    const { stdout } = await execa(
       "kubectl",
       [
-        "rollout",
-        "restart",
-        `${resource}/${workload.metadata.name}`,
+        "get",
+        "deployments,daemonsets,statefulsets",
         "-n",
         namespace,
+        "-l",
+        `app.kubernetes.io/part-of=${releaseName}`,
+        "-o",
+        "json",
       ],
       { all: true },
     );
-  }
-}
+    const workloads = (JSON.parse(stdout) as { items?: KubernetesWorkload[] })
+      .items;
+
+    for (const workload of workloads ?? []) {
+      if (typeof workload.kind !== "string") continue;
+      const resource = RESOURCE_BY_KIND[workload.kind];
+      if (!resource || typeof workload.metadata?.name !== "string") continue;
+
+      await execa(
+        "kubectl",
+        [
+          "rollout",
+          "restart",
+          `${resource}/${workload.metadata.name}`,
+          "-n",
+          namespace,
+        ],
+        { all: true },
+      );
+    }
+  },
+);
