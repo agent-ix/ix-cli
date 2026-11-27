@@ -32,16 +32,22 @@ installs. To re-pull chart artifacts in image mode, omit `--tag` and rely on the
 umbrella `Chart.yaml`'s pinned subchart versions, or use `ix local refresh`
 (separate command) to invalidate the registry cache.
 
+After a source-mode Helm upgrade, ix-cli discovers the release's Deployment,
+DaemonSet, and StatefulSet resources by the same `app.kubernetes.io/part-of`
+label used by rollout readiness checks, then restarts each using its actual
+Kubernetes workload kind.
+
 ## Acceptance Criteria
 
-| ID | Criteria | Verification |
-|----|----------|--------------|
-| FR-030-AC-1 | `--refresh` is declared on `apps/ix/src/commands/local/up.ts` as `Flags.boolean({ description: ... })` and reaches `runUp` via the parsed options object. | Test |
-| FR-030-AC-2 | `runUp` propagates `refresh` into the `UpFilterOptions` passed to `runSourceModeUp`. | Test |
-| FR-030-AC-3 | When `opts.refresh === true`, every `LocalInstall` produced by `runSourceModeUp` has `dependencyUpdate === true`, regardless of what `shouldDependencyUpdate(chartPath)` returned during resolution. | Test |
-| FR-030-AC-4 | When `opts.refresh` is unset or false, install `dependencyUpdate` values are unchanged from `shouldDependencyUpdate`. | Test |
-| FR-030-AC-5 | The flag is documented in the `--help` output of `ix local up`. | Test |
-| FR-030-AC-6 | `--refresh` does not change image-mode behavior — no edits to `up-image.ts` are required to satisfy this FR. | Test |
+| ID          | Criteria                                                                                                                                                                                                                                                                                            | Verification |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| FR-030-AC-1 | `--refresh` is declared on `apps/ix/src/commands/local/up.ts` as `Flags.boolean({ description: ... })` and reaches `runUp` via the parsed options object.                                                                                                                                           | Test         |
+| FR-030-AC-2 | `runUp` propagates `refresh` into the `UpFilterOptions` passed to `runSourceModeUp`.                                                                                                                                                                                                                | Test         |
+| FR-030-AC-3 | When `opts.refresh === true`, every `LocalInstall` produced by `runSourceModeUp` has `dependencyUpdate === true`, regardless of what `shouldDependencyUpdate(chartPath)` returned during resolution.                                                                                                | Test         |
+| FR-030-AC-4 | When `opts.refresh` is unset or false, install `dependencyUpdate` values are unchanged from `shouldDependencyUpdate`.                                                                                                                                                                               | Test         |
+| FR-030-AC-5 | The flag is documented in the `--help` output of `ix local up`.                                                                                                                                                                                                                                     | Test         |
+| FR-030-AC-6 | `--refresh` does not change image-mode behavior — no edits to `up-image.ts` are required to satisfy this FR.                                                                                                                                                                                        | Test         |
+| FR-030-AC-7 | After a source-mode Helm upgrade, ix-cli discovers all Deployment, DaemonSet, and StatefulSet resources matching `app.kubernetes.io/part-of=<release>` and requests rollout restart using each resource's actual kind and name. If no supported workload matches, ix-cli issues no restart request. | Test         |
 
 - **FR-030-AC-1**: `--refresh` is declared on `apps/ix/src/commands/local/up.ts`
   as `Flags.boolean({ description: ... })` and reaches `runUp` via the parsed
@@ -57,6 +63,11 @@ umbrella `Chart.yaml`'s pinned subchart versions, or use `ix local refresh`
   `ix local up`.
 - **FR-030-AC-6**: `--refresh` does not change image-mode behavior — no edits
   to `up-image.ts` are required to satisfy this FR.
+- **FR-030-AC-7**: After a source-mode Helm upgrade, ix-cli discovers all
+  Deployment, DaemonSet, and StatefulSet resources matching
+  `app.kubernetes.io/part-of=<release>` and requests rollout restart using
+  each resource's actual kind and name. If no supported workload matches,
+  ix-cli issues no restart request.
 
 ## Workflow
 

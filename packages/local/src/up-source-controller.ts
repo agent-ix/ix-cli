@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execa } from "execa";
+import { implementing } from "@agent-ix/ix-trace-ts";
 import pc from "picocolors";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { ServiceRow } from "@agent-ix/ix-ui-cli";
@@ -28,6 +29,7 @@ import {
 import { ensureNamespace } from "./namespaces.js";
 import { PhaseRows, createPhaseRows } from "./phase-rows.js";
 import { waitForRollout } from "./rollout.js";
+import { restartReleaseWorkloads } from "./workload-restart.js";
 
 /**
  * Resolve the values overlay file for an app chart, profile-aware.
@@ -417,137 +419,135 @@ export async function planSourceModeUp(
   }
 }
 
-export async function runSourceModePipeline(
-  plan: SourceModePlan,
-  config: IxConfig,
-  opts: UpFilterOptions,
-  emit: (services: ServiceRow<SourcePhase>[]) => void,
-): Promise<SourceModeResult> {
-  const rows = new PhaseRows(
-    plan.installs.map((install) => ({
-      name: install.name,
-      displayName: `${install.name} ${pc.dim("source")}`,
-    })),
-    SOURCE_PHASES,
-    emit,
-  );
-  const failures: string[] = [];
-  const ingressUrls: string[] = [];
-  const installNamespaces = [...new Set(plan.installs.map((i) => i.namespace))];
-
-  for (const ns of installNamespaces) await ensureNamespace(ns);
-
-  for (const install of plan.installs) {
-    rows.setPhase(install.name, "secrets", "running", "checking secrets");
-  }
-  for (const contract of plan.secretContracts) {
-    const matched = plan.installs.find(
-      (i) => i.secretContractDir === contract.repoDir,
+export const runSourceModePipeline = implementing("FR-030-AC-7")(
+  async function runSourceModePipeline(
+    plan: SourceModePlan,
+    config: IxConfig,
+    opts: UpFilterOptions,
+    emit: (services: ServiceRow<SourcePhase>[]) => void,
+  ): Promise<SourceModeResult> {
+    const rows = new PhaseRows(
+      plan.installs.map((install) => ({
+        name: install.name,
+        displayName: `${install.name} ${pc.dim("source")}`,
+      })),
+      SOURCE_PHASES,
+      emit,
     );
-    const namespace = matched?.namespace ?? IX_APPS_NAMESPACE;
-    try {
-      await applySecretContract(contract, namespace);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const failed = matched
-        ? [matched]
-        : plan.installs.filter((install) => install.namespace === namespace);
-      for (const install of failed) {
-        rows.setError(install.name, "secrets", msg);
-      }
-      throw err;
-    }
-  }
-  for (const install of plan.installs) {
-    rows.setPhase(install.name, "secrets", "done");
-  }
+    const failures: string[] = [];
+    const ingressUrls: string[] = [];
+    const installNamespaces = [
+      ...new Set(plan.installs.map((i) => i.namespace)),
+    ];
 
-  if (plan.requiresRegistryAuth) {
+    for (const ns of installNamespaces) await ensureNamespace(ns);
+
     for (const install of plan.installs) {
-      rows.setPhase(install.name, "install", "queued", "helm registry login");
+      rows.setPhase(install.name, "secrets", "running", "checking secrets");
     }
-    const token = await resolveGhcrToken(false);
-    await execa(
-      "helm",
-      [
-        "registry",
-        "login",
-        config.helmChartRegistry,
-        "-u",
-        "_token",
-        "--password-stdin",
-      ],
-      { input: token, all: true },
-    );
+    for (const contract of plan.secretContracts) {
+      const matched = plan.installs.find(
+        (i) => i.secretContractDir === contract.repoDir,
+      );
+      const namespace = matched?.namespace ?? IX_APPS_NAMESPACE;
+      try {
+        await applySecretContract(contract, namespace);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const failed = matched
+          ? [matched]
+          : plan.installs.filter((install) => install.namespace === namespace);
+        for (const install of failed) {
+          rows.setError(install.name, "secrets", msg);
+        }
+        throw err;
+      }
+    }
     for (const install of plan.installs) {
-      if (install.dependencyUpdate) {
-        rows.setPhase(install.name, "install", "pending");
-      }
+      rows.setPhase(install.name, "secrets", "done");
     }
-  }
 
-  for (const install of plan.installs) {
-    let phase: SourcePhase = "build";
-    try {
-      const canBuild = makefileHasTargets(install.repoDir, [
-        "build",
-        "kind-load",
-      ]);
-      if (canBuild) {
-        rows.setPhase(install.name, "build", "running", "make build");
-        await execa("make", ["build"], { cwd: install.repoDir, all: true });
-        rows.setPhase(install.name, "build", "running", "make kind-load");
-        await execa("make", ["kind-load"], {
-          cwd: install.repoDir,
-          all: true,
-        });
+    if (plan.requiresRegistryAuth) {
+      for (const install of plan.installs) {
+        rows.setPhase(install.name, "install", "queued", "helm registry login");
       }
-      rows.setPhase(install.name, "build", "done");
-
-      phase = "install";
-      rows.setPhase(install.name, "install", "running", "helm upgrade");
-      await execa("helm", buildLocalHelmArgs(install, config, plan.imageTag), {
-        all: true,
-      });
-      rows.setPhase(install.name, "install", "running", "rollout restart");
+      const token = await resolveGhcrToken(false);
       await execa(
-        "kubectl",
+        "helm",
         [
-          "rollout",
-          "restart",
-          `deployment/${install.name}`,
-          "-n",
-          install.namespace,
+          "registry",
+          "login",
+          config.helmChartRegistry,
+          "-u",
+          "_token",
+          "--password-stdin",
         ],
-        { all: true },
+        { input: token, all: true },
       );
-      rows.setPhase(install.name, "install", "done");
-
-      phase = "ready";
-      rows.setPhase(install.name, "ready", "running", "checking rollout");
-      await waitForRollout(
-        install.name,
-        install.namespace,
-        config.rolloutTimeoutSeconds,
-        undefined,
-        `app.kubernetes.io/part-of=${install.name}`,
-        (status) => rows.setPhase(install.name, "ready", "running", status),
-      );
-      rows.setPhase(install.name, "ready", "done", "ready");
-      ingressUrls.push(
-        ...(await getReleaseIngressUrls(install.name, install.namespace)),
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      rows.setError(install.name, phase, msg);
-      rows.finishPending(install.name, phase);
-      if (!opts.continueOnError) throw err;
-      failures.push(`${install.name}: ${msg}`);
+      for (const install of plan.installs) {
+        if (install.dependencyUpdate) {
+          rows.setPhase(install.name, "install", "pending");
+        }
+      }
     }
-  }
 
-  return {
-    failures,
-    ingressUrls,
-  };
-}
+    for (const install of plan.installs) {
+      let phase: SourcePhase = "build";
+      try {
+        const canBuild = makefileHasTargets(install.repoDir, [
+          "build",
+          "kind-load",
+        ]);
+        if (canBuild) {
+          rows.setPhase(install.name, "build", "running", "make build");
+          await execa("make", ["build"], { cwd: install.repoDir, all: true });
+          rows.setPhase(install.name, "build", "running", "make kind-load");
+          await execa("make", ["kind-load"], {
+            cwd: install.repoDir,
+            all: true,
+          });
+        }
+        rows.setPhase(install.name, "build", "done");
+
+        phase = "install";
+        rows.setPhase(install.name, "install", "running", "helm upgrade");
+        await execa(
+          "helm",
+          buildLocalHelmArgs(install, config, plan.imageTag),
+          {
+            all: true,
+          },
+        );
+        rows.setPhase(install.name, "install", "running", "rollout restart");
+        await restartReleaseWorkloads(install.name, install.namespace);
+        rows.setPhase(install.name, "install", "done");
+
+        phase = "ready";
+        rows.setPhase(install.name, "ready", "running", "checking rollout");
+        await waitForRollout(
+          install.name,
+          install.namespace,
+          config.rolloutTimeoutSeconds,
+          undefined,
+          `app.kubernetes.io/part-of=${install.name}`,
+          (status) => rows.setPhase(install.name, "ready", "running", status),
+        );
+        rows.setPhase(install.name, "ready", "done", "ready");
+        ingressUrls.push(
+          ...(await getReleaseIngressUrls(install.name, install.namespace)),
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        rows.setError(install.name, phase, msg);
+        rows.finishPending(install.name, phase);
+        if (!opts.continueOnError) throw err;
+        failures.push(`${install.name}: ${msg}`);
+      }
+    }
+
+    return {
+      failures,
+      ingressUrls,
+    };
+  },
+);
